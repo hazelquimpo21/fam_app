@@ -1,0 +1,184 @@
+/**
+ * ============================================================================
+ * 🔑 Query Key Factory
+ * ============================================================================
+ *
+ * Centralized query keys for TanStack Query.
+ * Consistent keys enable proper cache invalidation and data sharing.
+ *
+ * Pattern: ['entity', 'scope', ...params]
+ *
+ * Why this matters:
+ * - When you complete a task, invalidate ['tasks'] to refetch all task queries
+ * - When you update a specific task, invalidate ['tasks', 'detail', taskId]
+ * - Prevents stale data and cache bugs!
+ *
+ * ============================================================================
+ */
+
+import type { TaskStatus, GoalStatus, ProjectStatus, HabitFrequency } from '@/types/database';
+
+// ============================================================================
+// 📦 FILTER TYPES
+// ============================================================================
+
+/** Filters for task queries */
+export interface TaskFilters {
+  status?: TaskStatus;
+  assignedTo?: string;
+  projectId?: string;
+  dueBefore?: string;
+  dueAfter?: string;
+}
+
+/** Filters for goal queries */
+export interface GoalFilters {
+  status?: GoalStatus;
+  ownerId?: string;
+  isFamilyGoal?: boolean;
+}
+
+/** Filters for project queries */
+export interface ProjectFilters {
+  status?: ProjectStatus;
+  ownerId?: string;
+}
+
+/** Date range for queries */
+export interface DateRange {
+  start: string;  // YYYY-MM-DD
+  end: string;    // YYYY-MM-DD
+}
+
+// ============================================================================
+// 🔑 QUERY KEY FACTORY
+// ============================================================================
+
+export const queryKeys = {
+  // ━━━━━ Tasks ━━━━━
+  tasks: {
+    /** Base key for all task queries */
+    all: ['tasks'] as const,
+
+    /** All task list queries */
+    lists: () => [...queryKeys.tasks.all, 'list'] as const,
+
+    /** Filtered task list */
+    list: (filters: TaskFilters) => [...queryKeys.tasks.lists(), filters] as const,
+
+    /** All task detail queries */
+    details: () => [...queryKeys.tasks.all, 'detail'] as const,
+
+    /** Specific task detail */
+    detail: (id: string) => [...queryKeys.tasks.details(), id] as const,
+
+    /** Inbox tasks (status = 'inbox') */
+    inbox: () => [...queryKeys.tasks.all, 'inbox'] as const,
+
+    /** Today's tasks (due or scheduled today) */
+    today: () => [...queryKeys.tasks.all, 'today'] as const,
+
+    /** Overdue tasks */
+    overdue: () => [...queryKeys.tasks.all, 'overdue'] as const,
+  },
+
+  // ━━━━━ Habits ━━━━━
+  habits: {
+    /** Base key for all habit queries */
+    all: ['habits'] as const,
+
+    /** Habit list (optionally filtered by owner) */
+    list: (ownerId?: string) => [...queryKeys.habits.all, 'list', ownerId] as const,
+
+    /** Specific habit detail */
+    detail: (id: string) => [...queryKeys.habits.all, 'detail', id] as const,
+
+    /** Habit logs for a specific habit and date range */
+    logs: (habitId: string, range?: DateRange) =>
+      [...queryKeys.habits.all, 'logs', habitId, range] as const,
+
+    /** Today's habit check-ins */
+    today: () => [...queryKeys.habits.all, 'today'] as const,
+  },
+
+  // ━━━━━ Goals ━━━━━
+  goals: {
+    /** Base key for all goal queries */
+    all: ['goals'] as const,
+
+    /** Goal list with filters */
+    list: (filters?: GoalFilters) => [...queryKeys.goals.all, 'list', filters] as const,
+
+    /** Specific goal detail */
+    detail: (id: string) => [...queryKeys.goals.all, 'detail', id] as const,
+  },
+
+  // ━━━━━ Projects ━━━━━
+  projects: {
+    /** Base key for all project queries */
+    all: ['projects'] as const,
+
+    /** Project list with filters */
+    list: (filters?: ProjectFilters) => [...queryKeys.projects.all, 'list', filters] as const,
+
+    /** Specific project detail */
+    detail: (id: string) => [...queryKeys.projects.all, 'detail', id] as const,
+  },
+
+  // ━━━━━ Milestones ━━━━━
+  milestones: {
+    /** Base key for all milestone queries */
+    all: ['milestones'] as const,
+
+    /** Milestones for a specific week */
+    list: (weekYear?: number, weekNumber?: number) =>
+      [...queryKeys.milestones.all, 'list', weekYear, weekNumber] as const,
+  },
+
+  // ━━━━━ Family Members ━━━━━
+  family: {
+    /** Base key for family queries */
+    all: ['family'] as const,
+
+    /** All family members */
+    members: () => [...queryKeys.family.all, 'members'] as const,
+
+    /** Specific family member */
+    member: (id: string) => [...queryKeys.family.all, 'member', id] as const,
+
+    /** Current user's family member record */
+    current: () => [...queryKeys.family.all, 'current'] as const,
+  },
+
+  // ━━━━━ Dashboard ━━━━━
+  dashboard: {
+    /** Base key for dashboard queries */
+    all: ['dashboard'] as const,
+
+    /** Family dashboard aggregates */
+    family: () => [...queryKeys.dashboard.all, 'family'] as const,
+
+    /** Personal dashboard for a specific member */
+    personal: (memberId: string) => [...queryKeys.dashboard.all, 'personal', memberId] as const,
+  },
+
+  // ━━━━━ Meals & Recipes ━━━━━
+  meals: {
+    /** Base key for meal queries */
+    all: ['meals'] as const,
+
+    /** Meals for a specific week */
+    week: (startDate: string) => [...queryKeys.meals.all, 'week', startDate] as const,
+  },
+
+  recipes: {
+    /** Base key for recipe queries */
+    all: ['recipes'] as const,
+
+    /** Recipe list */
+    list: () => [...queryKeys.recipes.all, 'list'] as const,
+
+    /** Specific recipe */
+    detail: (id: string) => [...queryKeys.recipes.all, 'detail', id] as const,
+  },
+} as const;
