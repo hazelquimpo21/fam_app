@@ -44,6 +44,8 @@ export interface AuthContextValue {
   signIn: (email: string, password: string) => Promise<{ error?: string }>;
   /** Sign up with email/password */
   signUp: (email: string, password: string, name: string) => Promise<{ error?: string }>;
+  /** Send magic link for passwordless auth (signup or login) */
+  sendMagicLink: (email: string, name?: string) => Promise<{ error?: string }>;
   /** Sign out */
   signOut: () => Promise<void>;
   /** Request password reset */
@@ -211,6 +213,30 @@ export function useAuth(): AuthContextValue {
   }, [supabase]);
 
   /**
+   * Send magic link for passwordless authentication
+   * Works for both signup (new users) and login (existing users)
+   */
+  const sendMagicLink = useCallback(async (email: string, name?: string) => {
+    logger.info('Sending magic link...', { email });
+
+    const { error } = await supabase.auth.signInWithOtp({
+      email,
+      options: {
+        data: name ? { name } : undefined,
+        emailRedirectTo: `${window.location.origin}/auth/callback`,
+      },
+    });
+
+    if (error) {
+      logger.error('Magic link failed', { error: error.message });
+      return { error: error.message };
+    }
+
+    logger.success('Magic link sent');
+    return {};
+  }, [supabase]);
+
+  /**
    * Sign out
    */
   const signOut = useCallback(async () => {
@@ -247,6 +273,7 @@ export function useAuth(): AuthContextValue {
     family,
     signIn,
     signUp,
+    sendMagicLink,
     signOut,
     resetPassword,
   };
