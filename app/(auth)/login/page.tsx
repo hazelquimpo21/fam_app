@@ -83,13 +83,23 @@ export default function LoginPage() {
         email: data.email,
         options: {
           // Redirect URL after clicking the magic link
-          emailRedirectTo: `${window.location.origin}/auth/callback?next=/`,
+          // Note: This URL must be in Supabase Dashboard → Auth → URL Configuration → Redirect URLs
+          emailRedirectTo: `${window.location.origin}/auth/callback`,
         },
       });
 
       if (magicLinkError) {
-        logger.error('❌ Magic link failed', { error: magicLinkError.message });
-        setError(magicLinkError.message);
+        // Log full error object for debugging
+        logger.error('❌ Magic link failed', { 
+          message: magicLinkError.message,
+          name: magicLinkError.name,
+          status: (magicLinkError as any).status,
+          code: (magicLinkError as any).code,
+          cause: (magicLinkError as any).cause,
+        });
+        console.error('Full Supabase error:', JSON.stringify(magicLinkError, null, 2));
+        console.error('Redirect URL used:', `${window.location.origin}/auth/callback`);
+        setError(magicLinkError.message || 'Failed to send magic link. Check console for details.');
         setIsLoading(false);
         return;
       }
