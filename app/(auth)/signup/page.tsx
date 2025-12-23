@@ -14,14 +14,15 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Mail, Lock, User, Home, CheckCircle } from 'lucide-react';
+import { Mail, Lock, User, Home } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
-import { useAuth } from '@/lib/hooks/use-auth';
+import { signupUser } from './actions';
 import { logger } from '@/lib/utils/logger';
 
 /**
@@ -43,10 +44,9 @@ type SignupFormData = z.infer<typeof signupSchema>;
  * Signup Page Component
  */
 export default function SignupPage() {
-  const { signUp } = useAuth();
+  const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState(false);
 
   // Form setup with Zod validation
   const {
@@ -66,45 +66,20 @@ export default function SignupPage() {
 
     logger.info('Attempting signup...', { email: data.email, name: data.name });
 
-    const result = await signUp(data.email, data.password, data.name);
+    const result = await signupUser(data.email, data.password, data.name);
 
-    setIsLoading(false);
-
-    if (result.error) {
-      setError(result.error);
-    } else {
-      setSuccess(true);
+    if (!result.success) {
+      setError(result.error || 'Signup failed');
+      setIsLoading(false);
+      return;
     }
+
+    logger.success('Signup successful!', { userId: result.userId });
+
+    // Redirect to home - the session is already established by the server action
+    router.push('/');
+    router.refresh();
   };
-
-  // Success state - show confirmation message
-  if (success) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-50 to-white p-4">
-        <Card className="w-full max-w-md">
-          <CardContent className="pt-6 text-center">
-            <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-green-100">
-              <CheckCircle className="h-6 w-6 text-green-600" />
-            </div>
-
-            <h2 className="text-xl font-semibold text-neutral-900 mb-2">
-              Check your email!
-            </h2>
-
-            <p className="text-neutral-600 mb-6">
-              We've sent you a verification link. Click it to activate your account.
-            </p>
-
-            <Link href="/login">
-              <Button variant="outline" className="w-full">
-                Back to Login
-              </Button>
-            </Link>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-50 to-white p-4">
@@ -142,6 +117,7 @@ export default function SignupPage() {
                 id="name"
                 type="text"
                 placeholder="Jane Smith"
+                autoComplete="name"
                 leftIcon={<User className="h-4 w-4" />}
                 error={errors.name?.message}
                 {...register('name')}
@@ -160,6 +136,7 @@ export default function SignupPage() {
                 id="email"
                 type="email"
                 placeholder="you@example.com"
+                autoComplete="email"
                 leftIcon={<Mail className="h-4 w-4" />}
                 error={errors.email?.message}
                 {...register('email')}
@@ -178,6 +155,7 @@ export default function SignupPage() {
                 id="password"
                 type="password"
                 placeholder="••••••••"
+                autoComplete="new-password"
                 leftIcon={<Lock className="h-4 w-4" />}
                 error={errors.password?.message}
                 {...register('password')}
@@ -196,6 +174,7 @@ export default function SignupPage() {
                 id="confirmPassword"
                 type="password"
                 placeholder="••••••••"
+                autoComplete="new-password"
                 leftIcon={<Lock className="h-4 w-4" />}
                 error={errors.confirmPassword?.message}
                 {...register('confirmPassword')}
