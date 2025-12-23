@@ -910,3 +910,4 @@ Stack cards vertically:
 | Version | Date | Author | Changes |
 |---------|------|--------|---------|
 | 1.0 | 2024-12-23 | Hazel + Claude | Initial screens |
+| 1.1 | 2024-12-23 | Claude | Auth screens updated to magic link (passwordless) |

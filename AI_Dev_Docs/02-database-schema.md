@@ -1109,3 +1109,4 @@ All 14 enums from the spec are implemented:
 |---------|------|--------|---------|
 | 1.0 | 2024-12-23 | Hazel + Claude | Initial schema |
 | 1.1 | 2024-12-23 | Claude | Added implementation status |
+| 1.2 | 2024-12-23 | Claude | Auth updated to magic link (no password storage needed) |

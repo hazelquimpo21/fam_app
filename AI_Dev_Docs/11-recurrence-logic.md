@@ -578,3 +578,4 @@ ORDER BY due_date DESC;
 | Version | Date | Author | Changes |
 |---------|------|--------|---------|
 | 1.0 | 2024-12-23 | Hazel + Claude | Initial recurrence spec |
+| 1.1 | 2024-12-23 | Claude | No changes - recurrence unaffected by auth update |

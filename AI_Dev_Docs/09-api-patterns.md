@@ -856,7 +856,7 @@ export const queryClient = new QueryClient({
 | `useLogHabit` | ✅ | ✅ | `lib/hooks/use-habits.ts` | Optimistic update |
 | `useCreateHabit` | ✅ | ✅ | `lib/hooks/use-habits.ts` | With toast |
 | **Auth** |
-| `useAuth` | ✅ | ✅ | `lib/hooks/use-auth.ts` | Full auth state |
+| `useAuth` | ✅ | ✅ | `lib/hooks/use-auth.ts` | Magic link auth |
 | **Other** |
 | `useGoals` | ✅ | 🔨 | - | Not yet built |
 | `useProjects` | ✅ | 🔨 | - | Not yet built |
@@ -915,3 +915,4 @@ lib/
 |---------|------|--------|---------|
 | 1.0 | 2024-12-23 | Hazel + Claude | Initial API patterns |
 | 1.1 | 2024-12-23 | Claude | Added implementation status |
+| 1.2 | 2024-12-23 | Claude | Updated auth hook docs for magic link |

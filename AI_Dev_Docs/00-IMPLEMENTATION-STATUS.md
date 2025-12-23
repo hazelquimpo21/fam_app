@@ -10,7 +10,7 @@
 | Area | Status | Completion |
 |------|--------|------------|
 | Database Schema | ✅ Complete | 100% |
-| Authentication | ✅ Complete | 100% |
+| Authentication (Magic Link) | ✅ Complete | 100% |
 | Core UI Components | ✅ Complete | ~30% |
 | Tasks Feature | ✅ Complete | 90% |
 | Habits Feature | ✅ Complete | 85% |
@@ -40,24 +40,35 @@ Tables: families, family_members, tasks, subtasks, habits, habit_logs,
         places, recipes, meals, meeting_notes, family_invites
 ```
 
-### 2. Authentication (100% Complete)
+### 2. Authentication - Magic Link (100% Complete)
 
 **Files:**
 - `lib/supabase/client.ts` - Browser client
 - `lib/supabase/server.ts` - Server component client
 - `lib/supabase/middleware.ts` - Auth middleware helper
-- `lib/hooks/use-auth.ts` - Auth state hook
-- `app/(auth)/login/page.tsx` - Login page
-- `app/(auth)/signup/page.tsx` - Signup page
-- `app/auth/callback/route.ts` - Email verification
+- `lib/supabase/admin.ts` - Admin client for privileged operations
+- `lib/hooks/use-auth.ts` - Auth state hook with magic link support
+- `app/(auth)/login/page.tsx` - Magic link login page
+- `app/(auth)/signup/page.tsx` - Magic link signup page
+- `app/(auth)/check-email/page.tsx` - Email confirmation page
+- `app/auth/callback/route.ts` - Magic link callback handler
 - `middleware.ts` - Route protection
 
-Features:
-- ✅ Email/password login
-- ✅ User registration
+**Features:**
+- ✅ Passwordless magic link authentication
+- ✅ Email-based login and signup
+- ✅ "Check your email" confirmation page
 - ✅ Session management
 - ✅ Protected routes
-- ✅ Auth state hook
+- ✅ Auth state hook with `sendMagicLink` method
+
+**Magic Link Flow:**
+1. User enters email on login/signup page
+2. Magic link is sent via Supabase
+3. User redirected to check-email confirmation page
+4. User clicks link in email
+5. Callback route exchanges code for session
+6. User redirected to dashboard (authenticated)
 
 ### 3. UI Components (~30% Complete)
 
@@ -108,8 +119,9 @@ Features:
 | Dashboard | `/` | ✅ | Stats cards, task preview |
 | Tasks | `/tasks` | ✅ | List, filters, quick add |
 | Habits | `/habits` | ✅ | Today view, streaks |
-| Login | `/login` | ✅ | Email/password |
-| Signup | `/signup` | ✅ | Registration |
+| Login | `/login` | ✅ | Magic link (passwordless) |
+| Signup | `/signup` | ✅ | Magic link (passwordless) |
+| Check Email | `/check-email` | ✅ | Confirmation after magic link |
 | Goals | `/goals` | 🔨 | Not built |
 | Projects | `/projects` | 🔨 | Not built |
 | Settings | `/settings` | 🔨 | Not built |
@@ -172,7 +184,7 @@ npm run dev
 
 5. **Family Member Management**
    - Settings page
-   - Invite members
+   - Invite members (magic link invites)
    - Role management
 
 6. **Additional Components**
@@ -210,6 +222,7 @@ npm run dev
 |----------|-----------|
 | Next.js App Router | Server components, great DX |
 | Supabase | All-in-one (DB, Auth, Realtime) |
+| Magic Link Auth | Passwordless = better UX, more secure |
 | TanStack Query | Best-in-class caching |
 | Custom components vs shadcn | Full control, learning opportunity |
 | Inline components in pages | MVP speed, extract later |
@@ -221,6 +234,7 @@ npm run dev
 3. **Emoji Logging** - Friendly dev experience
 4. **RLS-First** - Security at database level
 5. **Modular Hooks** - One hook file per entity
+6. **Magic Link Auth** - Passwordless authentication
 
 ---
 
@@ -235,9 +249,10 @@ fam_app/
 │   │   ├── tasks/page.tsx      # Tasks
 │   │   └── habits/page.tsx     # Habits
 │   ├── (auth)/
-│   │   ├── login/page.tsx
-│   │   └── signup/page.tsx
-│   ├── auth/callback/route.ts
+│   │   ├── login/page.tsx      # Magic link login
+│   │   ├── signup/page.tsx     # Magic link signup
+│   │   └── check-email/page.tsx # Email confirmation
+│   ├── auth/callback/route.ts   # Magic link callback
 │   ├── layout.tsx              # Root layout
 │   └── globals.css
 ├── components/
@@ -246,7 +261,7 @@ fam_app/
 │   ├── layout/                 # 3 components
 │   └── providers.tsx
 ├── lib/
-│   ├── supabase/               # 3 files
+│   ├── supabase/               # 4 files (client, server, middleware, admin)
 │   ├── hooks/                  # 3 hooks
 │   ├── utils/                  # 2 utilities
 │   ├── query-client.ts
@@ -273,5 +288,13 @@ When adding new features:
 Keep files under 400 lines. Extract components when they grow.
 
 ---
+
+## Document History
+
+| Version | Date | Author | Changes |
+|---------|------|--------|---------|
+| 1.0 | 2024-12-23 | Hazel + Claude | Initial PRD |
+| 1.1 | 2024-12-23 | Claude | Added implementation status section |
+| 1.2 | 2024-12-23 | Claude | Updated auth to magic link, added check-email page |
 
 *This document is auto-generated. See individual docs for detailed specs.*

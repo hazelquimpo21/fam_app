@@ -15,7 +15,7 @@ The top-level container. All data belongs to a family. A family represents a hou
 **Key fields:** `id`, `name`, `settings`
 
 ### Family Member
-A person within a family. Links to Supabase Auth for login credentials. Has a role (owner, adult, or kid) that determines permissions.
+A person within a family. Links to Supabase Auth for login credentials (via magic link—no passwords stored). Has a role (owner, adult, or kid) that determines permissions.
 
 **Database:** `family_members` table  
 **Key fields:** `id`, `name`, `email`, `role`, `color`, `auth_user_id`
@@ -336,3 +336,4 @@ A WebSocket connection that pushes database changes to the client immediately.
 | Version | Date | Author | Changes |
 |---------|------|--------|---------|
 | 1.0 | 2024-12-23 | Hazel + Claude | Initial glossary |
+| 1.1 | 2024-12-23 | Claude | Added magic link auth clarification |

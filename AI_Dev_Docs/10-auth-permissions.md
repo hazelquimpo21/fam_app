@@ -10,10 +10,14 @@ This document defines authentication flows, role-based access control, and Row L
 
 ### Auth Provider
 
-Fam uses **Supabase Auth** with email/password authentication.
+Fam uses **Supabase Auth** with **magic link (passwordless)** authentication.
+
+This provides:
+- ✅ Better UX (no passwords to remember)
+- ✅ More secure (no password to leak/guess)
+- ✅ Simpler signup flow (email only)
 
 Future considerations:
-- Magic links (passwordless)
 - OAuth (Google, Apple)
 - Phone/SMS
 
@@ -46,27 +50,35 @@ interface AuthContext {
 
 ---
 
-## Sign Up Flow
+## Sign Up Flow (Magic Link)
 
 ```typescript
-// 1. Create Supabase auth user
-const { data: authData, error: authError } = await supabase.auth.signUp({
+// 1. Send magic link to user's email
+const { error } = await supabase.auth.signInWithOtp({
   email,
-  password,
   options: {
     data: { name },  // Store name in user metadata
-    emailRedirectTo: `${window.location.origin}/auth/callback`,
+    emailRedirectTo: `${window.location.origin}/auth/callback?next=/`,
   },
 })
 
-// 2. After email verification + login, check for family
+// 2. Redirect user to check-email confirmation page
+if (!error) {
+  router.push(`/check-email?email=${encodeURIComponent(email)}&type=signup`)
+}
+
+// 3. When user clicks magic link, /auth/callback handles:
+//    - Exchange code for session
+//    - Redirect to dashboard (or onboarding if no family)
+
+// 4. In app, check for family membership
 const { data: member } = await supabase
   .from('family_members')
   .select('*, family:families(*)')
-  .eq('auth_user_id', authData.user.id)
+  .eq('auth_user_id', user.id)
   .single()
 
-// 3. If no family member exists, redirect to create/join family
+// 5. If no family member exists, redirect to create/join family
 if (!member) {
   router.push('/onboarding')
 }
@@ -727,3 +739,4 @@ export function useCreateInvite() {
 | Version | Date | Author | Changes |
 |---------|------|--------|---------|
 | 1.0 | 2024-12-23 | Hazel + Claude | Initial auth spec |
+| 1.1 | 2024-12-23 | Claude | Updated to magic link (passwordless) authentication |

@@ -1048,3 +1048,4 @@ Prefer composition over configuration:
 |---------|------|--------|---------|
 | 1.0 | 2024-12-23 | Hazel + Claude | Initial component library |
 | 1.1 | 2024-12-23 | Claude | Added implementation status |
+| 1.2 | 2024-12-23 | Claude | Auth pages updated to magic link flow |

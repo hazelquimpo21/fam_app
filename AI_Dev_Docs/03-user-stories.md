@@ -11,28 +11,30 @@ Priority uses MoSCoW: **M**ust have, **S**hould have, **C**ould have, **W**on't 
 
 ## Epic 1: Authentication & Onboarding
 
-### US-1.1: Sign Up
+### US-1.1: Sign Up (Magic Link)
 **Priority:** Must
 
-> **As a** new user, **I want** to create an account with email, **so that** I can start using Fam.
+> **As a** new user, **I want** to create an account with just my email, **so that** I can start using Fam without remembering a password.
 
 **Acceptance Criteria:**
-- [ ] User can sign up with email + password
-- [ ] Email verification is sent
-- [ ] Password must be 8+ characters
-- [ ] User is prompted to create or join a family after verification
-- [ ] Error messages are clear and helpful
+- [x] User can sign up with email only (passwordless)
+- [x] Magic link is sent to email
+- [x] User sees "Check your email" confirmation page
+- [ ] User is prompted to create or join a family after clicking magic link
+- [x] Error messages are clear and helpful
+- [x] Magic link expires in 1 hour
 
-### US-1.2: Sign In
+### US-1.2: Sign In (Magic Link)
 **Priority:** Must
 
-> **As a** returning user, **I want** to sign in with my email, **so that** I can access my family's data.
+> **As a** returning user, **I want** to sign in with just my email, **so that** I can access my family's data without remembering a password.
 
 **Acceptance Criteria:**
-- [ ] User can sign in with email + password
-- [ ] "Forgot password" flow works
-- [ ] Session persists across browser sessions
-- [ ] User is redirected to their family dashboard after login
+- [x] User can sign in with email only (passwordless)
+- [x] Magic link is sent to email
+- [x] User sees "Check your email" confirmation page
+- [x] Session persists across browser sessions
+- [x] User is redirected to their family dashboard after clicking magic link
 
 ### US-1.3: Create Family
 **Priority:** Must
@@ -784,3 +786,4 @@ Priority uses MoSCoW: **M**ust have, **S**hould have, **C**ould have, **W**on't 
 | Version | Date | Author | Changes |
 |---------|------|--------|---------|
 | 1.0 | 2024-12-23 | Hazel + Claude | Initial user stories |
+| 1.1 | 2024-12-23 | Claude | Updated auth stories for magic link (passwordless) |

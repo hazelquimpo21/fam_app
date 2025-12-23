@@ -246,7 +246,7 @@ Families juggle tasks, meals, appointments, goals, vendor contacts, and dreams a
 | Feature | Status | Notes |
 |---------|--------|-------|
 | **Database Schema** | ✅ Complete | Full SQL with 17 tables, enums, RLS, triggers |
-| **Authentication** | ✅ Complete | Login, signup, session management via Supabase Auth |
+| **Authentication** | ✅ Complete | Magic link (passwordless) login/signup via Supabase Auth |
 | **Tasks** | ✅ Complete | CRUD, filtering, status workflow, optimistic updates |
 | **Habits** | ✅ Complete | Tracking, streaks, logging (done/skip) |
 | **Dashboard** | ✅ Complete | Stats cards, today's overview |
@@ -311,3 +311,4 @@ fam_app/
 |---------|------|--------|---------|
 | 1.0 | 2024-12-23 | Hazel + Claude | Initial PRD |
 | 1.1 | 2024-12-23 | Claude | Added implementation status section |
+| 1.2 | 2024-12-23 | Claude | Updated auth to magic link (passwordless) |

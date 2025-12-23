@@ -15,7 +15,7 @@ This document defines the technology choices and project organization for Fam. T
 | **Styling** | Tailwind CSS | Utility-first, design tokens, consistent |
 | **UI Components** | shadcn/ui | Accessible, customizable, copy-paste ownership |
 | **Database** | Supabase (PostgreSQL) | Realtime, auth, RLS, great DX |
-| **Auth** | Supabase Auth | Email/password, magic links, OAuth ready |
+| **Auth** | Supabase Auth | Magic links (passwordless), OAuth ready |
 | **State (server)** | TanStack Query v5 | Caching, optimistic updates, background refetch |
 | **State (client)** | Zustand | Lightweight, simple, no boilerplate |
 | **Forms** | React Hook Form + Zod | Validation, performance, type inference |
@@ -788,3 +788,4 @@ fam_app/                       # ✅ Implemented
 |---------|------|--------|---------|
 | 1.0 | 2024-12-23 | Hazel + Claude | Initial tech stack |
 | 1.1 | 2024-12-23 | Claude | Added implementation status |
+| 1.2 | 2024-12-23 | Claude | Updated auth to magic link (passwordless) |

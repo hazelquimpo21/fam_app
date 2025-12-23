@@ -794,3 +794,4 @@ Use sparingly. Prefer skeleton screens for initial loads, spinner for actions.
 | Version | Date | Author | Changes |
 |---------|------|--------|---------|
 | 1.0 | 2024-12-23 | Hazel + Claude | Initial design system |
+| 1.1 | 2024-12-23 | Claude | Auth UI updated with emerald/teal gradient for magic link pages |

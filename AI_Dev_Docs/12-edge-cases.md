@@ -498,9 +498,9 @@ const { data, fetchNextPage, hasNextPage } = useInfiniteQuery({
 **Scenario:** User wants to change their email.
 
 **Behavior:**
-- Verify new email before switching
-- Keep old email working until verified
-- Update family_members.email
+- Send magic link to new email address for verification
+- Keep old email working until new email is verified
+- Update family_members.email after confirmation
 
 ---
 
@@ -562,3 +562,4 @@ function useDeleteTask() {
 | Version | Date | Author | Changes |
 |---------|------|--------|---------|
 | 1.0 | 2024-12-23 | Hazel + Claude | Initial edge cases doc |
+| 1.1 | 2024-12-23 | Claude | Auth updated to magic link (email change flow) |

@@ -2,15 +2,22 @@
 
 /**
  * ============================================================================
- * 🔐 Authentication Hook
+ * 🔐 Authentication Hook (Magic Link)
  * ============================================================================
- *
- * Central hook for all authentication operations.
- * Handles sign in, sign up, sign out, and session management.
- *
+ * 
+ * Central hook for all authentication operations using Supabase Magic Links.
+ * Provides passwordless authentication for a smoother user experience.
+ * 
  * Usage:
- *   const { user, signIn, signOut, loading } = useAuth()
- *
+ *   const { user, sendMagicLink, signOut, loading } = useAuth()
+ * 
+ * Flow:
+ * 1. User enters email on login/signup page
+ * 2. sendMagicLink() sends email with secure link
+ * 3. User clicks link → redirected to /auth/callback
+ * 4. Callback exchanges code for session
+ * 5. onAuthStateChange updates user state
+ * 
  * ============================================================================
  */
 
@@ -22,46 +29,53 @@ import { logger } from '@/lib/utils/logger';
 import type { FamilyMember, Family } from '@/types/database';
 
 /**
- * Authentication state
+ * Authentication state enum
+ * Represents the current state of the user's authentication
  */
-type AuthState = 'loading' | 'unauthenticated' | 'authenticated' | 'needs_family';
+type AuthState = 
+  | 'loading'           // Checking session on mount
+  | 'unauthenticated'   // No session, show login
+  | 'authenticated'     // Has session and family membership
+  | 'needs_family';     // Has session but needs to create/join family
 
 /**
- * Auth context value
+ * Auth context value interface
+ * All values and methods provided by the useAuth hook
  */
 export interface AuthContextValue {
   /** Current auth state */
   authState: AuthState;
-  /** Supabase auth user */
+  /** Supabase auth user object */
   user: User | null;
   /** Current session */
   session: Session | null;
-  /** App-level user with family info */
+  /** App-level family member with profile data */
   familyMember: FamilyMember | null;
-  /** Current family */
+  /** Current family the user belongs to */
   family: Family | null;
-  /** Sign in with email/password */
-  signIn: (email: string, password: string) => Promise<{ error?: string }>;
-  /** Sign up with email/password */
-  signUp: (email: string, password: string, name: string) => Promise<{ error?: string }>;
-  /** Sign out */
+  /** Send a magic link to the provided email */
+  sendMagicLink: (email: string, options?: { name?: string }) => Promise<{ error?: string }>;
+  /** Sign out the current user */
   signOut: () => Promise<void>;
-  /** Request password reset */
+  /** Request password reset (fallback, if needed) */
   resetPassword: (email: string) => Promise<{ error?: string }>;
 }
 
 /**
  * useAuth Hook
- *
- * Provides authentication state and methods for the entire app.
- *
+ * 
+ * Main authentication hook for the Fam app.
+ * Handles magic link auth, session management, and family membership.
+ * 
+ * @returns {AuthContextValue} Authentication state and methods
+ * 
  * @example
  * function ProfilePage() {
  *   const { user, familyMember, signOut, authState } = useAuth()
- *
+ * 
  *   if (authState === 'loading') return <Spinner />
  *   if (!user) return <Redirect to="/login" />
- *
+ * 
  *   return (
  *     <div>
  *       <h1>Welcome, {familyMember?.name}</h1>
@@ -74,7 +88,7 @@ export function useAuth(): AuthContextValue {
   const router = useRouter();
   const supabase = createClient();
 
-  // State
+  // ━━━━━ State ━━━━━
   const [authState, setAuthState] = useState<AuthState>('loading');
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
@@ -82,10 +96,14 @@ export function useAuth(): AuthContextValue {
   const [family, setFamily] = useState<Family | null>(null);
 
   /**
-   * Fetch family member data for the current user
+   * Fetch family member data for the current authenticated user
+   * Includes the associated family data via join
+   * 
+   * @param userId - Supabase auth user ID
+   * @returns Family member and family objects, or null if not found
    */
   const fetchFamilyMember = useCallback(async (userId: string) => {
-    logger.debug('Fetching family member data', { userId });
+    logger.debug('📋 Fetching family member data', { userId });
 
     const { data, error } = await supabase
       .from('family_members')
@@ -97,11 +115,12 @@ export function useAuth(): AuthContextValue {
       .single();
 
     if (error) {
-      logger.warn('No family member found', { userId });
+      // User exists in auth but hasn't joined/created a family yet
+      logger.warn('👤 No family member found (may need onboarding)', { userId });
       return { member: null, family: null };
     }
 
-    logger.success('Family member loaded', { name: data.name });
+    logger.success('✅ Family member loaded', { name: data.name });
     return {
       member: data as FamilyMember,
       family: data.family as Family,
@@ -109,12 +128,13 @@ export function useAuth(): AuthContextValue {
   }, [supabase]);
 
   /**
-   * Initialize auth state and listen for changes
+   * Initialize auth state on mount and listen for changes
+   * Sets up real-time listener for auth state changes (login, logout, etc.)
    */
   useEffect(() => {
-    logger.info('Initializing auth...');
+    logger.info('🔐 Initializing auth...');
 
-    // Get initial session
+    // Get initial session state
     const initAuth = async () => {
       const { data: { session: currentSession } } = await supabase.auth.getSession();
 
@@ -122,36 +142,43 @@ export function useAuth(): AuthContextValue {
         setSession(currentSession);
         setUser(currentSession.user);
 
-        // Fetch family member
+        // Fetch family member data
         const { member, family: fam } = await fetchFamilyMember(currentSession.user.id);
         setFamilyMember(member);
         setFamily(fam);
 
+        // Set appropriate auth state based on family membership
         setAuthState(member ? 'authenticated' : 'needs_family');
-        logger.success('Auth initialized', { state: member ? 'authenticated' : 'needs_family' });
+        logger.success('🔓 Auth initialized', { 
+          state: member ? 'authenticated' : 'needs_family',
+          userId: currentSession.user.id 
+        });
       } else {
         setAuthState('unauthenticated');
-        logger.info('No session found');
+        logger.info('🔒 No session found - user not authenticated');
       }
     };
 
     initAuth();
 
-    // Listen for auth changes
+    // Listen for auth state changes (magic link click, sign out, etc.)
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, newSession) => {
-        logger.info('Auth state changed', { event });
+        logger.info('🔄 Auth state changed', { event });
 
         if (event === 'SIGNED_OUT') {
+          // Clear all auth state
           setUser(null);
           setSession(null);
           setFamilyMember(null);
           setFamily(null);
           setAuthState('unauthenticated');
         } else if (newSession?.user) {
+          // User signed in (via magic link or session refresh)
           setSession(newSession);
           setUser(newSession.user);
 
+          // Fetch family membership
           const { member, family: fam } = await fetchFamilyMember(newSession.user.id);
           setFamilyMember(member);
           setFamily(fam);
@@ -160,93 +187,87 @@ export function useAuth(): AuthContextValue {
       }
     );
 
+    // Cleanup subscription on unmount
     return () => {
       subscription.unsubscribe();
     };
   }, [supabase, fetchFamilyMember]);
 
   /**
-   * Sign in with email and password
+   * Send a magic link to the provided email address
+   * Works for both signup (new users) and login (existing users)
+   * 
+   * @param email - Email address to send magic link to
+   * @param options - Optional settings like user's name for signup
+   * @returns Object with optional error message
    */
-  const signIn = useCallback(async (email: string, password: string) => {
-    logger.info('Signing in...', { email });
+  const sendMagicLink = useCallback(async (
+    email: string, 
+    options?: { name?: string }
+  ) => {
+    logger.info('📧 Sending magic link...', { email });
 
-    const { error } = await supabase.auth.signInWithPassword({
+    const { error } = await supabase.auth.signInWithOtp({
       email,
-      password,
-    });
-
-    if (error) {
-      logger.error('Sign in failed', { error: error.message });
-      return { error: error.message };
-    }
-
-    logger.success('Sign in successful');
-    router.push('/');
-    return {};
-  }, [supabase, router]);
-
-  /**
-   * Sign up with email and password
-   */
-  const signUp = useCallback(async (email: string, password: string, name: string) => {
-    logger.info('Signing up...', { email, name });
-
-    const { error } = await supabase.auth.signUp({
-      email,
-      password,
       options: {
-        data: { name },
-        emailRedirectTo: `${window.location.origin}/auth/callback`,
+        // Include name in metadata for new user signups
+        data: options?.name ? { name: options.name } : undefined,
+        // Redirect after clicking the magic link
+        emailRedirectTo: `${window.location.origin}/auth/callback?next=/`,
       },
     });
 
     if (error) {
-      logger.error('Sign up failed', { error: error.message });
+      logger.error('❌ Magic link failed', { error: error.message });
       return { error: error.message };
     }
 
-    logger.success('Sign up successful - check email for verification');
+    logger.success('✅ Magic link sent!');
     return {};
   }, [supabase]);
 
   /**
-   * Sign out
+   * Sign out the current user
+   * Clears session and redirects to login page
    */
   const signOut = useCallback(async () => {
-    logger.info('Signing out...');
+    logger.info('🚪 Signing out...');
     await supabase.auth.signOut();
     router.push('/login');
-    logger.success('Signed out');
+    logger.success('👋 Signed out successfully');
   }, [supabase, router]);
 
   /**
    * Request password reset email
+   * Fallback method if password auth is ever needed
+   * 
+   * @param email - Email address for password reset
+   * @returns Object with optional error message
    */
   const resetPassword = useCallback(async (email: string) => {
-    logger.info('Requesting password reset...', { email });
+    logger.info('🔑 Requesting password reset...', { email });
 
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
       redirectTo: `${window.location.origin}/auth/callback?next=/reset-password`,
     });
 
     if (error) {
-      logger.error('Password reset failed', { error: error.message });
+      logger.error('❌ Password reset failed', { error: error.message });
       return { error: error.message };
     }
 
-    logger.success('Password reset email sent');
+    logger.success('📧 Password reset email sent');
     return {};
   }, [supabase]);
 
+  // Return all auth state and methods
   return {
     authState,
     user,
     session,
     familyMember,
     family,
-    signIn,
-    signUp,
+    sendMagicLink,
     signOut,
     resetPassword,
   };

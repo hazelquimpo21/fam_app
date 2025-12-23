@@ -49,18 +49,19 @@ This document maps the key multi-step user journeys in Fam. Each flow shows deci
 
 **1. Landing Page → Signup Form**
 - CTA: "Get Started Free"
-- Signup form: email, password, confirm password
+- Signup form: name and email only (passwordless!)
 - Alternative: "Already have an account? Sign in"
 
-**2. Signup Form → Email Verification**
-- After submit, show "Check your email"
-- Send verification email with magic link
-- Link expires in 24 hours
-- Resend option after 60 seconds
+**2. Signup Form → Check Email Page**
+- After submit, redirect to `/check-email` confirmation
+- Magic link is sent to email
+- Link expires in 1 hour
+- Resend option available
 
-**3. Email Verification → Create Family**
-- Clicking email link verifies account
-- Redirect to family creation
+**3. Magic Link Click → Auth Callback → Create Family**
+- Clicking email link redirects to `/auth/callback`
+- Callback exchanges code for session
+- Redirect to family creation (or dashboard if family exists)
 - Form: Family name (e.g., "The Johnsons")
 - Auto-detect timezone from browser
 
@@ -670,3 +671,4 @@ This document maps the key multi-step user journeys in Fam. Each flow shows deci
 | Version | Date | Author | Changes |
 |---------|------|--------|---------|
 | 1.0 | 2024-12-23 | Hazel + Claude | Initial user flows |
+| 1.1 | 2024-12-23 | Claude | Updated for magic link (passwordless) auth |
