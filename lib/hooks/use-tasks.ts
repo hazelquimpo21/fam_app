@@ -127,7 +127,8 @@ export function useTodayTasks() {
         .from('tasks')
         .select(`
           *,
-          assigned_to:family_members!assigned_to_id(id, name, color)
+          assigned_to:family_members!assigned_to_id(id, name, color),
+          project:projects(id, title)
         `)
         .or(`due_date.eq.${today},scheduled_date.eq.${today}`)
         .neq('status', 'done')
@@ -140,6 +141,41 @@ export function useTodayTasks() {
       }
 
       logger.success(`✅ Today: ${data?.length || 0} tasks`);
+      return data as Task[];
+    },
+    staleTime: 1000 * 60, // 1 minute
+  });
+}
+
+/**
+ * Fetch overdue tasks (due before today, not completed)
+ */
+export function useOverdueTasks() {
+  const supabase = createClient();
+  const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+
+  return useQuery({
+    queryKey: queryKeys.tasks.overdue(),
+    queryFn: async (): Promise<Task[]> => {
+      logger.info('⚠️ Fetching overdue tasks...', { beforeDate: today });
+
+      const { data, error } = await supabase
+        .from('tasks')
+        .select(`
+          *,
+          assigned_to:family_members!assigned_to_id(id, name, color)
+        `)
+        .lt('due_date', today)
+        .neq('status', 'done')
+        .is('deleted_at', null)
+        .order('due_date', { ascending: true });
+
+      if (error) {
+        logger.error('❌ Failed to fetch overdue tasks', { error: error.message });
+        throw error;
+      }
+
+      logger.success(`✅ Overdue: ${data?.length || 0} tasks`);
       return data as Task[];
     },
     staleTime: 1000 * 60, // 1 minute

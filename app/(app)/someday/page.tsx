@@ -6,48 +6,53 @@
  * ============================================================================
  *
  * A wishlist for ideas, dreams, and future possibilities.
- * Items here are not committed to—they're things to consider "someday."
+ * Items here are not committed to - they're things to consider "someday."
  *
  * Route: /someday
  *
  * Categories:
  * - Trip ideas
  * - Things to buy
- * - Things to try
- * - Ideas to explore
+ * - Experiences to try
+ * - House/home improvements
+ * - Other ideas
  *
- * Features (planned):
- * - Categorization
+ * Features:
+ * - Category filtering
  * - "Make it happen" promotion to project
- * - Archive completed items
+ * - Archive and delete items
  *
  * ============================================================================
  */
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import {
   Sparkles,
   Plus,
   Plane,
   ShoppingBag,
   Lightbulb,
-  Compass,
+  Home,
   MoreHorizontal,
   ArrowRight,
   Archive,
   Trash2,
+  Loader2,
 } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { EmptyState } from '@/components/shared/empty-state';
 import { cn } from '@/lib/utils/cn';
 import { logger } from '@/lib/utils/logger';
-
-/**
- * Someday item category type
- */
-type SomedayCategory = 'trip' | 'purchase' | 'try' | 'idea';
+import {
+  useActiveSomedayItems,
+  useCreateSomedayItem,
+  useArchiveSomedayItem,
+  useDeleteSomedayItem,
+} from '@/lib/hooks/use-someday';
+import { useCreateProject } from '@/lib/hooks/use-projects';
+import type { SomedayItem, SomedayCategory } from '@/types/database';
 
 /**
  * Category configuration
@@ -55,45 +60,24 @@ type SomedayCategory = 'trip' | 'purchase' | 'try' | 'idea';
 const categoryConfig: Record<SomedayCategory, { label: string; icon: React.ElementType; color: string }> = {
   trip: { label: 'Trip Ideas', icon: Plane, color: 'text-blue-500 bg-blue-50' },
   purchase: { label: 'Things to Buy', icon: ShoppingBag, color: 'text-green-500 bg-green-50' },
-  try: { label: 'Things to Try', icon: Compass, color: 'text-orange-500 bg-orange-50' },
-  idea: { label: 'Ideas', icon: Lightbulb, color: 'text-purple-500 bg-purple-50' },
-};
-
-/**
- * Mock someday items
- * In production, this would come from useSomedayItems() hook
- */
-const mockItems: Record<SomedayCategory, { id: string; title: string; notes?: string; createdAt: string }[]> = {
-  trip: [
-    { id: '1', title: 'Japan in cherry blossom season', notes: 'April timeframe, 2-3 weeks ideal', createdAt: '2024-10-15' },
-    { id: '2', title: 'Iceland road trip', notes: 'Ring Road, Northern Lights', createdAt: '2024-11-20' },
-    { id: '3', title: 'Disney World with kids', createdAt: '2024-09-05' },
-  ],
-  purchase: [
-    { id: '4', title: 'Standing desk for office', notes: 'Jarvis or Uplift brands', createdAt: '2024-12-01' },
-    { id: '5', title: 'New couch for living room', createdAt: '2024-11-10' },
-  ],
-  try: [
-    { id: '6', title: 'Pottery class', createdAt: '2024-08-20' },
-    { id: '7', title: 'Family camping trip', notes: 'Start with car camping', createdAt: '2024-10-30' },
-  ],
-  idea: [
-    { id: '8', title: 'Start a family newsletter', createdAt: '2024-12-10' },
-    { id: '9', title: 'Learn to make sourdough bread', createdAt: '2024-11-25' },
-  ],
+  experience: { label: 'Experiences', icon: Lightbulb, color: 'text-orange-500 bg-orange-50' },
+  house: { label: 'House/Home', icon: Home, color: 'text-purple-500 bg-purple-50' },
+  other: { label: 'Other Ideas', icon: Sparkles, color: 'text-amber-500 bg-amber-50' },
 };
 
 /**
  * SomedayItemCard Component
  */
 interface SomedayItemCardProps {
-  item: { id: string; title: string; notes?: string; createdAt: string };
-  category: SomedayCategory;
-  onPromote: (id: string) => void;
+  item: SomedayItem;
+  onPromote: (item: SomedayItem) => void;
+  onArchive: (itemId: string) => void;
+  onDelete: (itemId: string) => void;
+  isProcessing: boolean;
 }
 
-function SomedayItemCard({ item, category, onPromote }: SomedayItemCardProps) {
-  const config = categoryConfig[category];
+function SomedayItemCard({ item, onPromote, onArchive, onDelete, isProcessing }: SomedayItemCardProps) {
+  const config = categoryConfig[item.category] || categoryConfig.other;
   const Icon = config.icon;
 
   return (
@@ -103,23 +87,37 @@ function SomedayItemCard({ item, category, onPromote }: SomedayItemCardProps) {
       </div>
       <div className="flex-1 min-w-0">
         <p className="font-medium text-neutral-900">{item.title}</p>
-        {item.notes && (
-          <p className="text-sm text-neutral-500 line-clamp-2">{item.notes}</p>
+        {item.description && (
+          <p className="text-sm text-neutral-500 line-clamp-2">{item.description}</p>
+        )}
+        {item.estimated_cost && (
+          <p className="text-sm text-neutral-500">Est. ${item.estimated_cost.toLocaleString()}</p>
         )}
       </div>
       <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1">
         <button
-          onClick={() => onPromote(item.id)}
-          className="p-1.5 rounded-lg text-indigo-600 hover:bg-indigo-50"
-          title="Make it happen"
+          onClick={() => onPromote(item)}
+          disabled={isProcessing}
+          className="p-1.5 rounded-lg text-indigo-600 hover:bg-indigo-50 disabled:opacity-50"
+          title="Make it happen (create project)"
         >
           <ArrowRight className="h-4 w-4" />
         </button>
         <button
-          className="p-1.5 rounded-lg text-neutral-400 hover:bg-neutral-100 hover:text-neutral-600"
-          title="More options"
+          onClick={() => onArchive(item.id)}
+          disabled={isProcessing}
+          className="p-1.5 rounded-lg text-neutral-400 hover:bg-neutral-100 hover:text-neutral-600 disabled:opacity-50"
+          title="Archive"
         >
-          <MoreHorizontal className="h-4 w-4" />
+          <Archive className="h-4 w-4" />
+        </button>
+        <button
+          onClick={() => onDelete(item.id)}
+          disabled={isProcessing}
+          className="p-1.5 rounded-lg text-red-400 hover:bg-red-50 hover:text-red-600 disabled:opacity-50"
+          title="Delete"
+        >
+          <Trash2 className="h-4 w-4" />
         </button>
       </div>
     </div>
@@ -127,40 +125,142 @@ function SomedayItemCard({ item, category, onPromote }: SomedayItemCardProps) {
 }
 
 /**
+ * Loading skeleton for someday items
+ */
+function SomedaySkeleton() {
+  return (
+    <div className="space-y-6">
+      <div className="space-y-3">
+        <div className="h-4 bg-neutral-200 rounded w-24 animate-pulse" />
+        {[1, 2, 3].map((i) => (
+          <div key={i} className="flex items-start gap-3 rounded-lg border border-neutral-200 bg-white p-3 animate-pulse">
+            <div className="h-8 w-8 bg-neutral-200 rounded-lg" />
+            <div className="flex-1">
+              <div className="h-5 bg-neutral-200 rounded w-3/4 mb-2" />
+              <div className="h-4 bg-neutral-100 rounded w-1/2" />
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+type FilterValue = SomedayCategory | 'all';
+
+/**
  * Someday Page Component
  */
 export default function SomedayPage() {
-  const [selectedCategory, setSelectedCategory] = useState<SomedayCategory | 'all'>('all');
+  const [selectedCategory, setSelectedCategory] = useState<FilterValue>('all');
+
+  // Fetch someday items from database
+  const { data: items = [], isLoading, error } = useActiveSomedayItems();
+
+  // Mutations
+  const createItem = useCreateSomedayItem();
+  const archiveItem = useArchiveSomedayItem();
+  const deleteItem = useDeleteSomedayItem();
+  const createProject = useCreateProject();
+
+  const isProcessing = createItem.isPending || archiveItem.isPending ||
+    deleteItem.isPending || createProject.isPending;
+
+  // Group items by category
+  const itemsByCategory = useMemo(() => {
+    const grouped = new Map<SomedayCategory, SomedayItem[]>();
+
+    // Initialize all categories
+    (Object.keys(categoryConfig) as SomedayCategory[]).forEach((cat) => {
+      grouped.set(cat, []);
+    });
+
+    // Group items
+    items.forEach((item) => {
+      const category = item.category || 'other';
+      const list = grouped.get(category) || [];
+      list.push(item);
+      grouped.set(category, list);
+    });
+
+    return grouped;
+  }, [items]);
+
+  // Get filtered display items
+  const displayItems = useMemo((): { category: SomedayCategory; items: SomedayItem[] }[] => {
+    if (selectedCategory === 'all') {
+      return (Object.keys(categoryConfig) as SomedayCategory[])
+        .map((cat) => ({ category: cat, items: itemsByCategory.get(cat) || [] }))
+        .filter(({ items }) => items.length > 0);
+    }
+    return [{
+      category: selectedCategory,
+      items: itemsByCategory.get(selectedCategory) || [],
+    }];
+  }, [selectedCategory, itemsByCategory]);
 
   // Log page load for debugging
   useEffect(() => {
-    const totalItems = Object.values(mockItems).reduce((sum, items) => sum + items.length, 0);
-    logger.info('Someday page loaded', { totalItems });
+    logger.info('Someday page loaded', {
+      totalItems: items.length,
+      selectedCategory,
+    });
     logger.divider('Someday');
-  }, []);
+  }, [items.length, selectedCategory]);
 
   /**
    * Handle promoting an item to a project
    */
-  const handlePromote = (itemId: string) => {
-    logger.info('Promoting someday item to project', { itemId });
-    // In production: open project creation modal pre-filled with item info
+  const handlePromote = async (item: SomedayItem) => {
+    logger.info('Promoting someday item to project', { itemId: item.id, title: item.title });
+
+    await createProject.mutateAsync({
+      title: item.title,
+      description: item.description || undefined,
+      status: 'planning',
+    });
+
+    // Archive the someday item since it's now a project
+    await archiveItem.mutateAsync(item.id);
   };
 
   /**
-   * Get items to display based on selected category
+   * Handle archiving an item
    */
-  const getDisplayItems = (): { category: SomedayCategory; items: typeof mockItems.trip }[] => {
-    if (selectedCategory === 'all') {
-      return (Object.keys(mockItems) as SomedayCategory[])
-        .map((cat) => ({ category: cat, items: mockItems[cat] }))
-        .filter(({ items }) => items.length > 0);
-    }
-    return [{ category: selectedCategory, items: mockItems[selectedCategory] }];
+  const handleArchive = (itemId: string) => {
+    logger.info('Archiving someday item', { itemId });
+    archiveItem.mutate(itemId);
   };
 
-  const displayItems = getDisplayItems();
-  const totalItems = Object.values(mockItems).reduce((sum, items) => sum + items.length, 0);
+  /**
+   * Handle deleting an item
+   */
+  const handleDelete = (itemId: string) => {
+    logger.info('Deleting someday item', { itemId });
+    deleteItem.mutate(itemId);
+  };
+
+  // Error state
+  if (error) {
+    logger.error('Failed to load someday items', { error });
+    return (
+      <div className="space-y-6">
+        <Card>
+          <CardContent className="p-8">
+            <EmptyState
+              icon={<Sparkles className="h-16 w-16 text-red-500" />}
+              title="Failed to load dreams"
+              description="There was an error loading your someday items. Please try again."
+              action={{
+                label: 'Retry',
+                onClick: () => window.location.reload(),
+              }}
+            />
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -169,7 +269,9 @@ export default function SomedayPage() {
         <div className="flex items-center gap-2">
           <Sparkles className="h-6 w-6 text-amber-500" />
           <h1 className="text-xl font-semibold text-neutral-900">Someday</h1>
-          <span className="text-sm text-neutral-500">({totalItems} dreams)</span>
+          {!isLoading && (
+            <span className="text-sm text-neutral-500">({items.length} dreams)</span>
+          )}
         </div>
         <Button leftIcon={<Plus className="h-4 w-4" />}>
           Add Idea
@@ -192,7 +294,7 @@ export default function SomedayPage() {
         {(Object.keys(categoryConfig) as SomedayCategory[]).map((cat) => {
           const config = categoryConfig[cat];
           const Icon = config.icon;
-          const count = mockItems[cat].length;
+          const count = itemsByCategory.get(cat)?.length || 0;
           return (
             <button
               key={cat}
@@ -211,8 +313,11 @@ export default function SomedayPage() {
         })}
       </div>
 
+      {/* Loading state */}
+      {isLoading && <SomedaySkeleton />}
+
       {/* Items or empty state */}
-      {totalItems === 0 ? (
+      {!isLoading && items.length === 0 ? (
         <Card>
           <CardContent className="p-8">
             <EmptyState
@@ -227,30 +332,34 @@ export default function SomedayPage() {
           </CardContent>
         </Card>
       ) : (
-        <div className="space-y-6">
-          {displayItems.map(({ category, items }) => {
-            const config = categoryConfig[category];
-            const Icon = config.icon;
-            return (
-              <div key={category} className="space-y-3">
-                <h2 className="flex items-center gap-2 text-sm font-medium text-neutral-500 uppercase tracking-wider">
-                  <Icon className="h-4 w-4" />
-                  {config.label}
-                </h2>
-                <div className="space-y-2">
-                  {items.map((item) => (
-                    <SomedayItemCard
-                      key={item.id}
-                      item={item}
-                      category={category}
-                      onPromote={handlePromote}
-                    />
-                  ))}
+        !isLoading && (
+          <div className="space-y-6">
+            {displayItems.map(({ category, items: categoryItems }) => {
+              const config = categoryConfig[category];
+              const Icon = config.icon;
+              return (
+                <div key={category} className="space-y-3">
+                  <h2 className="flex items-center gap-2 text-sm font-medium text-neutral-500 uppercase tracking-wider">
+                    <Icon className="h-4 w-4" />
+                    {config.label}
+                  </h2>
+                  <div className="space-y-2">
+                    {categoryItems.map((item) => (
+                      <SomedayItemCard
+                        key={item.id}
+                        item={item}
+                        onPromote={handlePromote}
+                        onArchive={handleArchive}
+                        onDelete={handleDelete}
+                        isProcessing={isProcessing}
+                      />
+                    ))}
+                  </div>
                 </div>
-              </div>
-            );
-          })}
-        </div>
+              );
+            })}
+          </div>
+        )
       )}
     </div>
   );
