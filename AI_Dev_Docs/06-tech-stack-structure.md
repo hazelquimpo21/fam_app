@@ -714,14 +714,20 @@ fam_app/                       # ✅ Implemented
 ├── app/                       # ✅ Next.js App Router
 │   ├── (auth)/               # ✅ Auth routes
 │   │   ├── login/            # ✅
-│   │   └── signup/           # ✅
+│   │   ├── signup/           # ✅
+│   │   └── check-email/      # ✅
 │   ├── (app)/                # ✅ Authenticated routes
 │   │   ├── layout.tsx        # ✅ App shell
 │   │   ├── page.tsx          # ✅ Dashboard
-│   │   ├── tasks/            # ✅
-│   │   ├── habits/           # ✅
-│   │   ├── goals/            # 🔨 Pending
-│   │   └── settings/         # 🔨 Pending
+│   │   ├── tasks/            # ✅ Full feature
+│   │   ├── habits/           # ✅ Full feature
+│   │   ├── inbox/            # ✅ Stub page
+│   │   ├── today/            # ✅ Stub page
+│   │   ├── goals/            # ✅ Stub page
+│   │   ├── projects/         # ✅ Stub page
+│   │   ├── someday/          # ✅ Stub page
+│   │   ├── family/           # ✅ Stub page
+│   │   └── settings/         # ✅ Stub page
 │   ├── auth/callback/        # ✅
 │   ├── layout.tsx            # ✅
 │   └── globals.css           # ✅
@@ -789,3 +795,4 @@ fam_app/                       # ✅ Implemented
 | 1.0 | 2024-12-23 | Hazel + Claude | Initial tech stack |
 | 1.1 | 2024-12-23 | Claude | Added implementation status |
 | 1.2 | 2024-12-23 | Claude | Updated auth to magic link (passwordless) |
+| 1.3 | 2024-12-25 | Claude | Added 7 stub pages, updated project structure |

@@ -1,7 +1,7 @@
 # Fam — Implementation Status
 
 > **Last Updated:** December 2024
-> **Status:** MVP Phase 1 Complete
+> **Status:** MVP Phase 1.5 Complete
 
 ---
 
@@ -11,12 +11,17 @@
 |------|--------|------------|
 | Database Schema | ✅ Complete | 100% |
 | Authentication (Magic Link) | ✅ Complete | 100% |
-| Core UI Components | ✅ Complete | ~30% |
+| Core UI Components | ✅ Complete | ~35% |
 | Tasks Feature | ✅ Complete | 90% |
 | Habits Feature | ✅ Complete | 85% |
 | Dashboard | ✅ Complete | 70% |
-| Goals Feature | 🔨 Pending | 0% |
-| Projects Feature | 🔨 Pending | 0% |
+| Goals Feature | ✅ Stub | 20% |
+| Projects Feature | ✅ Stub | 20% |
+| Inbox Feature | ✅ Stub | 20% |
+| Today Feature | ✅ Stub | 20% |
+| Someday Feature | ✅ Stub | 20% |
+| Family Feature | ✅ Stub | 20% |
+| Settings Feature | ✅ Stub | 20% |
 | Meals Feature | 🔨 Pending | 0% |
 
 ---
@@ -122,9 +127,15 @@ Tables: families, family_members, tasks, subtasks, habits, habit_logs,
 | Login | `/login` | ✅ | Magic link (passwordless) |
 | Signup | `/signup` | ✅ | Magic link (passwordless) |
 | Check Email | `/check-email` | ✅ | Confirmation after magic link |
-| Goals | `/goals` | 🔨 | Not built |
-| Projects | `/projects` | 🔨 | Not built |
-| Settings | `/settings` | 🔨 | Not built |
+| Inbox | `/inbox` | ✅ Stub | Quick capture, processing actions |
+| Today | `/today` | ✅ Stub | Daily focus with meals, habits, tasks |
+| Goals | `/goals` | ✅ Stub | Goal tracking with progress bars |
+| Projects | `/projects` | ✅ Stub | Project cards with status/progress |
+| Someday | `/someday` | ✅ Stub | Wishlist for future ideas |
+| Family | `/family` | ✅ Stub | Family member management |
+| Settings | `/settings` | ✅ Stub | User and app preferences |
+
+> **Note:** "Stub" pages have UI scaffolding with mock data. They need database integration to become fully functional.
 
 ---
 
@@ -157,60 +168,61 @@ npm run dev
 
 ## Next Steps (Priority Order)
 
-### Phase 1.5 (High Priority)
+### Phase 2 (High Priority)
 
 1. **Onboarding Flow**
    - Create family on signup
    - Link user to family_members table
    - Redirect to dashboard
 
-2. **Goals Feature**
-   - Goals page with list
-   - Goal detail view
-   - Progress tracking
-   - `useGoals` hook
+2. **Connect Stub Pages to Database**
+   - Add `useGoals` hook and connect Goals page
+   - Add `useProjects` hook and connect Projects page
+   - Add `useSomedayItems` hook and connect Someday page
+   - Add `useFamilyMembers` hook and connect Family page
+   - Connect Inbox page to tasks with status='inbox'
+   - Connect Today page to real task/habit data
 
-3. **Projects Feature**
-   - Projects page
-   - Project detail with tasks
-   - `useProjects` hook
-
-4. **Task Detail Panel**
+3. **Task Detail Panel**
    - Slide-out panel
    - Full edit form
    - Subtasks management
 
-### Phase 2 (Medium Priority)
-
-5. **Family Member Management**
-   - Settings page
-   - Invite members (magic link invites)
-   - Role management
-
-6. **Additional Components**
+4. **Additional Components**
    - DatePicker
    - Dialog/Modal
    - Select dropdown
    - FamilyMemberPicker
 
-7. **Real-time Updates**
+### Phase 2.5 (Medium Priority)
+
+5. **Real-time Updates**
    - Supabase subscriptions
    - Cross-family-member sync
 
+6. **Improve Settings Page**
+   - Connect to actual user preferences
+   - Theme switching (light/dark)
+   - Notification preferences
+
 ### Phase 3 (Lower Priority)
 
-8. **Meals & Recipes**
+7. **Meals & Recipes**
    - Recipe library
    - Meal calendar
    - Grocery list generation
 
-9. **Family Meeting View**
+8. **Family Meeting View**
    - Weekly check-in UI
    - Milestone celebration
 
-10. **Calendar View**
-    - All dated items
-    - Week/month views
+9. **Calendar View**
+   - All dated items
+   - Week/month views
+
+10. **Personal Dashboard (/me)**
+    - User-specific view
+    - Personal goals and habits
 
 ---
 
@@ -244,10 +256,17 @@ npm run dev
 fam_app/
 ├── app/
 │   ├── (app)/
-│   │   ├── layout.tsx          # App shell
+│   │   ├── layout.tsx          # App shell with sidebar
 │   │   ├── page.tsx            # Dashboard
-│   │   ├── tasks/page.tsx      # Tasks
-│   │   └── habits/page.tsx     # Habits
+│   │   ├── tasks/page.tsx      # Tasks list
+│   │   ├── habits/page.tsx     # Habits with streaks
+│   │   ├── inbox/page.tsx      # Quick capture (stub)
+│   │   ├── today/page.tsx      # Daily focus view (stub)
+│   │   ├── goals/page.tsx      # Goal tracking (stub)
+│   │   ├── projects/page.tsx   # Project management (stub)
+│   │   ├── someday/page.tsx    # Wishlist ideas (stub)
+│   │   ├── family/page.tsx     # Family members (stub)
+│   │   └── settings/page.tsx   # User preferences (stub)
 │   ├── (auth)/
 │   │   ├── login/page.tsx      # Magic link login
 │   │   ├── signup/page.tsx     # Magic link signup
@@ -262,8 +281,8 @@ fam_app/
 │   └── providers.tsx
 ├── lib/
 │   ├── supabase/               # 4 files (client, server, middleware, admin)
-│   ├── hooks/                  # 3 hooks
-│   ├── utils/                  # 2 utilities
+│   ├── hooks/                  # 3 hooks (use-auth, use-tasks, use-habits)
+│   ├── utils/                  # 2 utilities (cn, logger)
 │   ├── query-client.ts
 │   └── query-keys.ts
 ├── types/database.ts
@@ -296,5 +315,6 @@ Keep files under 400 lines. Extract components when they grow.
 | 1.0 | 2024-12-23 | Hazel + Claude | Initial PRD |
 | 1.1 | 2024-12-23 | Claude | Added implementation status section |
 | 1.2 | 2024-12-23 | Claude | Updated auth to magic link, added check-email page |
+| 1.3 | 2024-12-25 | Claude | Added 7 stub pages (inbox, today, goals, projects, someday, family, settings) |
 
 *This document is auto-generated. See individual docs for detailed specs.*
