@@ -1013,7 +1013,7 @@ Prefer composition over configuration:
 | GoalCard | ✅ | 🔨 | Not yet built |
 | ProjectCard | ✅ | 🔨 | Not yet built |
 | MealCalendar | ✅ | 🔨 | Not yet built |
-| StatsCard | ✅ | ⚠️ Inline | Logic in dashboard |
+| StatsCard | ✅ | ⚠️ Inline | Logic in dashboard (connected to real data) |
 
 ### Implementation Summary
 
@@ -1050,3 +1050,4 @@ Prefer composition over configuration:
 | 1.1 | 2024-12-23 | Claude | Added implementation status |
 | 1.2 | 2024-12-23 | Claude | Auth pages updated to magic link flow |
 | 1.3 | 2024-12-25 | Claude | Pages now connected to DB (loading/error states inline) |
+| 1.4 | 2024-12-25 | Claude | Dashboard StatsCard now connected to real data |

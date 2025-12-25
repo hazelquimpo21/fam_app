@@ -137,15 +137,15 @@ fam_app/
 ├── 📁 app/                      # Next.js App Router pages
 │   ├── 📁 (app)/               # Authenticated routes (with layout)
 │   │   ├── layout.tsx          # App shell wrapper
-│   │   ├── page.tsx            # Dashboard (/)
+│   │   ├── page.tsx            # Dashboard (/) ✅ Connected
 │   │   ├── 📁 tasks/           # Tasks feature ✅
 │   │   ├── 📁 habits/          # Habits feature ✅
-│   │   ├── 📁 inbox/           # Quick capture (stub)
-│   │   ├── 📁 today/           # Daily focus view (stub)
-│   │   ├── 📁 goals/           # Goal tracking (stub)
-│   │   ├── 📁 projects/        # Project management (stub)
-│   │   ├── 📁 someday/         # Wishlist ideas (stub)
-│   │   ├── 📁 family/          # Family members (stub)
+│   │   ├── 📁 inbox/           # Quick capture ✅ Connected
+│   │   ├── 📁 today/           # Daily focus view ✅ Connected
+│   │   ├── 📁 goals/           # Goal tracking ✅ Connected
+│   │   ├── 📁 projects/        # Project management ✅ Connected
+│   │   ├── 📁 someday/         # Wishlist ideas ✅ Connected
+│   │   ├── 📁 family/          # Family members ✅ Connected
 │   │   └── 📁 settings/        # User preferences (stub)
 │   │
 │   ├── 📁 (auth)/              # Public auth routes
@@ -531,7 +531,7 @@ logger.warn('Rate limit approaching') // ⚠️ [12:34:56] Rate limit approachin
 |---------|--------|-------|
 | Database Schema | ✅ Complete | 17 tables with RLS |
 | Magic Link Auth | ✅ Complete | Passwordless login |
-| Dashboard | ✅ Complete | Stats, previews, navigation buttons working |
+| Dashboard | ✅ **Connected** | Real-time stats, tasks, habits, goals from database |
 | Tasks | ✅ Complete | Full CRUD, filters |
 | Habits | ✅ Complete | Streaks, logging |
 | Inbox | ✅ **Connected** | Quick capture, processing to tasks/projects/someday |
