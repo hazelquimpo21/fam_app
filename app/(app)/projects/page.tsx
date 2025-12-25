@@ -10,89 +10,55 @@
  *
  * Route: /projects
  *
- * Features (planned):
+ * Features:
  * - Project cards with progress bars
  * - Status filtering (planning, active, completed)
- * - Owner filtering
- * - Project detail view with tasks and notes
+ * - Owner display
+ * - Project detail navigation
  *
  * ============================================================================
  */
 
-import { useEffect } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { FolderOpen, Plus, Clock, CheckCircle, Circle, MoreHorizontal } from 'lucide-react';
 import Link from 'next/link';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/shared/badge';
 import { Avatar } from '@/components/shared/avatar';
 import { EmptyState } from '@/components/shared/empty-state';
 import { cn } from '@/lib/utils/cn';
 import { logger } from '@/lib/utils/logger';
-
-/**
- * Project status type
- */
-type ProjectStatus = 'planning' | 'active' | 'completed' | 'on_hold';
-
-/**
- * Mock projects data
- * In production, this would come from useProjects() hook
- */
-const mockProjects = [
-  {
-    id: '1',
-    title: 'Summer Camps 2025',
-    emoji: '🏕️',
-    status: 'planning' as ProjectStatus,
-    tasksCompleted: 4,
-    tasksTotal: 10,
-    owner: { name: 'Hazel', color: '#6366F1' },
-    updatedAt: '2 days ago',
-  },
-  {
-    id: '2',
-    title: 'Bathroom Renovation',
-    emoji: '🛁',
-    status: 'active' as ProjectStatus,
-    tasksCompleted: 2,
-    tasksTotal: 8,
-    owner: { name: 'Mike', color: '#10B981' },
-    updatedAt: 'today',
-  },
-  {
-    id: '3',
-    title: 'Japan Trip Planning',
-    emoji: '🗾',
-    status: 'planning' as ProjectStatus,
-    tasksCompleted: 0,
-    tasksTotal: 3,
-    owner: { name: 'Hazel', color: '#6366F1' },
-    updatedAt: '1 week ago',
-  },
-  {
-    id: '4',
-    title: 'Holiday Gifts 2024',
-    emoji: '🎁',
-    status: 'completed' as ProjectStatus,
-    tasksCompleted: 12,
-    tasksTotal: 12,
-    owner: { name: 'Hazel', color: '#6366F1' },
-    updatedAt: '3 days ago',
-  },
-];
+import { useProjects } from '@/lib/hooks/use-projects';
+import type { Project, ProjectStatus } from '@/types/database';
 
 /**
  * Get status badge configuration
  */
 function getStatusConfig(status: ProjectStatus) {
   const configs = {
-    planning: { label: 'Planning', variant: 'outline' as const, className: 'text-blue-600 border-blue-200 bg-blue-50' },
-    active: { label: 'Active', variant: 'default' as const, className: 'bg-green-100 text-green-700' },
-    completed: { label: 'Completed', variant: 'default' as const, className: 'bg-neutral-100 text-neutral-600' },
-    on_hold: { label: 'On Hold', variant: 'outline' as const, className: 'text-yellow-600 border-yellow-200 bg-yellow-50' },
+    planning: { label: 'Planning', className: 'text-blue-600 border-blue-200 bg-blue-50' },
+    active: { label: 'Active', className: 'bg-green-100 text-green-700' },
+    completed: { label: 'Completed', className: 'bg-neutral-100 text-neutral-600' },
+    on_hold: { label: 'On Hold', className: 'text-yellow-600 border-yellow-200 bg-yellow-50' },
+    archived: { label: 'Archived', className: 'bg-neutral-100 text-neutral-400' },
   };
-  return configs[status];
+  return configs[status] || configs.planning;
+}
+
+/**
+ * Format relative time
+ */
+function formatRelativeTime(dateStr: string): string {
+  const date = new Date(dateStr);
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+  if (diffDays === 0) return 'today';
+  if (diffDays === 1) return 'yesterday';
+  if (diffDays < 7) return `${diffDays} days ago`;
+  if (diffDays < 30) return `${Math.floor(diffDays / 7)} weeks ago`;
+  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
 
 /**
@@ -100,23 +66,15 @@ function getStatusConfig(status: ProjectStatus) {
  * Displays a single project with progress
  */
 interface ProjectCardProps {
-  project: {
-    id: string;
-    title: string;
-    emoji: string;
-    status: ProjectStatus;
-    tasksCompleted: number;
-    tasksTotal: number;
-    owner: { name: string; color: string };
-    updatedAt: string;
-  };
+  project: Project;
 }
 
 function ProjectCard({ project }: ProjectCardProps) {
-  const progress = project.tasksTotal > 0
-    ? Math.round((project.tasksCompleted / project.tasksTotal) * 100)
-    : 0;
+  const owner = project.owner as { name: string; color: string } | null;
   const statusConfig = getStatusConfig(project.status);
+
+  // Use icon as emoji fallback
+  const emoji = project.icon || '📁';
 
   return (
     <Link href={`/projects/${project.id}`}>
@@ -126,7 +84,7 @@ function ProjectCard({ project }: ProjectCardProps) {
             {/* Header with emoji and title */}
             <div className="flex items-start justify-between gap-2">
               <div className="flex items-start gap-3">
-                <span className="text-2xl">{project.emoji}</span>
+                <span className="text-2xl">{emoji}</span>
                 <div>
                   <h3 className="font-medium text-neutral-900">{project.title}</h3>
                   <div className={cn('inline-flex px-2 py-0.5 rounded text-xs font-medium mt-1', statusConfig.className)}>
@@ -146,24 +104,20 @@ function ProjectCard({ project }: ProjectCardProps) {
             </div>
 
             {/* Owner */}
-            <div className="flex items-center gap-2">
-              <Avatar name={project.owner.name} color={project.owner.color} size="sm" />
-              <span className="text-sm text-neutral-600">{project.owner.name}</span>
-            </div>
-
-            {/* Progress bar */}
-            <div className="space-y-1 mt-auto">
-              <div className="h-2 rounded-full bg-neutral-100 overflow-hidden">
-                <div
-                  className={cn(
-                    'h-full rounded-full transition-all',
-                    project.status === 'completed'
-                      ? 'bg-green-500'
-                      : 'bg-gradient-to-r from-indigo-400 to-purple-500'
-                  )}
-                  style={{ width: `${progress}%` }}
-                />
+            {owner && (
+              <div className="flex items-center gap-2">
+                <Avatar name={owner.name} color={owner.color} size="sm" />
+                <span className="text-sm text-neutral-600">{owner.name}</span>
               </div>
+            )}
+
+            {/* Description (if any) */}
+            {project.description && (
+              <p className="text-sm text-neutral-500 line-clamp-2">{project.description}</p>
+            )}
+
+            {/* Footer with status and updated time */}
+            <div className="space-y-1 mt-auto">
               <div className="flex items-center justify-between text-xs text-neutral-500">
                 <span className="flex items-center gap-1">
                   {project.status === 'completed' ? (
@@ -171,11 +125,11 @@ function ProjectCard({ project }: ProjectCardProps) {
                   ) : (
                     <Circle className="h-3 w-3" />
                   )}
-                  {project.tasksCompleted}/{project.tasksTotal} tasks
+                  {project.status === 'completed' ? 'Completed' : 'In progress'}
                 </span>
                 <span className="flex items-center gap-1">
                   <Clock className="h-3 w-3" />
-                  Updated {project.updatedAt}
+                  Updated {formatRelativeTime(project.updated_at)}
                 </span>
               </div>
             </div>
@@ -187,9 +141,44 @@ function ProjectCard({ project }: ProjectCardProps) {
 }
 
 /**
+ * Loading skeleton for projects
+ */
+function ProjectsSkeleton() {
+  return (
+    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      {[1, 2, 3, 4].map((i) => (
+        <Card key={i} className="animate-pulse">
+          <CardContent className="p-4">
+            <div className="space-y-3">
+              <div className="flex gap-3">
+                <div className="h-8 w-8 bg-neutral-200 rounded" />
+                <div className="flex-1">
+                  <div className="h-5 bg-neutral-200 rounded w-3/4 mb-2" />
+                  <div className="h-4 bg-neutral-100 rounded w-16" />
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="h-6 w-6 bg-neutral-100 rounded-full" />
+                <div className="h-4 bg-neutral-100 rounded w-20" />
+              </div>
+              <div className="flex justify-between">
+                <div className="h-3 bg-neutral-100 rounded w-24" />
+                <div className="h-3 bg-neutral-100 rounded w-20" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      ))}
+    </div>
+  );
+}
+
+/**
  * Filter tabs for project status
  */
-const statusFilters: { value: ProjectStatus | 'all'; label: string }[] = [
+type FilterValue = ProjectStatus | 'all';
+
+const statusFilters: { value: FilterValue; label: string }[] = [
   { value: 'all', label: 'All' },
   { value: 'active', label: 'Active' },
   { value: 'planning', label: 'Planning' },
@@ -200,11 +189,48 @@ const statusFilters: { value: ProjectStatus | 'all'; label: string }[] = [
  * Projects Page Component
  */
 export default function ProjectsPage() {
+  const [activeFilter, setActiveFilter] = useState<FilterValue>('all');
+
+  // Fetch projects from database
+  const { data: projects = [], isLoading, error } = useProjects();
+
+  // Filter projects based on selected filter
+  const filteredProjects = useMemo(() => {
+    if (activeFilter === 'all') return projects;
+    return projects.filter((p) => p.status === activeFilter);
+  }, [projects, activeFilter]);
+
   // Log page load for debugging
   useEffect(() => {
-    logger.info('Projects page loaded', { projectCount: mockProjects.length });
+    logger.info('Projects page loaded', {
+      totalProjects: projects.length,
+      filteredCount: filteredProjects.length,
+      activeFilter,
+    });
     logger.divider('Projects');
-  }, []);
+  }, [projects.length, filteredProjects.length, activeFilter]);
+
+  // Error state
+  if (error) {
+    logger.error('Failed to load projects', { error });
+    return (
+      <div className="space-y-6">
+        <Card>
+          <CardContent className="p-8">
+            <EmptyState
+              icon={<FolderOpen className="h-16 w-16 text-red-500" />}
+              title="Failed to load projects"
+              description="There was an error loading your projects. Please try again."
+              action={{
+                label: 'Retry',
+                onClick: () => window.location.reload(),
+              }}
+            />
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -224,9 +250,10 @@ export default function ProjectsPage() {
         {statusFilters.map((filter) => (
           <button
             key={filter.value}
+            onClick={() => setActiveFilter(filter.value)}
             className={cn(
-              'px-4 py-2 rounded-lg text-sm font-medium transition-colors',
-              filter.value === 'all'
+              'px-4 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap',
+              activeFilter === filter.value
                 ? 'bg-indigo-100 text-indigo-700'
                 : 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200'
             )}
@@ -236,14 +263,21 @@ export default function ProjectsPage() {
         ))}
       </div>
 
+      {/* Loading state */}
+      {isLoading && <ProjectsSkeleton />}
+
       {/* Projects grid or empty state */}
-      {mockProjects.length === 0 ? (
+      {!isLoading && filteredProjects.length === 0 ? (
         <Card>
           <CardContent className="p-8">
             <EmptyState
               icon={<FolderOpen className="h-16 w-16 text-purple-500" />}
-              title="No projects yet"
-              description="Create your first project to organize related tasks!"
+              title={activeFilter === 'all' ? 'No projects yet' : `No ${activeFilter} projects`}
+              description={
+                activeFilter === 'all'
+                  ? 'Create your first project to organize related tasks!'
+                  : `You don't have any ${activeFilter} projects at the moment.`
+              }
               action={{
                 label: 'New Project',
                 onClick: () => logger.info('New project clicked'),
@@ -252,11 +286,13 @@ export default function ProjectsPage() {
           </CardContent>
         </Card>
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {mockProjects.map((project) => (
-            <ProjectCard key={project.id} project={project} />
-          ))}
-        </div>
+        !isLoading && (
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {filteredProjects.map((project) => (
+              <ProjectCard key={project.id} project={project} />
+            ))}
+          </div>
+        )
       )}
     </div>
   );

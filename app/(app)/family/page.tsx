@@ -9,12 +9,12 @@
  *
  * Route: /family
  *
- * Features (planned):
+ * Features:
  * - Family member list with roles
  * - Invite new members
  * - Pending invites management
  * - Member profile editing
- * - Role management (adult/kid)
+ * - Role management (owner/adult/kid)
  *
  * ============================================================================
  */
@@ -28,103 +28,40 @@ import {
   User,
   MoreHorizontal,
   Clock,
-  Check,
   X,
 } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/shared/badge';
 import { Avatar } from '@/components/shared/avatar';
 import { EmptyState } from '@/components/shared/empty-state';
 import { cn } from '@/lib/utils/cn';
 import { logger } from '@/lib/utils/logger';
-
-/**
- * Family member role type
- */
-type MemberRole = 'owner' | 'adult' | 'kid';
-
-/**
- * Mock family data
- * In production, this would come from useFamily() hook
- */
-const mockFamily = {
-  name: 'The Quimpo Family',
-  createdAt: '2024-10-01',
-  members: [
-    {
-      id: '1',
-      name: 'Hazel',
-      email: 'hazel@example.com',
-      role: 'owner' as MemberRole,
-      color: '#6366F1',
-      avatarUrl: null,
-      joinedAt: '2024-10-01',
-    },
-    {
-      id: '2',
-      name: 'Mike',
-      email: 'mike@example.com',
-      role: 'adult' as MemberRole,
-      color: '#10B981',
-      avatarUrl: null,
-      joinedAt: '2024-10-02',
-    },
-    {
-      id: '3',
-      name: 'Zelda',
-      email: null,
-      role: 'kid' as MemberRole,
-      color: '#F59E0B',
-      avatarUrl: null,
-      joinedAt: '2024-10-03',
-    },
-    {
-      id: '4',
-      name: 'Miles',
-      email: null,
-      role: 'kid' as MemberRole,
-      color: '#EC4899',
-      avatarUrl: null,
-      joinedAt: '2024-10-03',
-    },
-  ],
-  pendingInvites: [
-    {
-      id: 'inv1',
-      email: 'grandma@example.com',
-      role: 'adult' as MemberRole,
-      sentAt: '2024-12-20',
-      expiresAt: '2024-12-27',
-    },
-  ],
-};
+import {
+  useFamilyMembers,
+  useFamilyInvites,
+  useResendInvite,
+  useCancelInvite,
+} from '@/lib/hooks/use-family';
+import type { FamilyMember, FamilyMemberRole, FamilyInvite } from '@/types/database';
 
 /**
  * Get role configuration for display
  */
-function getRoleConfig(role: MemberRole) {
+function getRoleConfig(role: FamilyMemberRole) {
   const configs = {
     owner: { label: 'Owner', icon: Crown, className: 'bg-amber-100 text-amber-700' },
     adult: { label: 'Adult', icon: User, className: 'bg-blue-100 text-blue-700' },
     kid: { label: 'Kid', icon: User, className: 'bg-green-100 text-green-700' },
   };
-  return configs[role];
+  return configs[role] || configs.adult;
 }
 
 /**
  * FamilyMemberCard Component
  */
 interface FamilyMemberCardProps {
-  member: {
-    id: string;
-    name: string;
-    email: string | null;
-    role: MemberRole;
-    color: string;
-    avatarUrl: string | null;
-    joinedAt: string;
-  };
+  member: FamilyMember;
 }
 
 function FamilyMemberCard({ member }: FamilyMemberCardProps) {
@@ -138,7 +75,7 @@ function FamilyMemberCard({ member }: FamilyMemberCardProps) {
           <Avatar
             name={member.name}
             color={member.color}
-            src={member.avatarUrl || undefined}
+            src={member.avatar_url || undefined}
             size="lg"
           />
           <div className="flex-1 min-w-0">
@@ -153,7 +90,7 @@ function FamilyMemberCard({ member }: FamilyMemberCardProps) {
               <p className="text-sm text-neutral-500">{member.email}</p>
             )}
             <p className="text-xs text-neutral-400">
-              Joined {new Date(member.joinedAt).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}
+              Joined {new Date(member.created_at).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}
             </p>
           </div>
           <button
@@ -172,21 +109,16 @@ function FamilyMemberCard({ member }: FamilyMemberCardProps) {
  * PendingInviteCard Component
  */
 interface PendingInviteCardProps {
-  invite: {
-    id: string;
-    email: string;
-    role: MemberRole;
-    sentAt: string;
-    expiresAt: string;
-  };
+  invite: FamilyInvite;
   onResend: (id: string) => void;
   onCancel: (id: string) => void;
+  isProcessing: boolean;
 }
 
-function PendingInviteCard({ invite, onResend, onCancel }: PendingInviteCardProps) {
+function PendingInviteCard({ invite, onResend, onCancel, isProcessing }: PendingInviteCardProps) {
   const roleConfig = getRoleConfig(invite.role);
-  const sentDate = new Date(invite.sentAt);
-  const expiresDate = new Date(invite.expiresAt);
+  const sentDate = new Date(invite.created_at);
+  const expiresDate = new Date(invite.expires_at);
   const daysUntilExpire = Math.ceil((expiresDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
 
   return (
@@ -204,7 +136,7 @@ function PendingInviteCard({ invite, onResend, onCancel }: PendingInviteCardProp
             <p className="text-sm text-neutral-500 flex items-center gap-1">
               <Clock className="h-3 w-3" />
               Sent {sentDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-              {daysUntilExpire > 0 && ` · Expires in ${daysUntilExpire} days`}
+              {daysUntilExpire > 0 && ` - Expires in ${daysUntilExpire} days`}
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -212,12 +144,14 @@ function PendingInviteCard({ invite, onResend, onCancel }: PendingInviteCardProp
               size="sm"
               variant="ghost"
               onClick={() => onResend(invite.id)}
+              disabled={isProcessing}
             >
               Resend
             </Button>
             <button
-              className="p-1.5 rounded-lg text-red-500 hover:bg-red-50"
+              className="p-1.5 rounded-lg text-red-500 hover:bg-red-50 disabled:opacity-50"
               onClick={() => onCancel(invite.id)}
+              disabled={isProcessing}
               title="Cancel invite"
             >
               <X className="h-4 w-4" />
@@ -230,24 +164,63 @@ function PendingInviteCard({ invite, onResend, onCancel }: PendingInviteCardProp
 }
 
 /**
+ * Loading skeleton for family members
+ */
+function FamilySkeleton() {
+  return (
+    <div className="space-y-6">
+      <div className="space-y-3">
+        <div className="h-4 bg-neutral-200 rounded w-32 animate-pulse" />
+        <div className="grid gap-3 sm:grid-cols-2">
+          {[1, 2, 3, 4].map((i) => (
+            <Card key={i} className="animate-pulse">
+              <CardContent className="p-4">
+                <div className="flex items-center gap-4">
+                  <div className="h-12 w-12 bg-neutral-200 rounded-full" />
+                  <div className="flex-1">
+                    <div className="h-5 bg-neutral-200 rounded w-24 mb-2" />
+                    <div className="h-4 bg-neutral-100 rounded w-32" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/**
  * Family Page Component
  */
 export default function FamilyPage() {
+  // Fetch family data from database
+  const { data: members = [], isLoading: loadingMembers, error: membersError } = useFamilyMembers();
+  const { data: invites = [], isLoading: loadingInvites } = useFamilyInvites();
+
+  // Mutations
+  const resendInvite = useResendInvite();
+  const cancelInvite = useCancelInvite();
+
+  const isProcessing = resendInvite.isPending || cancelInvite.isPending;
+  const isLoading = loadingMembers || loadingInvites;
+
   // Log page load for debugging
   useEffect(() => {
     logger.info('Family page loaded', {
-      familyName: mockFamily.name,
-      memberCount: mockFamily.members.length,
-      pendingInvites: mockFamily.pendingInvites.length,
+      memberCount: members.length,
+      pendingInvites: invites.length,
     });
     logger.divider('Family');
-  }, []);
+  }, [members.length, invites.length]);
 
   /**
    * Handle resending an invite
    */
   const handleResendInvite = (inviteId: string) => {
     logger.info('Resending invite', { inviteId });
+    resendInvite.mutate(inviteId);
   };
 
   /**
@@ -255,7 +228,30 @@ export default function FamilyPage() {
    */
   const handleCancelInvite = (inviteId: string) => {
     logger.info('Canceling invite', { inviteId });
+    cancelInvite.mutate(inviteId);
   };
+
+  // Error state
+  if (membersError) {
+    logger.error('Failed to load family members', { error: membersError });
+    return (
+      <div className="space-y-6">
+        <Card>
+          <CardContent className="p-8">
+            <EmptyState
+              icon={<Users className="h-16 w-16 text-red-500" />}
+              title="Failed to load family"
+              description="There was an error loading your family members. Please try again."
+              action={{
+                label: 'Retry',
+                onClick: () => window.location.reload(),
+              }}
+            />
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -264,8 +260,10 @@ export default function FamilyPage() {
         <div className="flex items-center gap-3">
           <Users className="h-6 w-6 text-indigo-600" />
           <div>
-            <h1 className="text-xl font-semibold text-neutral-900">{mockFamily.name}</h1>
-            <p className="text-sm text-neutral-500">{mockFamily.members.length} members</p>
+            <h1 className="text-xl font-semibold text-neutral-900">Family</h1>
+            {!isLoading && (
+              <p className="text-sm text-neutral-500">{members.length} members</p>
+            )}
           </div>
         </div>
         <Button leftIcon={<Plus className="h-4 w-4" />}>
@@ -273,31 +271,54 @@ export default function FamilyPage() {
         </Button>
       </div>
 
+      {/* Loading state */}
+      {isLoading && <FamilySkeleton />}
+
+      {/* Empty state */}
+      {!isLoading && members.length === 0 && (
+        <Card>
+          <CardContent className="p-8">
+            <EmptyState
+              icon={<Users className="h-16 w-16 text-indigo-500" />}
+              title="No family members yet"
+              description="Start by adding your family members or inviting them via email."
+              action={{
+                label: 'Invite Member',
+                onClick: () => logger.info('Invite member clicked'),
+              }}
+            />
+          </CardContent>
+        </Card>
+      )}
+
       {/* Members section */}
-      <div className="space-y-3">
-        <h2 className="text-sm font-medium text-neutral-500 uppercase tracking-wider">
-          Family Members
-        </h2>
-        <div className="grid gap-3 sm:grid-cols-2">
-          {mockFamily.members.map((member) => (
-            <FamilyMemberCard key={member.id} member={member} />
-          ))}
+      {!isLoading && members.length > 0 && (
+        <div className="space-y-3">
+          <h2 className="text-sm font-medium text-neutral-500 uppercase tracking-wider">
+            Family Members
+          </h2>
+          <div className="grid gap-3 sm:grid-cols-2">
+            {members.map((member) => (
+              <FamilyMemberCard key={member.id} member={member} />
+            ))}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Pending invites section */}
-      {mockFamily.pendingInvites.length > 0 && (
+      {!isLoading && invites.length > 0 && (
         <div className="space-y-3">
           <h2 className="text-sm font-medium text-neutral-500 uppercase tracking-wider">
             Pending Invites
           </h2>
           <div className="space-y-3">
-            {mockFamily.pendingInvites.map((invite) => (
+            {invites.map((invite) => (
               <PendingInviteCard
                 key={invite.id}
                 invite={invite}
                 onResend={handleResendInvite}
                 onCancel={handleCancelInvite}
+                isProcessing={isProcessing}
               />
             ))}
           </div>

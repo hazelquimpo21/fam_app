@@ -44,6 +44,13 @@ export interface ProjectFilters {
   ownerId?: string;
 }
 
+/** Filters for someday item queries */
+export interface SomedayFilters {
+  category?: 'trip' | 'purchase' | 'experience' | 'house' | 'other';
+  isArchived?: boolean;
+  addedById?: string;
+}
+
 /** Date range for queries */
 export interface DateRange {
   start: string;  // YYYY-MM-DD
@@ -125,6 +132,18 @@ export const queryKeys = {
     detail: (id: string) => [...queryKeys.projects.all, 'detail', id] as const,
   },
 
+  // ━━━━━ Someday Items ━━━━━
+  someday: {
+    /** Base key for all someday queries */
+    all: ['someday'] as const,
+
+    /** Someday items list with filters */
+    list: (filters?: SomedayFilters) => [...queryKeys.someday.all, 'list', filters] as const,
+
+    /** Specific someday item detail */
+    detail: (id: string) => [...queryKeys.someday.all, 'detail', id] as const,
+  },
+
   // ━━━━━ Milestones ━━━━━
   milestones: {
     /** Base key for all milestone queries */
@@ -148,6 +167,9 @@ export const queryKeys = {
 
     /** Current user's family member record */
     current: () => [...queryKeys.family.all, 'current'] as const,
+
+    /** Pending invites for the family */
+    invites: () => [...queryKeys.family.all, 'invites'] as const,
   },
 
   // ━━━━━ Dashboard ━━━━━

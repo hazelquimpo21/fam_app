@@ -1,7 +1,7 @@
-# Fam — Implementation Status
+# Fam - Implementation Status
 
 > **Last Updated:** December 2024
-> **Status:** MVP Phase 2 In Progress
+> **Status:** MVP Phase 2 Complete - All Core Pages Wired to Database
 
 ---
 
@@ -12,15 +12,15 @@
 | Database Schema | ✅ Complete | 100% |
 | Authentication (Magic Link) | ✅ Complete | 100% |
 | Core UI Components | ✅ Complete | ~40% |
-| Tasks Feature | ✅ Complete | 90% |
-| Habits Feature | ✅ Complete | 85% |
+| Tasks Feature | ✅ Complete | 95% |
+| Habits Feature | ✅ Complete | 90% |
 | Dashboard | ✅ Complete | 85% |
-| Goals Feature | ✅ Hook Ready | 40% |
-| Projects Feature | ✅ Hook Ready | 40% |
-| Inbox Feature | ✅ Stub | 20% |
-| Today Feature | ✅ Stub | 20% |
-| Someday Feature | ✅ Stub | 20% |
-| Family Feature | ✅ Stub | 20% |
+| Goals Feature | ✅ Complete | 80% |
+| Projects Feature | ✅ Complete | 80% |
+| Inbox Feature | ✅ Complete | 80% |
+| Today Feature | ✅ Complete | 80% |
+| Someday Feature | ✅ Complete | 80% |
+| Family Feature | ✅ Complete | 75% |
 | Settings Feature | ✅ Stub | 20% |
 | Meals Feature | 🔨 Pending | 0% |
 
@@ -67,15 +67,7 @@ Tables: families, family_members, tasks, subtasks, habits, habit_logs,
 - ✅ Protected routes
 - ✅ Auth state hook with `sendMagicLink` method
 
-**Magic Link Flow:**
-1. User enters email on login/signup page
-2. Magic link is sent via Supabase
-3. User redirected to check-email confirmation page
-4. User clicks link in email
-5. Callback route exchanges code for session
-6. User redirected to dashboard (authenticated)
-
-### 3. UI Components (~30% Complete)
+### 3. UI Components (~40% Complete)
 
 **Built (11 components):**
 
@@ -99,13 +91,14 @@ Tables: families, family_members, tasks, subtasks, habits, habit_logs,
 - QuickAddModal, SearchModal, ConfirmDialog
 - Feature-specific components (TaskCard, HabitCard as standalone)
 
-### 4. Data Hooks (Tasks, Habits, Goals, Projects Complete)
+### 4. Data Hooks (All Core Entities Complete)
 
 **File:** `lib/hooks/use-tasks.ts`
 - ✅ `useTasks(filters)` - List with filtering
 - ✅ `useTask(id)` - Single task detail
 - ✅ `useInboxTasks()` - Inbox items
-- ✅ `useTodayTasks()` - Today's tasks
+- ✅ `useTodayTasks()` - Today's tasks with project info
+- ✅ `useOverdueTasks()` - Overdue tasks
 - ✅ `useCreateTask()` - Create with toast
 - ✅ `useUpdateTask()` - Update with cache
 - ✅ `useCompleteTask()` - Optimistic update
@@ -114,10 +107,10 @@ Tables: families, family_members, tasks, subtasks, habits, habit_logs,
 **File:** `lib/hooks/use-habits.ts`
 - ✅ `useHabits()` - List with today's status
 - ✅ `useHabitLogs(habitId, start, end)` - Log history
-- ✅ `useLogHabit()` - Log done/skipped
+- ✅ `useLogHabit()` - Log done/skipped with optimistic update
 - ✅ `useCreateHabit()` - Create new habit
 
-**File:** `lib/hooks/use-goals.ts` *(NEW)*
+**File:** `lib/hooks/use-goals.ts`
 - ✅ `useGoals(filters)` - List with filtering (status, owner, family goals)
 - ✅ `useActiveGoals()` - Convenience hook for active goals
 - ✅ `useGoal(id)` - Single goal detail
@@ -128,7 +121,7 @@ Tables: families, family_members, tasks, subtasks, habits, habit_logs,
 - ✅ `useAbandonGoal()` - Mark goal as abandoned
 - ✅ `useDeleteGoal()` - Soft delete
 
-**File:** `lib/hooks/use-projects.ts` *(NEW)*
+**File:** `lib/hooks/use-projects.ts`
 - ✅ `useProjects(filters)` - List with filtering (status, owner)
 - ✅ `useActiveProjects()` - Convenience hook for active projects
 - ✅ `useProject(id)` - Single project detail
@@ -139,25 +132,43 @@ Tables: families, family_members, tasks, subtasks, habits, habit_logs,
 - ✅ `useDeleteProject()` - Soft delete
 - ✅ `usePromoteSomedayToProject()` - Promote a someday item to project
 
-### 5. Pages
+**File:** `lib/hooks/use-someday.ts` *(NEW)*
+- ✅ `useSomedayItems(filters)` - List with filtering (category, archived, added by)
+- ✅ `useActiveSomedayItems()` - Non-archived items
+- ✅ `useSomedayItem(id)` - Single item detail
+- ✅ `useCreateSomedayItem()` - Create with toast
+- ✅ `useUpdateSomedayItem()` - Update with cache
+- ✅ `useArchiveSomedayItem()` - Archive item
+- ✅ `useDeleteSomedayItem()` - Soft delete with optimistic update
+
+**File:** `lib/hooks/use-family.ts` *(NEW)*
+- ✅ `useFamilyMembers()` - All family members
+- ✅ `useFamilyMember(id)` - Single member detail
+- ✅ `useCurrentFamilyMember()` - Current user's family record
+- ✅ `useFamilyInvites()` - Pending invites
+- ✅ `useCreateFamilyMember()` - Add member (for kids)
+- ✅ `useUpdateFamilyMember()` - Update profile
+- ✅ `useCreateFamilyInvite()` - Send invite
+- ✅ `useResendInvite()` - Resend invite
+- ✅ `useCancelInvite()` - Cancel invite
+
+### 5. Pages (All Core Pages Wired to Database)
 
 | Page | Route | Status | Notes |
 |------|-------|--------|-------|
-| Dashboard | `/` | ✅ | Stats cards, task preview, **working navigation buttons** |
-| Tasks | `/tasks` | ✅ | List, filters, quick add |
-| Habits | `/habits` | ✅ | Today view, streaks |
+| Dashboard | `/` | ✅ | Stats cards, task preview, working navigation |
+| Tasks | `/tasks` | ✅ | List, filters, quick add, connected to DB |
+| Habits | `/habits` | ✅ | Today view, streaks, connected to DB |
 | Login | `/login` | ✅ | Magic link (passwordless) |
 | Signup | `/signup` | ✅ | Magic link (passwordless) |
 | Check Email | `/check-email` | ✅ | Confirmation after magic link |
-| Inbox | `/inbox` | ✅ Stub | Quick capture, processing actions |
-| Today | `/today` | ✅ Stub | Daily focus with meals, habits, tasks |
-| Goals | `/goals` | ✅ Hook Ready | Goal tracking with progress bars, **hook created** |
-| Projects | `/projects` | ✅ Hook Ready | Project cards with status/progress, **hook created** |
-| Someday | `/someday` | ✅ Stub | Wishlist for future ideas |
-| Family | `/family` | ✅ Stub | Family member management |
+| Inbox | `/inbox` | ✅ **Connected** | Quick capture, processing actions, connected to DB |
+| Today | `/today` | ✅ **Connected** | Daily focus with habits, overdue, today's tasks |
+| Goals | `/goals` | ✅ **Connected** | Goal tracking with progress bars, grouped by owner |
+| Projects | `/projects` | ✅ **Connected** | Project cards with status filtering |
+| Someday | `/someday` | ✅ **Connected** | Wishlist with categories, promote to project |
+| Family | `/family` | ✅ **Connected** | Family member list, pending invites |
 | Settings | `/settings` | ✅ Stub | User and app preferences |
-
-> **Note:** "Stub" pages have UI scaffolding with mock data. "Hook Ready" pages have database hooks created but UI not yet connected.
 
 ---
 
@@ -178,7 +189,7 @@ cp .env.example .env.local
 # Edit with your Supabase credentials
 
 # 3. Run database migration
-# Go to Supabase Dashboard → SQL Editor
+# Go to Supabase Dashboard -> SQL Editor
 # Paste contents of: supabase/migrations/001_initial_schema.sql
 # Click Run
 
@@ -190,20 +201,18 @@ npm run dev
 
 ## Next Steps (Priority Order)
 
-### Phase 2 (High Priority)
+### Phase 2.5 (High Priority)
 
 1. **Onboarding Flow**
    - Create family on signup
    - Link user to family_members table
    - Redirect to dashboard
 
-2. **Connect Hook-Ready Pages to Database** *(Hooks created, UI needs connection)*
-   - ✅ ~~Add `useGoals` hook~~ → Connect Goals page UI to hook
-   - ✅ ~~Add `useProjects` hook~~ → Connect Projects page UI to hook
-   - Add `useSomedayItems` hook and connect Someday page
-   - Add `useFamilyMembers` hook and connect Family page
-   - Connect Inbox page to tasks with status='inbox' (uses existing `useInboxTasks`)
-   - Connect Today page to real task/habit data (uses existing hooks)
+2. **Create/Edit Modals**
+   - Task creation modal
+   - Goal creation modal
+   - Project creation modal
+   - Someday item creation modal
 
 3. **Task Detail Panel**
    - Slide-out panel
@@ -216,7 +225,7 @@ npm run dev
    - Select dropdown
    - FamilyMemberPicker
 
-### Phase 2.5 (Medium Priority)
+### Phase 3 (Medium Priority)
 
 5. **Real-time Updates**
    - Supabase subscriptions
@@ -227,7 +236,7 @@ npm run dev
    - Theme switching (light/dark)
    - Notification preferences
 
-### Phase 3 (Lower Priority)
+### Phase 4 (Lower Priority)
 
 7. **Meals & Recipes**
    - Recipe library
@@ -263,14 +272,16 @@ npm run dev
 
 ### Patterns Established
 
-1. **Query Key Factory** - Consistent cache keys
-2. **Optimistic Updates** - Instant UI feedback
+1. **Query Key Factory** - Consistent cache keys in `lib/query-keys.ts`
+2. **Optimistic Updates** - Instant UI feedback for mutations
 3. **Emoji Logging** - Friendly dev experience with debugging info
 4. **RLS-First** - Security at database level
-5. **Modular Hooks** - One hook file per entity (tasks, habits, goals, projects)
+5. **Modular Hooks** - One hook file per entity
 6. **Magic Link Auth** - Passwordless authentication
 7. **Navigation Handlers** - Consistent logging + routing pattern
 8. **JSDoc Comments** - Clear documentation for all hooks and components
+9. **Loading Skeletons** - Per-page loading states
+10. **Error Boundaries** - Graceful error handling with retry options
 
 ---
 
@@ -284,12 +295,12 @@ fam_app/
 │   │   ├── page.tsx            # Dashboard
 │   │   ├── tasks/page.tsx      # Tasks list
 │   │   ├── habits/page.tsx     # Habits with streaks
-│   │   ├── inbox/page.tsx      # Quick capture (stub)
-│   │   ├── today/page.tsx      # Daily focus view (stub)
-│   │   ├── goals/page.tsx      # Goal tracking (stub)
-│   │   ├── projects/page.tsx   # Project management (stub)
-│   │   ├── someday/page.tsx    # Wishlist ideas (stub)
-│   │   ├── family/page.tsx     # Family members (stub)
+│   │   ├── inbox/page.tsx      # Quick capture (connected to DB)
+│   │   ├── today/page.tsx      # Daily focus view (connected to DB)
+│   │   ├── goals/page.tsx      # Goal tracking (connected to DB)
+│   │   ├── projects/page.tsx   # Project management (connected to DB)
+│   │   ├── someday/page.tsx    # Wishlist ideas (connected to DB)
+│   │   ├── family/page.tsx     # Family members (connected to DB)
 │   │   └── settings/page.tsx   # User preferences (stub)
 │   ├── (auth)/
 │   │   ├── login/page.tsx      # Magic link login
@@ -305,7 +316,7 @@ fam_app/
 │   └── providers.tsx
 ├── lib/
 │   ├── supabase/               # 4 files (client, server, middleware, admin)
-│   ├── hooks/                  # 5 hooks (use-auth, use-tasks, use-habits, use-goals, use-projects)
+│   ├── hooks/                  # 7 hooks (auth, tasks, habits, goals, projects, someday, family)
 │   ├── utils/                  # 2 utilities (cn, logger)
 │   ├── query-client.ts
 │   └── query-keys.ts
@@ -322,11 +333,11 @@ fam_app/
 
 When adding new features:
 
-1. **Database Changes** → Add to migrations folder
-2. **New Hook** → Create in `lib/hooks/use-{entity}.ts`
-3. **New Component** → Add to appropriate folder in `components/`
-4. **Query Keys** → Add to `lib/query-keys.ts`
-5. **Types** → Add to `types/database.ts`
+1. **Database Changes** -> Add to migrations folder
+2. **New Hook** -> Create in `lib/hooks/use-{entity}.ts`
+3. **New Component** -> Add to appropriate folder in `components/`
+4. **Query Keys** -> Add to `lib/query-keys.ts`
+5. **Types** -> Add to `types/database.ts`
 
 Keep files under 400 lines. Extract components when they grow.
 
@@ -338,8 +349,9 @@ Keep files under 400 lines. Extract components when they grow.
 |---------|------|--------|---------|
 | 1.0 | 2024-12-23 | Hazel + Claude | Initial PRD |
 | 1.1 | 2024-12-23 | Claude | Added implementation status section |
-| 1.2 | 2024-12-23 | Claude | Updated auth to magic link, added check-email page |
-| 1.3 | 2024-12-25 | Claude | Added 7 stub pages (inbox, today, goals, projects, someday, family, settings) |
-| 1.4 | 2024-12-25 | Claude | Added useGoals and useProjects hooks, fixed navigation buttons |
+| 1.2 | 2024-12-23 | Claude | Updated auth to magic link |
+| 1.3 | 2024-12-25 | Claude | Added 7 stub pages |
+| 1.4 | 2024-12-25 | Claude | Added useGoals and useProjects hooks |
+| 1.5 | 2024-12-25 | Claude | Connected ALL pages to database (inbox, today, goals, projects, someday, family) |
 
 *This document is auto-generated. See individual docs for detailed specs.*

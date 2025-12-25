@@ -10,114 +10,63 @@
  *
  * Route: /goals
  *
- * Features (planned):
+ * Features:
  * - Goal progress bars
  * - Grouping by family member
- * - Goal status (on track, at risk, behind)
- * - Linked habits/tasks
+ * - Goal status visualization
  * - Target dates
  *
  * ============================================================================
  */
 
-import { useEffect } from 'react';
-import { Target, Plus, TrendingUp, AlertTriangle, Check, Calendar } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { useEffect, useMemo } from 'react';
+import { Target, Plus, TrendingUp, AlertTriangle, Check, Calendar, Loader2 } from 'lucide-react';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/shared/badge';
 import { Avatar } from '@/components/shared/avatar';
 import { EmptyState } from '@/components/shared/empty-state';
 import { cn } from '@/lib/utils/cn';
 import { logger } from '@/lib/utils/logger';
+import { useGoals } from '@/lib/hooks/use-goals';
+import type { Goal, GoalStatus } from '@/types/database';
 
 /**
- * Goal status type
+ * Calculate goal status based on progress and target date
+ * Returns 'on_track', 'at_risk', or 'behind'
  */
-type GoalStatus = 'on_track' | 'at_risk' | 'behind';
+function calculateGoalStatus(goal: Goal): 'on_track' | 'at_risk' | 'behind' {
+  // For qualitative goals without target values, default to on_track if active
+  if (goal.goal_type === 'qualitative' || !goal.target_value) {
+    return goal.status === 'achieved' ? 'on_track' : 'on_track';
+  }
 
-/**
- * Mock goals data
- * In production, this would come from useGoals() hook
- */
-const mockGoals = {
-  family: [
-    {
-      id: '1',
-      title: 'Pay off car',
-      current: 2400,
-      target: 8000,
-      unit: '$',
-      targetDate: 'Dec 2025',
-      status: 'on_track' as GoalStatus,
-      owner: { name: 'Family', color: '#8B5CF6' },
-    },
-  ],
-  members: [
-    {
-      memberName: 'Hazel',
-      color: '#6366F1',
-      goals: [
-        {
-          id: '2',
-          title: 'Read 50 books',
-          current: 42,
-          target: 50,
-          unit: 'books',
-          targetDate: 'Dec 31',
-          status: 'on_track' as GoalStatus,
-          linkedHabit: 'Read 20 min daily',
-        },
-        {
-          id: '3',
-          title: 'Save $5K for Japan',
-          current: 3200,
-          target: 5000,
-          unit: '$',
-          targetDate: 'Jun 2025',
-          status: 'on_track' as GoalStatus,
-          linkedHabit: 'Save $50/week',
-        },
-      ],
-    },
-    {
-      memberName: 'Mike',
-      color: '#10B981',
-      goals: [
-        {
-          id: '4',
-          title: 'Run a half marathon',
-          current: 8,
-          target: 21,
-          unit: 'km',
-          targetDate: 'Mar 2025',
-          status: 'at_risk' as GoalStatus,
-          linkedHabit: 'Run 3x/week',
-        },
-      ],
-    },
-    {
-      memberName: 'Miles',
-      color: '#F59E0B',
-      goals: [
-        {
-          id: '5',
-          title: 'Learn 50 piano songs',
-          current: 12,
-          target: 50,
-          unit: 'songs',
-          targetDate: 'Dec 2025',
-          status: 'behind' as GoalStatus,
-          linkedHabit: 'Practice piano 30 min',
-        },
-      ],
-    },
-  ],
-};
+  const progress = (goal.current_value / goal.target_value) * 100;
+
+  // If no target date, just use progress
+  if (!goal.target_date) {
+    if (progress >= 70) return 'on_track';
+    if (progress >= 40) return 'at_risk';
+    return 'behind';
+  }
+
+  // Calculate expected progress based on time elapsed
+  const now = new Date();
+  const created = new Date(goal.created_at);
+  const target = new Date(goal.target_date);
+  const totalDays = (target.getTime() - created.getTime()) / (1000 * 60 * 60 * 24);
+  const elapsedDays = (now.getTime() - created.getTime()) / (1000 * 60 * 60 * 24);
+  const expectedProgress = (elapsedDays / totalDays) * 100;
+
+  // Compare actual vs expected progress
+  if (progress >= expectedProgress * 0.9) return 'on_track';
+  if (progress >= expectedProgress * 0.6) return 'at_risk';
+  return 'behind';
+}
 
 /**
  * Get status configuration for display
  */
-function getStatusConfig(status: GoalStatus) {
+function getStatusConfig(status: 'on_track' | 'at_risk' | 'behind') {
   const configs = {
     on_track: {
       label: 'On track',
@@ -142,26 +91,35 @@ function getStatusConfig(status: GoalStatus) {
  * GoalCard Component
  * Displays a single goal with progress bar
  */
-interface Goal {
-  id: string;
-  title: string;
-  current: number;
-  target: number;
-  unit: string;
-  targetDate: string;
-  status: GoalStatus;
-  linkedHabit?: string;
-}
-
 interface GoalCardProps {
   goal: Goal;
-  owner?: { name: string; color: string };
 }
 
-function GoalCard({ goal, owner }: GoalCardProps) {
-  const progress = Math.round((goal.current / goal.target) * 100);
-  const statusConfig = getStatusConfig(goal.status);
+function GoalCard({ goal }: GoalCardProps) {
+  const owner = goal.owner as { name: string; color: string } | null;
+  const status = calculateGoalStatus(goal);
+  const statusConfig = getStatusConfig(status);
   const StatusIcon = statusConfig.icon;
+
+  // Calculate progress percentage
+  const progress = goal.target_value && goal.target_value > 0
+    ? Math.round((goal.current_value / goal.target_value) * 100)
+    : 0;
+
+  // Format target date
+  const formatTargetDate = (dateStr: string | null) => {
+    if (!dateStr) return null;
+    return new Date(dateStr).toLocaleDateString('en-US', {
+      month: 'short',
+      year: 'numeric',
+    });
+  };
+
+  // Format value display
+  const formatValue = (value: number, unit: string | null) => {
+    if (unit === '$') return `$${value.toLocaleString()}`;
+    return value.toString();
+  };
 
   return (
     <Card className="transition-all hover:shadow-md">
@@ -171,33 +129,40 @@ function GoalCard({ goal, owner }: GoalCardProps) {
           <div className="flex items-start justify-between gap-3">
             <div className="flex-1 min-w-0">
               <h3 className="font-medium text-neutral-900">{goal.title}</h3>
-              <p className="text-sm text-neutral-500">
-                {goal.unit === '$' ? `$${goal.current.toLocaleString()}` : goal.current} / {goal.unit === '$' ? `$${goal.target.toLocaleString()}` : goal.target} {goal.unit !== '$' && goal.unit}
-              </p>
+              {goal.goal_type === 'quantitative' && goal.target_value && (
+                <p className="text-sm text-neutral-500">
+                  {formatValue(goal.current_value, goal.unit)} / {formatValue(goal.target_value, goal.unit)} {goal.unit && goal.unit !== '$' && goal.unit}
+                </p>
+              )}
+              {goal.description && (
+                <p className="text-sm text-neutral-500 line-clamp-1">{goal.description}</p>
+              )}
             </div>
             {owner && (
               <Avatar name={owner.name} color={owner.color} size="sm" />
             )}
           </div>
 
-          {/* Progress bar */}
-          <div className="space-y-1">
-            <div className="flex justify-between text-sm">
-              <span className="text-neutral-500">Progress</span>
-              <span className="font-medium text-neutral-900">{progress}%</span>
+          {/* Progress bar (for quantitative goals) */}
+          {goal.goal_type === 'quantitative' && goal.target_value && (
+            <div className="space-y-1">
+              <div className="flex justify-between text-sm">
+                <span className="text-neutral-500">Progress</span>
+                <span className="font-medium text-neutral-900">{progress}%</span>
+              </div>
+              <div className="h-2 rounded-full bg-neutral-100 overflow-hidden">
+                <div
+                  className={cn(
+                    'h-full rounded-full transition-all',
+                    status === 'on_track' && 'bg-gradient-to-r from-green-400 to-green-500',
+                    status === 'at_risk' && 'bg-gradient-to-r from-yellow-400 to-yellow-500',
+                    status === 'behind' && 'bg-gradient-to-r from-red-400 to-red-500'
+                  )}
+                  style={{ width: `${Math.min(progress, 100)}%` }}
+                />
+              </div>
             </div>
-            <div className="h-2 rounded-full bg-neutral-100 overflow-hidden">
-              <div
-                className={cn(
-                  'h-full rounded-full transition-all',
-                  goal.status === 'on_track' && 'bg-gradient-to-r from-green-400 to-green-500',
-                  goal.status === 'at_risk' && 'bg-gradient-to-r from-yellow-400 to-yellow-500',
-                  goal.status === 'behind' && 'bg-gradient-to-r from-red-400 to-red-500'
-                )}
-                style={{ width: `${Math.min(progress, 100)}%` }}
-              />
-            </div>
-          </div>
+          )}
 
           {/* Footer with status and target date */}
           <div className="flex items-center justify-between">
@@ -207,18 +172,13 @@ function GoalCard({ goal, owner }: GoalCardProps) {
                 {statusConfig.label}
               </div>
             </div>
-            <span className="flex items-center gap-1 text-xs text-neutral-500">
-              <Calendar className="h-3 w-3" />
-              Target: {goal.targetDate}
-            </span>
+            {goal.target_date && (
+              <span className="flex items-center gap-1 text-xs text-neutral-500">
+                <Calendar className="h-3 w-3" />
+                Target: {formatTargetDate(goal.target_date)}
+              </span>
+            )}
           </div>
-
-          {/* Linked habit (if any) */}
-          {goal.linkedHabit && (
-            <p className="text-xs text-neutral-500">
-              Supported by: "{goal.linkedHabit}" habit
-            </p>
-          )}
         </div>
       </CardContent>
     </Card>
@@ -226,19 +186,102 @@ function GoalCard({ goal, owner }: GoalCardProps) {
 }
 
 /**
+ * Loading skeleton for goals
+ */
+function GoalsSkeleton() {
+  return (
+    <div className="space-y-6">
+      <div className="space-y-3">
+        <div className="h-4 bg-neutral-200 rounded w-32 animate-pulse" />
+        <div className="grid gap-4 sm:grid-cols-2">
+          {[1, 2].map((i) => (
+            <Card key={i} className="animate-pulse">
+              <CardContent className="p-4">
+                <div className="space-y-3">
+                  <div className="h-5 bg-neutral-200 rounded w-3/4" />
+                  <div className="h-4 bg-neutral-100 rounded w-1/2" />
+                  <div className="h-2 bg-neutral-100 rounded-full" />
+                  <div className="flex justify-between">
+                    <div className="h-5 bg-neutral-100 rounded w-16" />
+                    <div className="h-4 bg-neutral-100 rounded w-24" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/**
  * Goals Page Component
  */
 export default function GoalsPage() {
+  // Fetch goals from database
+  const { data: goals = [], isLoading, error } = useGoals({ status: 'active' });
+
+  // Group goals by family vs personal
+  const { familyGoals, memberGoals } = useMemo(() => {
+    const family = goals.filter((g) => g.is_family_goal);
+    const personal = goals.filter((g) => !g.is_family_goal);
+
+    // Group personal goals by owner
+    const byOwner = new Map<string, { owner: { name: string; color: string }; goals: Goal[] }>();
+
+    personal.forEach((goal) => {
+      const owner = goal.owner as { id: string; name: string; color: string } | null;
+      if (!owner) return;
+
+      if (!byOwner.has(owner.id)) {
+        byOwner.set(owner.id, {
+          owner: { name: owner.name, color: owner.color },
+          goals: [],
+        });
+      }
+      byOwner.get(owner.id)!.goals.push(goal);
+    });
+
+    return {
+      familyGoals: family,
+      memberGoals: Array.from(byOwner.values()),
+    };
+  }, [goals]);
+
   // Log page load for debugging
   useEffect(() => {
-    const totalGoals = mockGoals.family.length +
-      mockGoals.members.reduce((sum, m) => sum + m.goals.length, 0);
-    logger.info('Goals page loaded', { totalGoals });
+    logger.info('Goals page loaded', {
+      totalGoals: goals.length,
+      familyGoals: familyGoals.length,
+      memberGroups: memberGoals.length,
+    });
     logger.divider('Goals');
-  }, []);
+  }, [goals.length, familyGoals.length, memberGoals.length]);
 
-  const hasGoals = mockGoals.family.length > 0 ||
-    mockGoals.members.some((m) => m.goals.length > 0);
+  const hasGoals = goals.length > 0;
+
+  // Error state
+  if (error) {
+    logger.error('Failed to load goals', { error });
+    return (
+      <div className="space-y-6">
+        <Card>
+          <CardContent className="p-8">
+            <EmptyState
+              icon={<Target className="h-16 w-16 text-red-500" />}
+              title="Failed to load goals"
+              description="There was an error loading your goals. Please try again."
+              action={{
+                label: 'Retry',
+                onClick: () => window.location.reload(),
+              }}
+            />
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -253,8 +296,11 @@ export default function GoalsPage() {
         </Button>
       </div>
 
+      {/* Loading state */}
+      {isLoading && <GoalsSkeleton />}
+
       {/* Empty state */}
-      {!hasGoals && (
+      {!isLoading && !hasGoals && (
         <Card>
           <CardContent className="p-8">
             <EmptyState
@@ -271,35 +317,31 @@ export default function GoalsPage() {
       )}
 
       {/* Family Goals */}
-      {mockGoals.family.length > 0 && (
+      {!isLoading && familyGoals.length > 0 && (
         <div className="space-y-3">
           <h2 className="flex items-center gap-2 text-sm font-medium text-neutral-500 uppercase tracking-wider">
             <TrendingUp className="h-4 w-4" />
             Family Goals
           </h2>
           <div className="grid gap-4 sm:grid-cols-2">
-            {mockGoals.family.map((goal) => (
-              <GoalCard key={goal.id} goal={goal} owner={goal.owner} />
+            {familyGoals.map((goal) => (
+              <GoalCard key={goal.id} goal={goal} />
             ))}
           </div>
         </div>
       )}
 
       {/* Member Goals */}
-      {mockGoals.members.map((member) => (
-        member.goals.length > 0 && (
-          <div key={member.memberName} className="space-y-3">
+      {!isLoading && memberGoals.map(({ owner, goals: memberGoalsList }) => (
+        memberGoalsList.length > 0 && (
+          <div key={owner.name} className="space-y-3">
             <h2 className="flex items-center gap-2 text-sm font-medium text-neutral-500 uppercase tracking-wider">
-              <Avatar name={member.memberName} color={member.color} size="sm" />
-              {member.memberName}'s Goals
+              <Avatar name={owner.name} color={owner.color} size="sm" />
+              {owner.name}'s Goals
             </h2>
             <div className="grid gap-4 sm:grid-cols-2">
-              {member.goals.map((goal) => (
-                <GoalCard
-                  key={goal.id}
-                  goal={goal}
-                  owner={{ name: member.memberName, color: member.color }}
-                />
+              {memberGoalsList.map((goal) => (
+                <GoalCard key={goal.id} goal={goal} />
               ))}
             </div>
           </div>
