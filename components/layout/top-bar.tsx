@@ -7,28 +7,76 @@
  *
  * The top navigation bar with search, notifications, and quick actions.
  *
+ * Features:
+ * - Mobile menu toggle button
+ * - Dynamic page title
+ * - Search input (desktop) and mobile search button
+ * - Notifications button with badge
+ * - Quick add button for creating new items
+ *
  * ============================================================================
  */
 
 import * as React from 'react';
+import { useRouter } from 'next/navigation';
 import { Search, Plus, Bell, Menu } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils/cn';
+import { logger } from '@/lib/utils/logger';
 
 interface TopBarProps {
   /** Page title to display */
   title?: string;
   /** Callback to toggle mobile sidebar */
   onMenuClick?: () => void;
+  /** Optional callback for quick add button - defaults to navigating to /inbox */
+  onQuickAdd?: () => void;
 }
 
 /**
  * TopBar Component
  *
+ * Displays the top navigation bar with search, notifications, and quick add.
+ * The quick add button navigates to /inbox by default for quick task capture.
+ *
  * @example
- * <TopBar title="Dashboard" />
+ * <TopBar title="Dashboard" onMenuClick={() => setMobileOpen(true)} />
  */
-export function TopBar({ title = 'Dashboard', onMenuClick }: TopBarProps) {
+export function TopBar({ title = 'Dashboard', onMenuClick, onQuickAdd }: TopBarProps) {
+  const router = useRouter();
+
+  /**
+   * Handle quick add button click
+   * Uses custom handler if provided, otherwise navigates to inbox for quick capture
+   */
+  const handleQuickAdd = React.useCallback(() => {
+    if (onQuickAdd) {
+      onQuickAdd();
+    } else {
+      // Default behavior: navigate to inbox for quick task capture
+      logger.info('➕ Quick add clicked - navigating to inbox');
+      router.push('/inbox');
+    }
+  }, [onQuickAdd, router]);
+
+  /**
+   * Handle search click (mobile)
+   * For now, logs the action - can be expanded to open a search modal
+   */
+  const handleSearchClick = React.useCallback(() => {
+    logger.info('🔍 Search clicked');
+    // Future: open search modal or navigate to search page
+  }, []);
+
+  /**
+   * Handle notifications click
+   * For now, logs the action - can be expanded to open notifications panel
+   */
+  const handleNotificationsClick = React.useCallback(() => {
+    logger.info('🔔 Notifications clicked');
+    // Future: open notifications panel
+  }, []);
+
   return (
     <header className="flex h-16 items-center justify-between border-b border-neutral-200 bg-white px-4 lg:px-6">
       {/* ━━━━━ Left Side ━━━━━ */}
@@ -36,7 +84,8 @@ export function TopBar({ title = 'Dashboard', onMenuClick }: TopBarProps) {
         {/* Mobile menu button */}
         <button
           onClick={onMenuClick}
-          className="lg:hidden p-2 text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100 rounded-lg"
+          className="lg:hidden p-2 text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100 rounded-lg transition-colors"
+          aria-label="Open menu"
         >
           <Menu className="h-5 w-5" />
         </button>
@@ -67,19 +116,31 @@ export function TopBar({ title = 'Dashboard', onMenuClick }: TopBarProps) {
       {/* ━━━━━ Right Side: Actions ━━━━━ */}
       <div className="flex items-center gap-2">
         {/* Mobile search */}
-        <button className="md:hidden p-2 text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100 rounded-lg">
+        <button
+          onClick={handleSearchClick}
+          className="md:hidden p-2 text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100 rounded-lg transition-colors"
+          aria-label="Search"
+        >
           <Search className="h-5 w-5" />
         </button>
 
         {/* Notifications */}
-        <button className="relative p-2 text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100 rounded-lg">
+        <button
+          onClick={handleNotificationsClick}
+          className="relative p-2 text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100 rounded-lg transition-colors"
+          aria-label="View notifications"
+        >
           <Bell className="h-5 w-5" />
-          {/* Notification dot */}
+          {/* Notification dot - shows when there are unread notifications */}
           <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-red-500" />
         </button>
 
-        {/* Quick add button */}
-        <Button size="sm" leftIcon={<Plus className="h-4 w-4" />}>
+        {/* Quick add button - primary action */}
+        <Button
+          size="sm"
+          leftIcon={<Plus className="h-4 w-4" />}
+          onClick={handleQuickAdd}
+        >
           <span className="hidden sm:inline">Add</span>
         </Button>
       </div>

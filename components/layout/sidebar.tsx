@@ -8,6 +8,12 @@
  * The main navigation sidebar for the app.
  * Shows navigation items, family info, and user profile.
  *
+ * Features:
+ * - Main navigation with active state highlighting
+ * - Secondary navigation (Family, Settings)
+ * - User profile section with logout functionality
+ * - Responsive design (hidden on mobile, overlay when toggled)
+ *
  * ============================================================================
  */
 
@@ -29,6 +35,8 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
 import { Avatar } from '@/components/shared/avatar';
+import { useAuth } from '@/lib/hooks/use-auth';
+import { logger } from '@/lib/utils/logger';
 
 /**
  * Navigation item type
@@ -97,9 +105,38 @@ function NavLink({ item, isActive }: NavLinkProps) {
 
 /**
  * Sidebar Component
+ *
+ * Main navigation sidebar with:
+ * - App logo and branding
+ * - Main navigation items (Dashboard, Inbox, Today, Tasks, etc.)
+ * - Secondary navigation (Family, Settings)
+ * - User profile with logout button
  */
 export function Sidebar() {
   const pathname = usePathname();
+  const { familyMember, signOut, authState } = useAuth();
+
+  /**
+   * Handle user logout
+   * Logs the action and redirects to login page via signOut
+   */
+  const handleLogout = async () => {
+    logger.info('🚪 User initiated logout from sidebar');
+    try {
+      await signOut();
+      logger.success('✅ Logout successful');
+    } catch (error) {
+      logger.error('❌ Logout failed', { error: error instanceof Error ? error.message : 'Unknown error' });
+    }
+  };
+
+  // Get user display info from family member or fallback to defaults
+  const userName = familyMember?.name ?? 'User';
+  const userRole = familyMember?.role ?? 'adult';
+  const userColor = familyMember?.color ?? '#6366F1';
+
+  // Format role for display (capitalize first letter)
+  const displayRole = userRole.charAt(0).toUpperCase() + userRole.slice(1);
 
   return (
     <aside className="flex h-full w-64 flex-col border-r border-neutral-200 bg-white">
@@ -142,21 +179,24 @@ export function Sidebar() {
       <div className="border-t border-neutral-200 p-3">
         <div className="flex items-center gap-3 rounded-lg p-2 hover:bg-neutral-100">
           <Avatar
-            name="Hazel Q"
-            color="#6366F1"
+            name={userName}
+            color={userColor}
             size="md"
           />
           <div className="flex-1 min-w-0">
             <p className="text-sm font-medium text-neutral-900 truncate">
-              Hazel Q
+              {userName}
             </p>
             <p className="text-xs text-neutral-500 truncate">
-              Owner
+              {displayRole}
             </p>
           </div>
           <button
-            className="p-1.5 text-neutral-400 hover:text-neutral-600 rounded-lg hover:bg-neutral-200"
+            onClick={handleLogout}
+            disabled={authState === 'loading'}
+            className="p-1.5 text-neutral-400 hover:text-neutral-600 rounded-lg hover:bg-neutral-200 transition-colors disabled:opacity-50"
             title="Sign out"
+            aria-label="Sign out of your account"
           >
             <LogOut className="h-4 w-4" />
           </button>
