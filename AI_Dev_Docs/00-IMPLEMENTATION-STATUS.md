@@ -1,7 +1,7 @@
 # Fam — Implementation Status
 
 > **Last Updated:** December 2024
-> **Status:** MVP Phase 1.5 Complete
+> **Status:** MVP Phase 2 In Progress
 
 ---
 
@@ -11,12 +11,12 @@
 |------|--------|------------|
 | Database Schema | ✅ Complete | 100% |
 | Authentication (Magic Link) | ✅ Complete | 100% |
-| Core UI Components | ✅ Complete | ~35% |
+| Core UI Components | ✅ Complete | ~40% |
 | Tasks Feature | ✅ Complete | 90% |
 | Habits Feature | ✅ Complete | 85% |
-| Dashboard | ✅ Complete | 70% |
-| Goals Feature | ✅ Stub | 20% |
-| Projects Feature | ✅ Stub | 20% |
+| Dashboard | ✅ Complete | 85% |
+| Goals Feature | ✅ Hook Ready | 40% |
+| Projects Feature | ✅ Hook Ready | 40% |
 | Inbox Feature | ✅ Stub | 20% |
 | Today Feature | ✅ Stub | 20% |
 | Someday Feature | ✅ Stub | 20% |
@@ -99,7 +99,7 @@ Tables: families, family_members, tasks, subtasks, habits, habit_logs,
 - QuickAddModal, SearchModal, ConfirmDialog
 - Feature-specific components (TaskCard, HabitCard as standalone)
 
-### 4. Data Hooks (Tasks & Habits Complete)
+### 4. Data Hooks (Tasks, Habits, Goals, Projects Complete)
 
 **File:** `lib/hooks/use-tasks.ts`
 - ✅ `useTasks(filters)` - List with filtering
@@ -117,11 +117,33 @@ Tables: families, family_members, tasks, subtasks, habits, habit_logs,
 - ✅ `useLogHabit()` - Log done/skipped
 - ✅ `useCreateHabit()` - Create new habit
 
+**File:** `lib/hooks/use-goals.ts` *(NEW)*
+- ✅ `useGoals(filters)` - List with filtering (status, owner, family goals)
+- ✅ `useActiveGoals()` - Convenience hook for active goals
+- ✅ `useGoal(id)` - Single goal detail
+- ✅ `useCreateGoal()` - Create with toast
+- ✅ `useUpdateGoal()` - Update with cache
+- ✅ `useUpdateGoalProgress()` - Update quantitative progress
+- ✅ `useAchieveGoal()` - Mark goal as achieved
+- ✅ `useAbandonGoal()` - Mark goal as abandoned
+- ✅ `useDeleteGoal()` - Soft delete
+
+**File:** `lib/hooks/use-projects.ts` *(NEW)*
+- ✅ `useProjects(filters)` - List with filtering (status, owner)
+- ✅ `useActiveProjects()` - Convenience hook for active projects
+- ✅ `useProject(id)` - Single project detail
+- ✅ `useCreateProject()` - Create with toast
+- ✅ `useUpdateProject()` - Update with cache
+- ✅ `useChangeProjectStatus()` - Change status with appropriate toast
+- ✅ `useCompleteProject()` - Mark project as completed
+- ✅ `useDeleteProject()` - Soft delete
+- ✅ `usePromoteSomedayToProject()` - Promote a someday item to project
+
 ### 5. Pages
 
 | Page | Route | Status | Notes |
 |------|-------|--------|-------|
-| Dashboard | `/` | ✅ | Stats cards, task preview |
+| Dashboard | `/` | ✅ | Stats cards, task preview, **working navigation buttons** |
 | Tasks | `/tasks` | ✅ | List, filters, quick add |
 | Habits | `/habits` | ✅ | Today view, streaks |
 | Login | `/login` | ✅ | Magic link (passwordless) |
@@ -129,13 +151,13 @@ Tables: families, family_members, tasks, subtasks, habits, habit_logs,
 | Check Email | `/check-email` | ✅ | Confirmation after magic link |
 | Inbox | `/inbox` | ✅ Stub | Quick capture, processing actions |
 | Today | `/today` | ✅ Stub | Daily focus with meals, habits, tasks |
-| Goals | `/goals` | ✅ Stub | Goal tracking with progress bars |
-| Projects | `/projects` | ✅ Stub | Project cards with status/progress |
+| Goals | `/goals` | ✅ Hook Ready | Goal tracking with progress bars, **hook created** |
+| Projects | `/projects` | ✅ Hook Ready | Project cards with status/progress, **hook created** |
 | Someday | `/someday` | ✅ Stub | Wishlist for future ideas |
 | Family | `/family` | ✅ Stub | Family member management |
 | Settings | `/settings` | ✅ Stub | User and app preferences |
 
-> **Note:** "Stub" pages have UI scaffolding with mock data. They need database integration to become fully functional.
+> **Note:** "Stub" pages have UI scaffolding with mock data. "Hook Ready" pages have database hooks created but UI not yet connected.
 
 ---
 
@@ -175,13 +197,13 @@ npm run dev
    - Link user to family_members table
    - Redirect to dashboard
 
-2. **Connect Stub Pages to Database**
-   - Add `useGoals` hook and connect Goals page
-   - Add `useProjects` hook and connect Projects page
+2. **Connect Hook-Ready Pages to Database** *(Hooks created, UI needs connection)*
+   - ✅ ~~Add `useGoals` hook~~ → Connect Goals page UI to hook
+   - ✅ ~~Add `useProjects` hook~~ → Connect Projects page UI to hook
    - Add `useSomedayItems` hook and connect Someday page
    - Add `useFamilyMembers` hook and connect Family page
-   - Connect Inbox page to tasks with status='inbox'
-   - Connect Today page to real task/habit data
+   - Connect Inbox page to tasks with status='inbox' (uses existing `useInboxTasks`)
+   - Connect Today page to real task/habit data (uses existing hooks)
 
 3. **Task Detail Panel**
    - Slide-out panel
@@ -243,10 +265,12 @@ npm run dev
 
 1. **Query Key Factory** - Consistent cache keys
 2. **Optimistic Updates** - Instant UI feedback
-3. **Emoji Logging** - Friendly dev experience
+3. **Emoji Logging** - Friendly dev experience with debugging info
 4. **RLS-First** - Security at database level
-5. **Modular Hooks** - One hook file per entity
+5. **Modular Hooks** - One hook file per entity (tasks, habits, goals, projects)
 6. **Magic Link Auth** - Passwordless authentication
+7. **Navigation Handlers** - Consistent logging + routing pattern
+8. **JSDoc Comments** - Clear documentation for all hooks and components
 
 ---
 
@@ -281,7 +305,7 @@ fam_app/
 │   └── providers.tsx
 ├── lib/
 │   ├── supabase/               # 4 files (client, server, middleware, admin)
-│   ├── hooks/                  # 3 hooks (use-auth, use-tasks, use-habits)
+│   ├── hooks/                  # 5 hooks (use-auth, use-tasks, use-habits, use-goals, use-projects)
 │   ├── utils/                  # 2 utilities (cn, logger)
 │   ├── query-client.ts
 │   └── query-keys.ts
@@ -316,5 +340,6 @@ Keep files under 400 lines. Extract components when they grow.
 | 1.1 | 2024-12-23 | Claude | Added implementation status section |
 | 1.2 | 2024-12-23 | Claude | Updated auth to magic link, added check-email page |
 | 1.3 | 2024-12-25 | Claude | Added 7 stub pages (inbox, today, goals, projects, someday, family, settings) |
+| 1.4 | 2024-12-25 | Claude | Added useGoals and useProjects hooks, fixed navigation buttons |
 
 *This document is auto-generated. See individual docs for detailed specs.*

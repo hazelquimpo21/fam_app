@@ -172,7 +172,9 @@ fam_app/
 │   ├── 📁 hooks/               # Custom React hooks
 │   │   ├── use-auth.ts         # Authentication hook
 │   │   ├── use-tasks.ts        # Tasks CRUD hooks
-│   │   └── use-habits.ts       # Habits CRUD hooks
+│   │   ├── use-habits.ts       # Habits CRUD hooks
+│   │   ├── use-goals.ts        # Goals CRUD hooks (NEW)
+│   │   └── use-projects.ts     # Projects CRUD hooks (NEW)
 │   ├── 📁 utils/               # Utility functions
 │   │   ├── cn.ts               # Class name utility
 │   │   └── logger.ts           # Logging utility
@@ -527,20 +529,20 @@ logger.warn('Rate limit approaching') // ⚠️ [12:34:56] Rate limit approachin
 |---------|--------|-------|
 | Database Schema | ✅ Complete | 17 tables with RLS |
 | Magic Link Auth | ✅ Complete | Passwordless login |
-| Dashboard | ✅ Complete | Stats, previews |
+| Dashboard | ✅ Complete | Stats, previews, **navigation buttons working** |
 | Tasks | ✅ Complete | Full CRUD, filters |
 | Habits | ✅ Complete | Streaks, logging |
-| Inbox | ✅ Stub | UI ready, needs DB hook |
-| Today | ✅ Stub | UI ready, needs DB hook |
-| Goals | ✅ Stub | UI ready, needs DB hook |
-| Projects | ✅ Stub | UI ready, needs DB hook |
+| Inbox | ✅ Stub | UI ready, needs DB hook connection |
+| Today | ✅ Stub | UI ready, needs DB hook connection |
+| Goals | ✅ Hook Ready | UI ready, **hook created** |
+| Projects | ✅ Hook Ready | UI ready, **hook created** |
 | Someday | ✅ Stub | UI ready, needs DB hook |
 | Family | ✅ Stub | UI ready, needs DB hook |
 | Settings | ✅ Stub | UI ready, needs DB hook |
 | Meals | 🔨 Pending | Not started |
 | Calendar | 🔨 Pending | Not started |
 
-> **"Stub" pages** have complete UI scaffolding with mock data. They need database hooks to become fully functional.
+> **"Stub" pages** have complete UI scaffolding with mock data. **"Hook Ready"** pages have database hooks created but UI not yet connected.
 
 See `AI_Dev_Docs/00-IMPLEMENTATION-STATUS.md` for detailed status.
 

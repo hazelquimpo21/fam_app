@@ -855,12 +855,32 @@ export const queryClient = new QueryClient({
 | `useHabitLogs` | ✅ | ✅ | `lib/hooks/use-habits.ts` | Date range query |
 | `useLogHabit` | ✅ | ✅ | `lib/hooks/use-habits.ts` | Optimistic update |
 | `useCreateHabit` | ✅ | ✅ | `lib/hooks/use-habits.ts` | With toast |
+| **Goals** |
+| `useGoals` | ✅ | ✅ | `lib/hooks/use-goals.ts` | With filters (status, owner, isFamilyGoal) |
+| `useActiveGoals` | ✅ | ✅ | `lib/hooks/use-goals.ts` | Convenience hook |
+| `useGoal` | ✅ | ✅ | `lib/hooks/use-goals.ts` | Single goal detail |
+| `useCreateGoal` | ✅ | ✅ | `lib/hooks/use-goals.ts` | With toast |
+| `useUpdateGoal` | ✅ | ✅ | `lib/hooks/use-goals.ts` | Cache update |
+| `useUpdateGoalProgress` | ✅ | ✅ | `lib/hooks/use-goals.ts` | For quantitative goals |
+| `useAchieveGoal` | ✅ | ✅ | `lib/hooks/use-goals.ts` | Mark achieved |
+| `useAbandonGoal` | ✅ | ✅ | `lib/hooks/use-goals.ts` | Mark abandoned |
+| `useDeleteGoal` | ✅ | ✅ | `lib/hooks/use-goals.ts` | Soft delete |
+| **Projects** |
+| `useProjects` | ✅ | ✅ | `lib/hooks/use-projects.ts` | With filters (status, owner) |
+| `useActiveProjects` | ✅ | ✅ | `lib/hooks/use-projects.ts` | Convenience hook |
+| `useProject` | ✅ | ✅ | `lib/hooks/use-projects.ts` | Single project detail |
+| `useCreateProject` | ✅ | ✅ | `lib/hooks/use-projects.ts` | With toast |
+| `useUpdateProject` | ✅ | ✅ | `lib/hooks/use-projects.ts` | Cache update |
+| `useChangeProjectStatus` | ✅ | ✅ | `lib/hooks/use-projects.ts` | Status transitions |
+| `useCompleteProject` | ✅ | ✅ | `lib/hooks/use-projects.ts` | Mark completed |
+| `useDeleteProject` | ✅ | ✅ | `lib/hooks/use-projects.ts` | Soft delete |
+| `usePromoteSomedayToProject` | ✅ | ✅ | `lib/hooks/use-projects.ts` | Someday → Project |
 | **Auth** |
 | `useAuth` | ✅ | ✅ | `lib/hooks/use-auth.ts` | Magic link auth |
 | **Other** |
-| `useGoals` | ✅ | 🔨 | - | Not yet built |
-| `useProjects` | ✅ | 🔨 | - | Not yet built |
 | `useFamilyDashboard` | ✅ | 🔨 | - | Not yet built |
+| `useFamilyMembers` | ✅ | 🔨 | - | Not yet built |
+| `useSomedayItems` | ✅ | 🔨 | - | Not yet built |
 | Real-time subscriptions | ✅ | 🔨 | - | Not yet built |
 
 ### Patterns Implemented
@@ -881,9 +901,11 @@ lib/
 ├── query-client.ts         # ✅ TanStack Query configuration
 ├── query-keys.ts           # ✅ Query key factory
 ├── hooks/
-│   ├── use-auth.ts         # ✅ Auth state & methods
+│   ├── use-auth.ts         # ✅ Auth state & methods (magic link)
 │   ├── use-tasks.ts        # ✅ Full CRUD + optimistic updates
-│   └── use-habits.ts       # ✅ Full CRUD + streak tracking
+│   ├── use-habits.ts       # ✅ Full CRUD + streak tracking
+│   ├── use-goals.ts        # ✅ Full CRUD + progress tracking (NEW)
+│   └── use-projects.ts     # ✅ Full CRUD + status management (NEW)
 └── supabase/
     ├── client.ts           # ✅ Browser client
     ├── server.ts           # ✅ Server component client
@@ -893,12 +915,13 @@ lib/
 ### Next Steps
 
 1. **High Priority:**
-   - Add `useGoals` hook
-   - Add `useProjects` hook
+   - ✅ ~~Add `useGoals` hook~~ (Done!)
+   - ✅ ~~Add `useProjects` hook~~ (Done!)
    - Implement real-time subscriptions for tasks/habits
 
 2. **Medium Priority:**
    - Add `useFamilyMembers` hook
+   - Add `useSomedayItems` hook
    - Add `useFamilyDashboard` for aggregated data
    - Add optimistic updates to more mutations
 
@@ -916,3 +939,4 @@ lib/
 | 1.0 | 2024-12-23 | Hazel + Claude | Initial API patterns |
 | 1.1 | 2024-12-23 | Claude | Added implementation status |
 | 1.2 | 2024-12-23 | Claude | Updated auth hook docs for magic link |
+| 1.3 | 2024-12-25 | Claude | Added useGoals and useProjects hooks documentation |

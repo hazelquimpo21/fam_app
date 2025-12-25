@@ -13,10 +13,18 @@
  *
  * Route: /
  *
+ * Features:
+ * - Quick stats cards for tasks, habits, goals, and wins
+ * - Task list with completion toggling
+ * - Habit tracking with streak badges
+ * - Goal progress visualization
+ * - Navigation to detailed views via "View all" buttons
+ *
  * ============================================================================
  */
 
-import { useEffect } from 'react';
+import { useEffect, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import {
   CheckSquare,
   Repeat,
@@ -98,16 +106,51 @@ function StatsCard({ title, value, subtitle, icon, trend }: StatsCardProps) {
 
 /**
  * Dashboard Page Component
+ *
+ * Main entry point for authenticated users.
+ * Shows overview of tasks, habits, and goals with quick actions.
  */
 export default function DashboardPage() {
-  // Log page load
+  const router = useRouter();
+
+  // Log page load for debugging
   useEffect(() => {
-    logger.info('Dashboard loaded');
+    logger.info('📊 Dashboard loaded');
     logger.divider('Today\'s Overview');
   }, []);
 
+  // Calculate completion stats
   const completedCount = mockTodayTasks.filter(t => t.completed).length;
   const habitsCompletedCount = mockHabits.filter(h => h.completedToday).length;
+
+  /**
+   * Navigation handlers
+   * These provide clear logging and navigation to different sections
+   */
+  const handleNavigateToTasks = useCallback(() => {
+    logger.info('🔗 Navigating to tasks page');
+    router.push('/tasks');
+  }, [router]);
+
+  const handleNavigateToGoals = useCallback(() => {
+    logger.info('🔗 Navigating to goals page');
+    router.push('/goals');
+  }, [router]);
+
+  const handleNavigateToHabits = useCallback(() => {
+    logger.info('🔗 Navigating to habits page');
+    router.push('/habits');
+  }, [router]);
+
+  /**
+   * Quick add handlers
+   * Navigate to the respective page with intent to add new item
+   * In the future, these could open a modal instead
+   */
+  const handleAddTask = useCallback(() => {
+    logger.info('➕ Add task clicked - navigating to tasks');
+    router.push('/tasks');
+  }, [router]);
 
   return (
     <div className="space-y-6">
@@ -150,7 +193,12 @@ export default function DashboardPage() {
               <CheckSquare className="h-5 w-5 text-indigo-600" />
               Today's Tasks
             </CardTitle>
-            <Button size="sm" variant="ghost" leftIcon={<Plus className="h-4 w-4" />}>
+            <Button
+              size="sm"
+              variant="ghost"
+              leftIcon={<Plus className="h-4 w-4" />}
+              onClick={handleAddTask}
+            >
               Add
             </Button>
           </CardHeader>
@@ -159,7 +207,7 @@ export default function DashboardPage() {
               <EmptyState
                 title="Nothing scheduled for today"
                 description="Enjoy the free time or add something new!"
-                action={{ label: 'Add Task', onClick: () => {} }}
+                action={{ label: 'Add Task', onClick: handleAddTask }}
               />
             ) : (
               <>
@@ -195,6 +243,7 @@ export default function DashboardPage() {
                   variant="ghost"
                   className="w-full"
                   rightIcon={<ArrowRight className="h-4 w-4" />}
+                  onClick={handleNavigateToTasks}
                 >
                   View all tasks
                 </Button>
@@ -246,7 +295,12 @@ export default function DashboardPage() {
               <Target className="h-5 w-5 text-purple-600" />
               Goals Progress
             </CardTitle>
-            <Button size="sm" variant="ghost" rightIcon={<ArrowRight className="h-4 w-4" />}>
+            <Button
+              size="sm"
+              variant="ghost"
+              rightIcon={<ArrowRight className="h-4 w-4" />}
+              onClick={handleNavigateToGoals}
+            >
               View all
             </Button>
           </CardHeader>
