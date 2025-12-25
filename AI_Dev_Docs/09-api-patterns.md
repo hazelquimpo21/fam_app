@@ -875,12 +875,28 @@ export const queryClient = new QueryClient({
 | `useCompleteProject` | ✅ | ✅ | `lib/hooks/use-projects.ts` | Mark completed |
 | `useDeleteProject` | ✅ | ✅ | `lib/hooks/use-projects.ts` | Soft delete |
 | `usePromoteSomedayToProject` | ✅ | ✅ | `lib/hooks/use-projects.ts` | Someday → Project |
+| **Someday** |
+| `useSomedayItems` | ✅ | ✅ | `lib/hooks/use-someday.ts` | With category filters |
+| `useActiveSomedayItems` | ✅ | ✅ | `lib/hooks/use-someday.ts` | Non-archived items |
+| `useSomedayItem` | ✅ | ✅ | `lib/hooks/use-someday.ts` | Single item detail |
+| `useCreateSomedayItem` | ✅ | ✅ | `lib/hooks/use-someday.ts` | With toast |
+| `useUpdateSomedayItem` | ✅ | ✅ | `lib/hooks/use-someday.ts` | Cache update |
+| `useArchiveSomedayItem` | ✅ | ✅ | `lib/hooks/use-someday.ts` | Archive item |
+| `useDeleteSomedayItem` | ✅ | ✅ | `lib/hooks/use-someday.ts` | Soft delete + optimistic |
+| **Family** |
+| `useFamilyMembers` | ✅ | ✅ | `lib/hooks/use-family.ts` | All family members |
+| `useFamilyMember` | ✅ | ✅ | `lib/hooks/use-family.ts` | Single member detail |
+| `useCurrentFamilyMember` | ✅ | ✅ | `lib/hooks/use-family.ts` | Current user's record |
+| `useFamilyInvites` | ✅ | ✅ | `lib/hooks/use-family.ts` | Pending invites |
+| `useCreateFamilyMember` | ✅ | ✅ | `lib/hooks/use-family.ts` | Add member (for kids) |
+| `useUpdateFamilyMember` | ✅ | ✅ | `lib/hooks/use-family.ts` | Update profile |
+| `useCreateFamilyInvite` | ✅ | ✅ | `lib/hooks/use-family.ts` | Send invite |
+| `useResendInvite` | ✅ | ✅ | `lib/hooks/use-family.ts` | Resend invite |
+| `useCancelInvite` | ✅ | ✅ | `lib/hooks/use-family.ts` | Cancel invite |
 | **Auth** |
 | `useAuth` | ✅ | ✅ | `lib/hooks/use-auth.ts` | Magic link auth |
 | **Other** |
-| `useFamilyDashboard` | ✅ | 🔨 | - | Not yet built |
-| `useFamilyMembers` | ✅ | 🔨 | - | Not yet built |
-| `useSomedayItems` | ✅ | 🔨 | - | Not yet built |
+| `useFamilyDashboard` | ✅ | 🔨 | - | Aggregated data pending |
 | Real-time subscriptions | ✅ | 🔨 | - | Not yet built |
 
 ### Patterns Implemented
@@ -899,13 +915,15 @@ export const queryClient = new QueryClient({
 ```
 lib/
 ├── query-client.ts         # ✅ TanStack Query configuration
-├── query-keys.ts           # ✅ Query key factory
+├── query-keys.ts           # ✅ Query key factory (with someday, family keys)
 ├── hooks/
 │   ├── use-auth.ts         # ✅ Auth state & methods (magic link)
-│   ├── use-tasks.ts        # ✅ Full CRUD + optimistic updates
+│   ├── use-tasks.ts        # ✅ Full CRUD + inbox/today/overdue queries
 │   ├── use-habits.ts       # ✅ Full CRUD + streak tracking
-│   ├── use-goals.ts        # ✅ Full CRUD + progress tracking (NEW)
-│   └── use-projects.ts     # ✅ Full CRUD + status management (NEW)
+│   ├── use-goals.ts        # ✅ Full CRUD + progress tracking
+│   ├── use-projects.ts     # ✅ Full CRUD + status management
+│   ├── use-someday.ts      # ✅ Full CRUD + category filtering
+│   └── use-family.ts       # ✅ Full CRUD + invites management
 └── supabase/
     ├── client.ts           # ✅ Browser client
     ├── server.ts           # ✅ Server component client
@@ -917,11 +935,11 @@ lib/
 1. **High Priority:**
    - ✅ ~~Add `useGoals` hook~~ (Done!)
    - ✅ ~~Add `useProjects` hook~~ (Done!)
+   - ✅ ~~Add `useSomedayItems` hook~~ (Done!)
+   - ✅ ~~Add `useFamilyMembers` hook~~ (Done!)
    - Implement real-time subscriptions for tasks/habits
 
 2. **Medium Priority:**
-   - Add `useFamilyMembers` hook
-   - Add `useSomedayItems` hook
    - Add `useFamilyDashboard` for aggregated data
    - Add optimistic updates to more mutations
 
@@ -940,3 +958,4 @@ lib/
 | 1.1 | 2024-12-23 | Claude | Added implementation status |
 | 1.2 | 2024-12-23 | Claude | Updated auth hook docs for magic link |
 | 1.3 | 2024-12-25 | Claude | Added useGoals and useProjects hooks documentation |
+| 1.4 | 2024-12-25 | Claude | Added useSomeday and useFamily hooks (ALL hooks complete!) |

@@ -922,22 +922,22 @@ Stack cards vertically:
 | G5: Search Modal | Global | 🔨 Pending | Not yet implemented |
 | Screen 1: Family Dashboard | `/` | ✅ Complete | Stats cards, preview |
 | Screen 2: Personal Dashboard | `/me` | 🔨 Pending | Not yet implemented |
-| Screen 3: Inbox | `/inbox` | ✅ Stub | UI with mock data |
-| Screen 4: Today | `/today` | ✅ Stub | UI with mock data |
+| Screen 3: Inbox | `/inbox` | ✅ **Connected** | Quick capture, processing actions |
+| Screen 4: Today | `/today` | ✅ **Connected** | Daily focus with habits, overdue, tasks |
 | Screen 5: Tasks List | `/tasks` | ✅ Complete | Full functionality |
 | Screen 6: Tasks Kanban | `/tasks?view=kanban` | 🔨 Pending | View toggle pending |
 | Screen 7: Task Detail | Side panel | 🔨 Pending | Not yet implemented |
 | Screen 8: Calendar | `/calendar` | 🔨 Pending | Not yet implemented |
 | Screen 9: Habits | `/habits` | ✅ Complete | Full functionality |
-| Screen 10: Goals | `/goals` | ✅ Stub | UI with mock data |
-| Screen 11: Projects List | `/projects` | ✅ Stub | UI with mock data |
+| Screen 10: Goals | `/goals` | ✅ **Connected** | Goal tracking with progress bars |
+| Screen 11: Projects List | `/projects` | ✅ **Connected** | Status filtering, project cards |
 | Screen 12: Project Detail | `/projects/[id]` | 🔨 Pending | Not yet implemented |
 | Screen 13: Family Meeting | `/meeting` | 🔨 Pending | Not yet implemented |
-| Someday | `/someday` | ✅ Stub | UI with mock data |
-| Family | `/family` | ✅ Stub | UI with mock data |
+| Someday | `/someday` | ✅ **Connected** | Category tabs, promote to project |
+| Family | `/family` | ✅ **Connected** | Members list, pending invites |
 | Settings | `/settings` | ✅ Stub | UI with mock data |
 
-> **Note:** "Stub" screens have complete UI scaffolding with mock data. They need database hooks to become fully functional.
+> **Note:** **"Connected"** screens are fully wired to Supabase with React Query hooks. "Stub" screens have UI scaffolding with mock data.
 
 ---
 
@@ -948,3 +948,4 @@ Stack cards vertically:
 | 1.0 | 2024-12-23 | Hazel + Claude | Initial screens |
 | 1.1 | 2024-12-23 | Claude | Auth screens updated to magic link (passwordless) |
 | 1.2 | 2024-12-25 | Claude | Added implementation status section |
+| 1.3 | 2024-12-25 | Claude | All core screens now connected to database |

@@ -171,10 +171,12 @@ fam_app/
 │   │   └── middleware.ts       # Middleware client
 │   ├── 📁 hooks/               # Custom React hooks
 │   │   ├── use-auth.ts         # Authentication hook
-│   │   ├── use-tasks.ts        # Tasks CRUD hooks
+│   │   ├── use-tasks.ts        # Tasks CRUD hooks (inbox, today, overdue)
 │   │   ├── use-habits.ts       # Habits CRUD hooks
-│   │   ├── use-goals.ts        # Goals CRUD hooks (NEW)
-│   │   └── use-projects.ts     # Projects CRUD hooks (NEW)
+│   │   ├── use-goals.ts        # Goals CRUD hooks
+│   │   ├── use-projects.ts     # Projects CRUD hooks
+│   │   ├── use-someday.ts      # Someday items CRUD hooks
+│   │   └── use-family.ts       # Family members & invites hooks
 │   ├── 📁 utils/               # Utility functions
 │   │   ├── cn.ts               # Class name utility
 │   │   └── logger.ts           # Logging utility
@@ -529,20 +531,20 @@ logger.warn('Rate limit approaching') // ⚠️ [12:34:56] Rate limit approachin
 |---------|--------|-------|
 | Database Schema | ✅ Complete | 17 tables with RLS |
 | Magic Link Auth | ✅ Complete | Passwordless login |
-| Dashboard | ✅ Complete | Stats, previews, **navigation buttons working** |
+| Dashboard | ✅ Complete | Stats, previews, navigation buttons working |
 | Tasks | ✅ Complete | Full CRUD, filters |
 | Habits | ✅ Complete | Streaks, logging |
-| Inbox | ✅ Stub | UI ready, needs DB hook connection |
-| Today | ✅ Stub | UI ready, needs DB hook connection |
-| Goals | ✅ Hook Ready | UI ready, **hook created** |
-| Projects | ✅ Hook Ready | UI ready, **hook created** |
-| Someday | ✅ Stub | UI ready, needs DB hook |
-| Family | ✅ Stub | UI ready, needs DB hook |
-| Settings | ✅ Stub | UI ready, needs DB hook |
+| Inbox | ✅ **Connected** | Quick capture, processing to tasks/projects/someday |
+| Today | ✅ **Connected** | Daily focus with habits, overdue, today's tasks |
+| Goals | ✅ **Connected** | Goal tracking with progress bars, family/personal grouping |
+| Projects | ✅ **Connected** | Project cards with status filtering |
+| Someday | ✅ **Connected** | Wishlist with categories, promote to project |
+| Family | ✅ **Connected** | Family member list, pending invites |
+| Settings | ✅ Stub | UI ready, needs preferences |
 | Meals | 🔨 Pending | Not started |
 | Calendar | 🔨 Pending | Not started |
 
-> **"Stub" pages** have complete UI scaffolding with mock data. **"Hook Ready"** pages have database hooks created but UI not yet connected.
+> **All core pages are now connected to the Supabase database** with React Query hooks for caching and real-time updates.
 
 See `AI_Dev_Docs/00-IMPLEMENTATION-STATUS.md` for detailed status.
 

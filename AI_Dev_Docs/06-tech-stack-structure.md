@@ -721,12 +721,12 @@ fam_app/                       # ✅ Implemented
 │   │   ├── page.tsx          # ✅ Dashboard
 │   │   ├── tasks/            # ✅ Full feature
 │   │   ├── habits/           # ✅ Full feature
-│   │   ├── inbox/            # ✅ Stub page
-│   │   ├── today/            # ✅ Stub page
-│   │   ├── goals/            # ✅ Stub page
-│   │   ├── projects/         # ✅ Stub page
-│   │   ├── someday/          # ✅ Stub page
-│   │   ├── family/           # ✅ Stub page
+│   │   ├── inbox/            # ✅ Connected to DB
+│   │   ├── today/            # ✅ Connected to DB
+│   │   ├── goals/            # ✅ Connected to DB
+│   │   ├── projects/         # ✅ Connected to DB
+│   │   ├── someday/          # ✅ Connected to DB
+│   │   ├── family/           # ✅ Connected to DB
 │   │   └── settings/         # ✅ Stub page
 │   ├── auth/callback/        # ✅
 │   ├── layout.tsx            # ✅
@@ -754,10 +754,14 @@ fam_app/                       # ✅ Implemented
 │   │   ├── client.ts         # ✅ Browser client
 │   │   ├── server.ts         # ✅ Server client
 │   │   └── middleware.ts     # ✅
-│   ├── hooks/                # ✅
+│   ├── hooks/                # ✅ 7 hooks
 │   │   ├── use-auth.ts       # ✅ Auth state
-│   │   ├── use-tasks.ts      # ✅ Full CRUD
-│   │   └── use-habits.ts     # ✅ Full CRUD
+│   │   ├── use-tasks.ts      # ✅ Full CRUD + inbox/today/overdue
+│   │   ├── use-habits.ts     # ✅ Full CRUD
+│   │   ├── use-goals.ts      # ✅ Full CRUD
+│   │   ├── use-projects.ts   # ✅ Full CRUD
+│   │   ├── use-someday.ts    # ✅ Full CRUD
+│   │   └── use-family.ts     # ✅ Full CRUD + invites
 │   ├── utils/                # ✅
 │   │   ├── cn.ts             # ✅
 │   │   └── logger.ts         # ✅
@@ -796,3 +800,4 @@ fam_app/                       # ✅ Implemented
 | 1.1 | 2024-12-23 | Claude | Added implementation status |
 | 1.2 | 2024-12-23 | Claude | Updated auth to magic link (passwordless) |
 | 1.3 | 2024-12-25 | Claude | Added 7 stub pages, updated project structure |
+| 1.4 | 2024-12-25 | Claude | All pages now connected to database (7 hooks total) |
