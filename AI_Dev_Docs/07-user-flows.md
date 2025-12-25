@@ -6,7 +6,9 @@ This document maps the key multi-step user journeys in Fam. Each flow shows deci
 
 ---
 
-## Flow 1: New User Onboarding
+## Flow 1: New User Onboarding ✅ IMPLEMENTED
+
+> **Implementation:** `app/(app)/onboarding/page.tsx`, `lib/hooks/use-family-context.ts`
 
 **Goal:** Get a new user from signup to a populated family dashboard.
 
@@ -672,3 +674,4 @@ This document maps the key multi-step user journeys in Fam. Each flow shows deci
 |---------|------|--------|---------|
 | 1.0 | 2024-12-23 | Hazel + Claude | Initial user flows |
 | 1.1 | 2024-12-23 | Claude | Updated for magic link (passwordless) auth |
+| 1.2 | 2024-12-25 | Claude | Marked onboarding flow as implemented |

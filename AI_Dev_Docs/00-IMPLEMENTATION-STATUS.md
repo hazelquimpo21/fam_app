@@ -1,7 +1,7 @@
 # Fam - Implementation Status
 
 > **Last Updated:** December 2024
-> **Status:** MVP Phase 2 Complete - All Core Pages Wired to Database
+> **Status:** MVP Phase 2.5 Complete - Onboarding Flow Added
 
 ---
 
@@ -11,6 +11,7 @@
 |------|--------|------------|
 | Database Schema | ✅ Complete | 100% |
 | Authentication (Magic Link) | ✅ Complete | 100% |
+| **Onboarding Flow** | ✅ **Complete** | 100% |
 | Core UI Components | ✅ Complete | ~40% |
 | Tasks Feature | ✅ Complete | 95% |
 | Habits Feature | ✅ Complete | 90% |
@@ -67,7 +68,28 @@ Tables: families, family_members, tasks, subtasks, habits, habit_logs,
 - ✅ Protected routes
 - ✅ Auth state hook with `sendMagicLink` method
 
-### 3. UI Components (~40% Complete)
+### 3. Onboarding Flow (100% Complete) *(NEW)*
+
+**Files:**
+- `app/(app)/onboarding/page.tsx` - Family setup page
+- `lib/hooks/use-family-context.ts` - Family context provider for mutations
+- `app/(app)/layout.tsx` - Redirect logic for users without family
+
+**Features:**
+- ✅ Creates family and family_member records for new users
+- ✅ Collects family name, display name, and profile color
+- ✅ Automatic redirect from protected routes to onboarding
+- ✅ Links auth user to family_member via auth_user_id
+- ✅ Family context hook provides family_id/member_id for all mutations
+
+**How It Works:**
+1. User authenticates via magic link
+2. If no `family_member` record exists, user is redirected to `/onboarding`
+3. User enters family name, their name, and picks a color
+4. System creates `families` and `family_members` records
+5. User is redirected to dashboard with full access
+
+### 4. UI Components (~40% Complete)
 
 **Built (11 components):**
 
@@ -91,7 +113,10 @@ Tables: families, family_members, tasks, subtasks, habits, habit_logs,
 - QuickAddModal, SearchModal, ConfirmDialog
 - Feature-specific components (TaskCard, HabitCard as standalone)
 
-### 4. Data Hooks (All Core Entities Complete)
+### 5. Data Hooks (All Core Entities Complete)
+
+**File:** `lib/hooks/use-family-context.ts` *(NEW)*
+- ✅ `useFamilyContext()` - Provides family_id and member_id for mutations
 
 **File:** `lib/hooks/use-tasks.ts`
 - ✅ `useTasks(filters)` - List with filtering
@@ -152,7 +177,7 @@ Tables: families, family_members, tasks, subtasks, habits, habit_logs,
 - ✅ `useResendInvite()` - Resend invite
 - ✅ `useCancelInvite()` - Cancel invite
 
-### 5. Pages (All Core Pages Wired to Database)
+### 6. Pages (All Core Pages Wired to Database)
 
 | Page | Route | Status | Notes |
 |------|-------|--------|-------|
@@ -162,6 +187,7 @@ Tables: families, family_members, tasks, subtasks, habits, habit_logs,
 | Login | `/login` | ✅ | Magic link (passwordless) |
 | Signup | `/signup` | ✅ | Magic link (passwordless) |
 | Check Email | `/check-email` | ✅ | Confirmation after magic link |
+| **Onboarding** | `/onboarding` | ✅ **NEW** | Family setup for new users |
 | Inbox | `/inbox` | ✅ **Connected** | Quick capture, processing actions, connected to DB |
 | Today | `/today` | ✅ **Connected** | Daily focus with habits, overdue, today's tasks |
 | Goals | `/goals` | ✅ **Connected** | Goal tracking with progress bars, grouped by owner |
@@ -201,12 +227,14 @@ npm run dev
 
 ## Next Steps (Priority Order)
 
-### Phase 2.5 (High Priority)
+### Phase 2.5 (High Priority) - ✅ COMPLETE
 
-1. **Onboarding Flow**
-   - Create family on signup
-   - Link user to family_members table
-   - Redirect to dashboard
+1. ~~**Onboarding Flow**~~ ✅ DONE
+   - ~~Create family on signup~~
+   - ~~Link user to family_members table~~
+   - ~~Redirect to dashboard~~
+
+### Phase 3 (High Priority)
 
 2. **Create/Edit Modals**
    - Task creation modal
@@ -225,7 +253,7 @@ npm run dev
    - Select dropdown
    - FamilyMemberPicker
 
-### Phase 3 (Medium Priority)
+### Phase 4 (Medium Priority)
 
 5. **Real-time Updates**
    - Supabase subscriptions
@@ -236,7 +264,7 @@ npm run dev
    - Theme switching (light/dark)
    - Notification preferences
 
-### Phase 4 (Lower Priority)
+### Phase 5 (Lower Priority)
 
 7. **Meals & Recipes**
    - Recipe library
@@ -291,8 +319,9 @@ npm run dev
 fam_app/
 ├── app/
 │   ├── (app)/
-│   │   ├── layout.tsx          # App shell with sidebar
+│   │   ├── layout.tsx          # App shell with sidebar + onboarding redirect
 │   │   ├── page.tsx            # Dashboard
+│   │   ├── onboarding/page.tsx # Family setup for new users (NEW)
 │   │   ├── tasks/page.tsx      # Tasks list
 │   │   ├── habits/page.tsx     # Habits with streaks
 │   │   ├── inbox/page.tsx      # Quick capture (connected to DB)
@@ -316,7 +345,7 @@ fam_app/
 │   └── providers.tsx
 ├── lib/
 │   ├── supabase/               # 4 files (client, server, middleware, admin)
-│   ├── hooks/                  # 7 hooks (auth, tasks, habits, goals, projects, someday, family)
+│   ├── hooks/                  # 8 hooks (auth, family-context, tasks, habits, goals, projects, someday, family)
 │   ├── utils/                  # 2 utilities (cn, logger)
 │   ├── query-client.ts
 │   └── query-keys.ts
@@ -354,5 +383,6 @@ Keep files under 400 lines. Extract components when they grow.
 | 1.4 | 2024-12-25 | Claude | Added useGoals and useProjects hooks |
 | 1.5 | 2024-12-25 | Claude | Connected ALL pages to database (inbox, today, goals, projects, someday, family) |
 | 1.6 | 2024-12-25 | Claude | Wired dashboard to real data (tasks, habits, goals with live updates) |
+| 1.7 | 2024-12-25 | Claude | Added onboarding flow, family context hook, fixed task creation with family_id |
 
 *This document is auto-generated. See individual docs for detailed specs.*

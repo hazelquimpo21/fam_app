@@ -146,6 +146,7 @@ fam_app/
 │   │   ├── 📁 projects/        # Project management ✅ Connected
 │   │   ├── 📁 someday/         # Wishlist ideas ✅ Connected
 │   │   ├── 📁 family/          # Family members ✅ Connected
+│   │   ├── 📁 onboarding/      # Family setup for new users ✅ NEW
 │   │   └── 📁 settings/        # User preferences (stub)
 │   │
 │   ├── 📁 (auth)/              # Public auth routes
@@ -171,6 +172,7 @@ fam_app/
 │   │   └── middleware.ts       # Middleware client
 │   ├── 📁 hooks/               # Custom React hooks
 │   │   ├── use-auth.ts         # Authentication hook
+│   │   ├── use-family-context.ts # Family ID provider for mutations (NEW)
 │   │   ├── use-tasks.ts        # Tasks CRUD hooks (inbox, today, overdue)
 │   │   ├── use-habits.ts       # Habits CRUD hooks
 │   │   ├── use-goals.ts        # Goals CRUD hooks
@@ -296,7 +298,15 @@ Fam uses **passwordless magic link authentication** for better UX and security.
 │  5. /auth/callback exchanges code for session               │
 │                    │                                        │
 │                    ▼                                        │
-│  6. Redirect to / (dashboard)                               │
+│  6. Check for family_member record                          │
+│                    │                                        │
+│           ┌───────┴───────┐                                 │
+│           │               │                                 │
+│      Has family     No family                               │
+│           │               │                                 │
+│           ▼               ▼                                 │
+│  7a. Redirect to /   7b. Redirect to /onboarding            │
+│     (dashboard)         (create family)                     │
 │                                                             │
 └────────────────────────────────────────────────────────────┘
 ```
@@ -305,10 +315,12 @@ Fam uses **passwordless magic link authentication** for better UX and security.
 
 - `middleware.ts` - Protects routes, handles session refresh
 - `lib/hooks/use-auth.ts` - Auth state with `sendMagicLink` method
+- `lib/hooks/use-family-context.ts` - Provides family_id for mutations
 - `app/(auth)/login/page.tsx` - Magic link login
 - `app/(auth)/signup/page.tsx` - Magic link signup
 - `app/(auth)/check-email/page.tsx` - Email confirmation screen
 - `app/auth/callback/route.ts` - Magic link callback handler
+- `app/(app)/onboarding/page.tsx` - Family setup for new users
 
 ---
 
@@ -531,6 +543,7 @@ logger.warn('Rate limit approaching') // ⚠️ [12:34:56] Rate limit approachin
 |---------|--------|-------|
 | Database Schema | ✅ Complete | 17 tables with RLS |
 | Magic Link Auth | ✅ Complete | Passwordless login |
+| **Onboarding** | ✅ **Complete** | Family setup for new users |
 | Dashboard | ✅ **Connected** | Real-time stats, tasks, habits, goals from database |
 | Tasks | ✅ Complete | Full CRUD, filters |
 | Habits | ✅ Complete | Streaks, logging |

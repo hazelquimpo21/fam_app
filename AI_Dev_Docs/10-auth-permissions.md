@@ -4,6 +4,8 @@
 
 This document defines authentication flows, role-based access control, and Row Level Security (RLS) policies for Fam.
 
+> **Implementation Status:** ✅ All auth flows are implemented including onboarding.
+
 ---
 
 ## Authentication
@@ -84,7 +86,9 @@ if (!member) {
 }
 ```
 
-### Create Family Flow
+### Create Family Flow ✅ IMPLEMENTED
+
+> **Implementation:** `app/(app)/onboarding/page.tsx`
 
 ```typescript
 // 1. Create family
@@ -740,3 +744,4 @@ export function useCreateInvite() {
 |---------|------|--------|---------|
 | 1.0 | 2024-12-23 | Hazel + Claude | Initial auth spec |
 | 1.1 | 2024-12-23 | Claude | Updated to magic link (passwordless) authentication |
+| 1.2 | 2024-12-25 | Claude | Marked onboarding/create family flow as implemented |
