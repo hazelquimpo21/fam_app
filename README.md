@@ -123,7 +123,7 @@ Open [http://localhost:3000](http://localhost:3000) 🎉
 | **Language** | TypeScript | Type safety |
 | **Styling** | Tailwind CSS | Utility-first CSS |
 | **Database** | Supabase (PostgreSQL) | Backend-as-a-Service |
-| **Auth** | Supabase Auth | Email/password authentication |
+| **Auth** | Supabase Auth | Magic link (passwordless) authentication |
 | **State** | TanStack Query | Server state management |
 | **Forms** | React Hook Form + Zod | Form handling & validation |
 | **Notifications** | Sonner | Toast notifications |
@@ -138,17 +138,22 @@ fam_app/
 │   ├── 📁 (app)/               # Authenticated routes (with layout)
 │   │   ├── layout.tsx          # App shell wrapper
 │   │   ├── page.tsx            # Dashboard (/)
-│   │   ├── 📁 tasks/           # Tasks feature
-│   │   ├── 📁 habits/          # Habits feature
-│   │   ├── 📁 goals/           # Goals feature
-│   │   └── 📁 settings/        # Settings pages
+│   │   ├── 📁 tasks/           # Tasks feature ✅
+│   │   ├── 📁 habits/          # Habits feature ✅
+│   │   ├── 📁 inbox/           # Quick capture (stub)
+│   │   ├── 📁 today/           # Daily focus view (stub)
+│   │   ├── 📁 goals/           # Goal tracking (stub)
+│   │   ├── 📁 projects/        # Project management (stub)
+│   │   ├── 📁 someday/         # Wishlist ideas (stub)
+│   │   ├── 📁 family/          # Family members (stub)
+│   │   └── 📁 settings/        # User preferences (stub)
 │   │
 │   ├── 📁 (auth)/              # Public auth routes
-│   │   ├── 📁 login/           # Login page
-│   │   ├── 📁 signup/          # Signup page
-│   │   └── 📁 forgot-password/ # Password reset
+│   │   ├── 📁 login/           # Magic link login
+│   │   ├── 📁 signup/          # Magic link signup
+│   │   └── 📁 check-email/     # Email confirmation
 │   │
-│   ├── 📁 auth/callback/       # Auth callback handler
+│   ├── 📁 auth/callback/       # Magic link callback handler
 │   ├── layout.tsx              # Root layout (providers)
 │   └── globals.css             # Global styles
 │
@@ -265,24 +270,29 @@ All tables have RLS policies that:
 
 ## 🔐 Authentication Flow
 
+Fam uses **passwordless magic link authentication** for better UX and security.
+
 ```
 ┌────────────────────────────────────────────────────────────┐
-│                     AUTH STATES                             │
+│                  MAGIC LINK AUTH FLOW                       │
 ├────────────────────────────────────────────────────────────┤
 │                                                             │
-│  loading ──▶ Check session                                  │
-│                  │                                          │
-│         ┌───────┴───────┐                                   │
-│         ▼               ▼                                   │
-│  unauthenticated   authenticated                            │
-│         │               │                                   │
-│         │               │ Has family?                       │
-│         │          ┌────┴────┐                              │
-│         │          ▼         ▼                              │
-│         │      needs_family  Ready!                         │
-│         │          │         │                              │
-│         ▼          ▼         ▼                              │
-│    /login     /onboarding   /dashboard                      │
+│  1. User enters email on /login or /signup                  │
+│                    │                                        │
+│                    ▼                                        │
+│  2. Magic link sent to email                                │
+│                    │                                        │
+│                    ▼                                        │
+│  3. Redirect to /check-email (confirmation page)            │
+│                    │                                        │
+│                    ▼                                        │
+│  4. User clicks link in email                               │
+│                    │                                        │
+│                    ▼                                        │
+│  5. /auth/callback exchanges code for session               │
+│                    │                                        │
+│                    ▼                                        │
+│  6. Redirect to / (dashboard)                               │
 │                                                             │
 └────────────────────────────────────────────────────────────┘
 ```
@@ -290,10 +300,11 @@ All tables have RLS policies that:
 ### Key Files
 
 - `middleware.ts` - Protects routes, handles session refresh
-- `lib/hooks/use-auth.ts` - Auth state and methods
-- `app/(auth)/login/page.tsx` - Login UI
-- `app/(auth)/signup/page.tsx` - Signup UI
-- `app/auth/callback/route.ts` - Email verification handler
+- `lib/hooks/use-auth.ts` - Auth state with `sendMagicLink` method
+- `app/(auth)/login/page.tsx` - Magic link login
+- `app/(auth)/signup/page.tsx` - Magic link signup
+- `app/(auth)/check-email/page.tsx` - Email confirmation screen
+- `app/auth/callback/route.ts` - Magic link callback handler
 
 ---
 
@@ -505,6 +516,33 @@ logger.warn('Rate limit approaching') // ⚠️ [12:34:56] Rate limit approachin
 - [Supabase Documentation](https://supabase.com/docs)
 - [TanStack Query](https://tanstack.com/query/latest)
 - [Tailwind CSS](https://tailwindcss.com/docs)
+
+---
+
+## 📊 Current Implementation Status
+
+> **Last Updated:** December 2024
+
+| Feature | Status | Notes |
+|---------|--------|-------|
+| Database Schema | ✅ Complete | 17 tables with RLS |
+| Magic Link Auth | ✅ Complete | Passwordless login |
+| Dashboard | ✅ Complete | Stats, previews |
+| Tasks | ✅ Complete | Full CRUD, filters |
+| Habits | ✅ Complete | Streaks, logging |
+| Inbox | ✅ Stub | UI ready, needs DB hook |
+| Today | ✅ Stub | UI ready, needs DB hook |
+| Goals | ✅ Stub | UI ready, needs DB hook |
+| Projects | ✅ Stub | UI ready, needs DB hook |
+| Someday | ✅ Stub | UI ready, needs DB hook |
+| Family | ✅ Stub | UI ready, needs DB hook |
+| Settings | ✅ Stub | UI ready, needs DB hook |
+| Meals | 🔨 Pending | Not started |
+| Calendar | 🔨 Pending | Not started |
+
+> **"Stub" pages** have complete UI scaffolding with mock data. They need database hooks to become fully functional.
+
+See `AI_Dev_Docs/00-IMPLEMENTATION-STATUS.md` for detailed status.
 
 ---
 
