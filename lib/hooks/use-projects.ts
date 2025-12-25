@@ -23,6 +23,7 @@ import { toast } from 'sonner';
 import { createClient } from '@/lib/supabase/client';
 import { queryKeys, type ProjectFilters } from '@/lib/query-keys';
 import { logger } from '@/lib/utils/logger';
+import { useFamilyContext } from '@/lib/hooks/use-family-context';
 import type { Project, ProjectStatus } from '@/types/database';
 
 // ============================================================================
@@ -156,15 +157,24 @@ export interface CreateProjectInput {
 export function useCreateProject() {
   const queryClient = useQueryClient();
   const supabase = createClient();
+  const { familyId, memberId } = useFamilyContext();
 
   return useMutation({
     mutationFn: async (input: CreateProjectInput) => {
-      logger.info('➕ Creating project...', { title: input.title });
+      // Validate family context exists
+      if (!familyId || !memberId) {
+        logger.error('❌ Cannot create project: no family context');
+        throw new Error('Please complete family setup before creating projects');
+      }
+
+      logger.info('➕ Creating project...', { title: input.title, familyId });
 
       const { data, error } = await supabase
         .from('projects')
         .insert({
           ...input,
+          family_id: familyId,
+          created_by: memberId,
           status: input.status || 'planning',
         })
         .select()
@@ -175,7 +185,7 @@ export function useCreateProject() {
         throw error;
       }
 
-      logger.success('✅ Project created!', { title: data?.title });
+      logger.success('✅ Project created!', { title: data?.title, id: data?.id });
       return data as Project;
     },
 
@@ -186,7 +196,12 @@ export function useCreateProject() {
     },
 
     onError: (error) => {
-      toast.error('Failed to create project. Please try again.');
+      const message = error instanceof Error ? error.message : 'Failed to create project';
+      if (message.includes('family setup')) {
+        toast.error('Please complete family setup first');
+      } else {
+        toast.error('Failed to create project. Please try again.');
+      }
       logger.error('Create project error', { error });
     },
   });
@@ -356,16 +371,25 @@ export function useDeleteProject() {
 export function usePromoteSomedayToProject() {
   const queryClient = useQueryClient();
   const supabase = createClient();
+  const { familyId, memberId } = useFamilyContext();
 
   return useMutation({
     mutationFn: async ({ somedayId, ...projectData }: CreateProjectInput & { somedayId: string }) => {
-      logger.info('⬆️ Promoting someday item to project...', { somedayId });
+      // Validate family context exists
+      if (!familyId || !memberId) {
+        logger.error('❌ Cannot promote to project: no family context');
+        throw new Error('Please complete family setup first');
+      }
+
+      logger.info('⬆️ Promoting someday item to project...', { somedayId, familyId });
 
       // Create the project
       const { data: project, error: projectError } = await supabase
         .from('projects')
         .insert({
           ...projectData,
+          family_id: familyId,
+          created_by: memberId,
           status: 'planning',
           promoted_from_id: somedayId,
         })

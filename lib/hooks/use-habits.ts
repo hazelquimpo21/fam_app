@@ -18,6 +18,7 @@ import { toast } from 'sonner';
 import { createClient } from '@/lib/supabase/client';
 import { queryKeys } from '@/lib/query-keys';
 import { logger } from '@/lib/utils/logger';
+import { useFamilyContext } from '@/lib/hooks/use-family-context';
 import type { Habit, HabitLog, HabitLogStatus } from '@/types/database';
 
 // ============================================================================
@@ -232,19 +233,31 @@ export interface CreateHabitInput {
 
 /**
  * Create a new habit
+ *
+ * Automatically includes family_id and created_by from the current user's
+ * family context. Will fail if user hasn't completed onboarding.
  */
 export function useCreateHabit() {
   const queryClient = useQueryClient();
   const supabase = createClient();
+  const { familyId, memberId } = useFamilyContext();
 
   return useMutation({
     mutationFn: async (input: CreateHabitInput) => {
-      logger.info('➕ Creating habit...', { title: input.title });
+      // Validate family context exists
+      if (!familyId || !memberId) {
+        logger.error('❌ Cannot create habit: no family context');
+        throw new Error('Please complete family setup first');
+      }
+
+      logger.info('➕ Creating habit...', { title: input.title, familyId });
 
       const { data, error } = await supabase
         .from('habits')
         .insert({
           ...input,
+          family_id: familyId,
+          created_by: memberId,
           frequency: input.frequency || 'daily',
           is_active: true,
           current_streak: 0,
@@ -258,7 +271,7 @@ export function useCreateHabit() {
         throw error;
       }
 
-      logger.success('✅ Habit created!', { title: data?.title });
+      logger.success('✅ Habit created!', { title: data?.title, id: data?.id });
       return data as Habit;
     },
 
@@ -267,8 +280,13 @@ export function useCreateHabit() {
       toast.success('🔄 Habit created!');
     },
 
-    onError: () => {
-      toast.error('Failed to create habit');
+    onError: (error) => {
+      const message = error instanceof Error ? error.message : 'Failed to create habit';
+      if (message.includes('family setup')) {
+        toast.error('Please complete family setup first');
+      } else {
+        toast.error('Failed to create habit');
+      }
     },
   });
 }

@@ -23,6 +23,7 @@ import { toast } from 'sonner';
 import { createClient } from '@/lib/supabase/client';
 import { queryKeys, type SomedayFilters } from '@/lib/query-keys';
 import { logger } from '@/lib/utils/logger';
+import { useFamilyContext } from '@/lib/hooks/use-family-context';
 import type { SomedayItem, SomedayCategory } from '@/types/database';
 
 // ============================================================================
@@ -156,15 +157,24 @@ export interface CreateSomedayInput {
 export function useCreateSomedayItem() {
   const queryClient = useQueryClient();
   const supabase = createClient();
+  const { familyId, memberId } = useFamilyContext();
 
   return useMutation({
     mutationFn: async (input: CreateSomedayInput) => {
-      logger.info('➕ Creating someday item...', { title: input.title });
+      // Validate family context exists
+      if (!familyId || !memberId) {
+        logger.error('❌ Cannot create someday item: no family context');
+        throw new Error('Please complete family setup first');
+      }
+
+      logger.info('➕ Creating someday item...', { title: input.title, familyId });
 
       const { data, error } = await supabase
         .from('someday_items')
         .insert({
           ...input,
+          family_id: familyId,
+          added_by_id: memberId,
           category: input.category || 'other',
           is_archived: false,
         })
@@ -176,7 +186,7 @@ export function useCreateSomedayItem() {
         throw error;
       }
 
-      logger.success('✅ Someday item created!', { title: data?.title });
+      logger.success('✅ Someday item created!', { title: data?.title, id: data?.id });
       return data as SomedayItem;
     },
 
@@ -187,7 +197,12 @@ export function useCreateSomedayItem() {
     },
 
     onError: (error) => {
-      toast.error('Failed to add dream. Please try again.');
+      const message = error instanceof Error ? error.message : 'Failed to add dream';
+      if (message.includes('family setup')) {
+        toast.error('Please complete family setup first');
+      } else {
+        toast.error('Failed to add dream. Please try again.');
+      }
       logger.error('Create someday item error', { error });
     },
   });

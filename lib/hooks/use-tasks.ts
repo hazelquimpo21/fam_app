@@ -20,6 +20,7 @@ import { toast } from 'sonner';
 import { createClient } from '@/lib/supabase/client';
 import { queryKeys, type TaskFilters } from '@/lib/query-keys';
 import { logger } from '@/lib/utils/logger';
+import { useFamilyContext } from '@/lib/hooks/use-family-context';
 import type { Task, TaskStatus } from '@/types/database';
 
 // ============================================================================
@@ -241,6 +242,9 @@ export interface CreateTaskInput {
 /**
  * Create a new task
  *
+ * Automatically includes family_id and created_by from the current user's
+ * family context. Will fail if user hasn't completed onboarding.
+ *
  * @example
  * const createTask = useCreateTask()
  * createTask.mutate({ title: 'Buy groceries', due_date: '2024-12-25' })
@@ -248,26 +252,35 @@ export interface CreateTaskInput {
 export function useCreateTask() {
   const queryClient = useQueryClient();
   const supabase = createClient();
+  const { familyId, memberId, needsOnboarding } = useFamilyContext();
 
   return useMutation({
     mutationFn: async (input: CreateTaskInput) => {
-      logger.info('➕ Creating task...', { title: input.title });
+      // Validate family context exists
+      if (!familyId || !memberId) {
+        logger.error('❌ Cannot create task: no family context', { needsOnboarding });
+        throw new Error('Please complete family setup before creating tasks');
+      }
+
+      logger.info('➕ Creating task...', { title: input.title, familyId });
 
       const { data, error } = await supabase
         .from('tasks')
         .insert({
           ...input,
+          family_id: familyId,
+          created_by: memberId,
           status: input.status || 'inbox',
         })
         .select()
         .single();
 
       if (error) {
-        logger.error('❌ Failed to create task', { error: error.message });
+        logger.error('❌ Failed to create task', { error: error.message, code: error.code });
         throw error;
       }
 
-      logger.success('✅ Task created!', { title: data?.title });
+      logger.success('✅ Task created!', { title: data?.title, id: data?.id });
       return data as Task;
     },
 
@@ -284,7 +297,12 @@ export function useCreateTask() {
     },
 
     onError: (error) => {
-      toast.error('Failed to create task. Please try again.');
+      const message = error instanceof Error ? error.message : 'Failed to create task';
+      if (message.includes('family setup')) {
+        toast.error('Please complete family setup first');
+      } else {
+        toast.error('Failed to create task. Please try again.');
+      }
       logger.error('Create task error', { error });
     },
   });
