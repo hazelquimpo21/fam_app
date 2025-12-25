@@ -959,3 +959,4 @@ lib/
 | 1.2 | 2024-12-23 | Claude | Updated auth hook docs for magic link |
 | 1.3 | 2024-12-25 | Claude | Added useGoals and useProjects hooks documentation |
 | 1.4 | 2024-12-25 | Claude | Added useSomeday and useFamily hooks (ALL hooks complete!) |
+| 1.5 | 2024-12-25 | Claude | Dashboard now uses hooks for real-time data (tasks, habits, goals) |
