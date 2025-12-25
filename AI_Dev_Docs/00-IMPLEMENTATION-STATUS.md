@@ -14,7 +14,7 @@
 | Core UI Components | ✅ Complete | ~40% |
 | Tasks Feature | ✅ Complete | 95% |
 | Habits Feature | ✅ Complete | 90% |
-| Dashboard | ✅ Complete | 85% |
+| Dashboard | ✅ Complete | 95% |
 | Goals Feature | ✅ Complete | 80% |
 | Projects Feature | ✅ Complete | 80% |
 | Inbox Feature | ✅ Complete | 80% |
@@ -156,7 +156,7 @@ Tables: families, family_members, tasks, subtasks, habits, habit_logs,
 
 | Page | Route | Status | Notes |
 |------|-------|--------|-------|
-| Dashboard | `/` | ✅ | Stats cards, task preview, working navigation |
+| Dashboard | `/` | ✅ **Connected** | Real-time stats, tasks, habits, goals from DB |
 | Tasks | `/tasks` | ✅ | List, filters, quick add, connected to DB |
 | Habits | `/habits` | ✅ | Today view, streaks, connected to DB |
 | Login | `/login` | ✅ | Magic link (passwordless) |
@@ -353,5 +353,6 @@ Keep files under 400 lines. Extract components when they grow.
 | 1.3 | 2024-12-25 | Claude | Added 7 stub pages |
 | 1.4 | 2024-12-25 | Claude | Added useGoals and useProjects hooks |
 | 1.5 | 2024-12-25 | Claude | Connected ALL pages to database (inbox, today, goals, projects, someday, family) |
+| 1.6 | 2024-12-25 | Claude | Wired dashboard to real data (tasks, habits, goals with live updates) |
 
 *This document is auto-generated. See individual docs for detailed specs.*
