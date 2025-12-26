@@ -133,47 +133,26 @@ export default function OnboardingPage() {
     try {
       logger.info('Creating family...', { familyName });
 
-      // Step 1: Create the family
-      const { data: family, error: familyError } = await supabase
-        .from('families')
-        .insert({
-          name: familyName.trim(),
-          settings: {
-            timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-            week_starts_on: 'sunday',
-          },
-        })
-        .select()
-        .single();
+      // Use the SECURITY DEFINER function to create family and member atomically
+      // This bypasses RLS for the onboarding flow
+      const { data, error } = await supabase.rpc('create_family_with_owner', {
+        p_family_name: familyName.trim(),
+        p_family_settings: {
+          timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+          week_starts_on: 'sunday',
+        },
+        p_member_name: memberName.trim(),
+        p_member_email: userEmail,
+        p_member_color: selectedColor,
+      });
 
-      if (familyError) {
-        logger.error('Failed to create family', { error: familyError.message });
-        throw new Error(`Failed to create family: ${familyError.message}`);
+      if (error) {
+        logger.error('Failed to create family', { error: error.message });
+        throw new Error(`Failed to create family: ${error.message}`);
       }
 
+      const { family, member } = data;
       logger.success('Family created!', { familyId: family.id });
-
-      // Step 2: Create the family member (as owner)
-      const { data: member, error: memberError } = await supabase
-        .from('family_members')
-        .insert({
-          family_id: family.id,
-          auth_user_id: userId,
-          name: memberName.trim(),
-          email: userEmail,
-          role: 'owner',
-          color: selectedColor,
-        })
-        .select()
-        .single();
-
-      if (memberError) {
-        logger.error('Failed to create family member', { error: memberError.message });
-        // Try to clean up the family we just created
-        await supabase.from('families').delete().eq('id', family.id);
-        throw new Error(`Failed to create your profile: ${memberError.message}`);
-      }
-
       logger.success('Family member created!', { memberId: member.id, name: member.name });
 
       // Step 3: Redirect to dashboard
