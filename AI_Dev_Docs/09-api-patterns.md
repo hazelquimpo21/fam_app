@@ -852,9 +852,11 @@ export const queryClient = new QueryClient({
 | `useDeleteTask` | ✅ | ✅ | `lib/hooks/use-tasks.ts` | Soft delete |
 | **Habits** |
 | `useHabits` | ✅ | ✅ | `lib/hooks/use-habits.ts` | With today status |
-| `useHabitLogs` | ✅ | ✅ | `lib/hooks/use-habits.ts` | Date range query |
+| `useHabitLogs` | ✅ | ✅ | `lib/hooks/use-habits.ts` | Single habit date range |
+| `useWeeklyHabitLogs` | ✅ | ✅ | `lib/hooks/use-habits.ts` | Batch fetch for all habits (efficient) |
 | `useLogHabit` | ✅ | ✅ | `lib/hooks/use-habits.ts` | Optimistic update |
 | `useCreateHabit` | ✅ | ✅ | `lib/hooks/use-habits.ts` | With toast |
+| `useUpdateHabit` | ✅ | ✅ | `lib/hooks/use-habits.ts` | Edit habit with optimistic update |
 | **Goals** |
 | `useGoals` | ✅ | ✅ | `lib/hooks/use-goals.ts` | With filters (status, owner, isFamilyGoal) |
 | `useActiveGoals` | ✅ | ✅ | `lib/hooks/use-goals.ts` | Convenience hook |
@@ -960,3 +962,4 @@ lib/
 | 1.3 | 2024-12-25 | Claude | Added useGoals and useProjects hooks documentation |
 | 1.4 | 2024-12-25 | Claude | Added useSomeday and useFamily hooks (ALL hooks complete!) |
 | 1.5 | 2024-12-25 | Claude | Dashboard now uses hooks for real-time data (tasks, habits, goals) |
+| 1.6 | 2024-12-26 | Claude | Added useUpdateHabit and useWeeklyHabitLogs hooks for habit editing |

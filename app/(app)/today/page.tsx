@@ -16,8 +16,9 @@
  * the distraction of future tasks or completed items.
  *
  * Features:
- * - Habits grid with toggle
- * - Overdue tasks section
+ * - Habits grid with toggle (click check to complete)
+ * - Click habit card to edit in HabitModal
+ * - Overdue tasks section with urgency styling
  * - Today's tasks section
  * - Click task to edit in TaskModal
  *
@@ -25,6 +26,7 @@
  * - US-1.2: See daily focus view
  * - US-3.2: Click task to open detail panel
  * - US-4.2: Toggle habits
+ * - US-4.4: Click habit to edit
  *
  * ============================================================================
  */
@@ -37,18 +39,21 @@ import {
   Repeat,
   CheckSquare,
   Check,
+  Plus,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Button } from '@/components/ui/button';
 import { Badge, StreakBadge } from '@/components/shared/badge';
 import { Avatar } from '@/components/shared/avatar';
 import { EmptyState } from '@/components/shared/empty-state';
 import { TaskModal } from '@/components/modals/task-modal';
+import { HabitModal } from '@/components/modals/habit-modal';
 import { cn } from '@/lib/utils/cn';
 import { logger } from '@/lib/utils/logger';
 import { useTodayTasks, useOverdueTasks, useCompleteTask } from '@/lib/hooks/use-tasks';
 import { useHabits, useLogHabit, type HabitWithTodayStatus } from '@/lib/hooks/use-habits';
-import type { Task } from '@/types/database';
+import type { Task, Habit } from '@/types/database';
 
 // ============================================================================
 // SectionSkeleton Component
@@ -81,37 +86,61 @@ function SectionSkeleton({ rows = 3 }: { rows?: number }) {
 interface HabitCardProps {
   habit: HabitWithTodayStatus;
   onToggle: (habitId: string, completed: boolean) => void;
+  onClick: () => void;
   isUpdating: boolean;
 }
 
 /**
  * HabitCard - Displays a single habit with toggle functionality
+ *
+ * Click the check button to toggle completion status.
+ * Click anywhere else on the card to open HabitModal for editing.
  */
-function HabitCard({ habit, onToggle, isUpdating }: HabitCardProps) {
+function HabitCard({ habit, onToggle, onClick, isUpdating }: HabitCardProps) {
   const isCompleted = habit.todayStatus === 'done';
   const owner = habit.owner as { name: string; color: string } | null;
 
+  /**
+   * Handle card click - open in modal if not clicking the toggle button
+   */
+  const handleCardClick = () => {
+    onClick();
+  };
+
+  /**
+   * Handle toggle click - prevent propagation and toggle status
+   */
+  const handleToggleClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!isUpdating) {
+      onToggle(habit.id, !isCompleted);
+    }
+  };
+
   return (
-    <button
-      onClick={() => onToggle(habit.id, !isCompleted)}
-      disabled={isUpdating}
+    <div
+      onClick={handleCardClick}
       className={cn(
-        'flex items-center gap-3 rounded-lg border p-3 w-full text-left transition-all',
+        'flex items-center gap-3 rounded-lg border p-3 w-full text-left transition-all cursor-pointer',
         isCompleted
           ? 'border-green-200 bg-green-50 hover:bg-green-100'
           : 'border-neutral-200 bg-white hover:bg-neutral-50'
       )}
     >
-      <div
+      {/* Toggle button - clicking this toggles habit status */}
+      <button
+        onClick={handleToggleClick}
+        disabled={isUpdating}
         className={cn(
-          'h-8 w-8 rounded-full flex items-center justify-center shrink-0',
+          'h-8 w-8 rounded-full flex items-center justify-center shrink-0 transition-colors',
           isCompleted
             ? 'bg-green-500 text-white'
-            : 'bg-neutral-100 text-neutral-400'
+            : 'bg-neutral-100 text-neutral-400 hover:bg-green-100 hover:text-green-600'
         )}
+        title={isCompleted ? 'Completed!' : 'Mark as done'}
       >
         {isCompleted ? <Check className="h-4 w-4" /> : null}
-      </div>
+      </button>
       <div className="flex-1 min-w-0">
         <p className={cn(
           'text-sm font-medium truncate',
@@ -126,7 +155,7 @@ function HabitCard({ habit, onToggle, isUpdating }: HabitCardProps) {
       {habit.current_streak > 0 && (
         <StreakBadge count={habit.current_streak} size="sm" />
       )}
-    </button>
+    </div>
   );
 }
 
@@ -144,12 +173,17 @@ interface TaskRowProps {
 
 /**
  * TaskRow - Displays a single task with checkbox and click-to-edit
+ *
+ * Click the checkbox to complete the task.
+ * Click anywhere else to open TaskModal for editing.
  */
 function TaskRow({ task, onComplete, onClick, isOverdue, isCompleting }: TaskRowProps) {
   const assignee = task.assigned_to as { name: string; color: string } | null;
   const project = task.project as { title: string } | null;
 
-  // Format due date for display
+  /**
+   * Format due date for display
+   */
   const formatDueDate = (dateStr: string | null) => {
     if (!dateStr) return null;
     return new Date(dateStr).toLocaleDateString('en-US', {
@@ -212,6 +246,12 @@ function TaskRow({ task, onComplete, onClick, isOverdue, isCompleting }: TaskRow
 
 /**
  * Today page - focused daily view
+ *
+ * Features:
+ * - Habits section with toggle and click-to-edit
+ * - Overdue tasks highlighted in red
+ * - Today's scheduled tasks
+ * - Modals for editing tasks and habits
  */
 export default function TodayPage() {
   // Get current day for display
@@ -222,9 +262,13 @@ export default function TodayPage() {
     day: 'numeric',
   });
 
-  // Modal state
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  // Task modal state
+  const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
+
+  // Habit modal state
+  const [isHabitModalOpen, setIsHabitModalOpen] = useState(false);
+  const [selectedHabit, setSelectedHabit] = useState<Habit | null>(null);
 
   // Fetch data from database
   const { data: todayTasks = [], isLoading: loadingToday } = useTodayTasks();
@@ -240,7 +284,7 @@ export default function TodayPage() {
 
   // Log page load for debugging
   useEffect(() => {
-    logger.info('Today page loaded', {
+    logger.info('☀️ Today page loaded', {
       date: today.toISOString().split('T')[0],
       overdue: overdueTasks.length,
       todayTasks: todayTasks.length,
@@ -248,6 +292,10 @@ export default function TodayPage() {
     });
     logger.divider("Today's Focus");
   }, [overdueTasks.length, todayTasks.length, habits.length]);
+
+  // ========================================================================
+  // Task Handlers
+  // ========================================================================
 
   /**
    * Handle completing a task
@@ -263,21 +311,25 @@ export default function TodayPage() {
   const handleTaskClick = (task: Task) => {
     logger.info('Opening task for edit', { taskId: task.id, title: task.title });
     setSelectedTask(task);
-    setIsModalOpen(true);
+    setIsTaskModalOpen(true);
   };
 
   /**
-   * Handle modal close
+   * Handle task modal close
    */
-  const handleModalClose = (open: boolean) => {
-    setIsModalOpen(open);
+  const handleTaskModalClose = (open: boolean) => {
+    setIsTaskModalOpen(open);
     if (!open) {
       setSelectedTask(null);
     }
   };
 
+  // ========================================================================
+  // Habit Handlers
+  // ========================================================================
+
   /**
-   * Handle toggling a habit
+   * Handle toggling a habit (done/skipped)
    */
   const handleToggleHabit = (habitId: string, completed: boolean) => {
     logger.info('Toggling habit', { habitId, completed });
@@ -285,6 +337,34 @@ export default function TodayPage() {
       habitId,
       status: completed ? 'done' : 'skipped',
     });
+  };
+
+  /**
+   * Handle clicking on a habit - open in modal for editing
+   */
+  const handleHabitClick = (habit: Habit) => {
+    logger.info('Opening habit for edit', { habitId: habit.id, title: habit.title });
+    setSelectedHabit(habit);
+    setIsHabitModalOpen(true);
+  };
+
+  /**
+   * Handle opening habit modal for create (no habit selected)
+   */
+  const handleOpenCreateHabitModal = () => {
+    logger.info('Opening habit modal for create from Today page');
+    setSelectedHabit(null);
+    setIsHabitModalOpen(true);
+  };
+
+  /**
+   * Handle habit modal close
+   */
+  const handleHabitModalClose = (open: boolean) => {
+    setIsHabitModalOpen(open);
+    if (!open) {
+      setSelectedHabit(null);
+    }
   };
 
   const isLoading = loadingToday || loadingOverdue || loadingHabits;
@@ -308,11 +388,22 @@ export default function TodayPage() {
               <Repeat className="h-5 w-5 text-green-500" />
               Habits
             </CardTitle>
-            {!loadingHabits && habits.length > 0 && (
-              <Badge variant="success">
-                {completedHabits}/{habits.length} done
-              </Badge>
-            )}
+            <div className="flex items-center gap-2">
+              {!loadingHabits && habits.length > 0 && (
+                <Badge variant="success">
+                  {completedHabits}/{habits.length} done
+                </Badge>
+              )}
+              {/* Add habit button - always visible in header */}
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={handleOpenCreateHabitModal}
+                leftIcon={<Plus className="h-3 w-3" />}
+              >
+                Add
+              </Button>
+            </div>
           </div>
         </CardHeader>
         <CardContent className="pt-0">
@@ -323,9 +414,15 @@ export default function TodayPage() {
               ))}
             </div>
           ) : habits.length === 0 ? (
-            <p className="text-neutral-500 text-sm py-4 text-center">
-              No habits yet. Create one to start building consistency!
-            </p>
+            <EmptyState
+              icon={<Repeat className="h-10 w-10 text-green-400" />}
+              title="No habits yet"
+              description="Build consistency by tracking daily habits."
+              action={{
+                label: 'Create Your First Habit',
+                onClick: handleOpenCreateHabitModal,
+              }}
+            />
           ) : (
             <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
               {habits.map((habit) => (
@@ -333,6 +430,7 @@ export default function TodayPage() {
                   key={habit.id}
                   habit={habit}
                   onToggle={handleToggleHabit}
+                  onClick={() => handleHabitClick(habit)}
                   isUpdating={logHabit.isPending}
                 />
               ))}
@@ -341,7 +439,7 @@ export default function TodayPage() {
         </CardContent>
       </Card>
 
-      {/* Overdue section */}
+      {/* Overdue section - only show if there are overdue tasks or loading */}
       {(loadingOverdue || overdueTasks.length > 0) && (
         <Card className="border-red-200 bg-red-50/50">
           <CardHeader className="pb-3">
@@ -406,9 +504,16 @@ export default function TodayPage() {
 
       {/* Task Modal for editing */}
       <TaskModal
-        open={isModalOpen}
-        onOpenChange={handleModalClose}
+        open={isTaskModalOpen}
+        onOpenChange={handleTaskModalClose}
         task={selectedTask}
+      />
+
+      {/* Habit Modal for editing/creating */}
+      <HabitModal
+        open={isHabitModalOpen}
+        onOpenChange={handleHabitModalClose}
+        habit={selectedHabit}
       />
     </div>
   );
