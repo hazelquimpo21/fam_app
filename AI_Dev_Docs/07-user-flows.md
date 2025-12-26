@@ -666,9 +666,36 @@ This document maps the key multi-step user journeys in Fam. Each flow shows deci
 
 ---
 
+---
+
+## Implementation Status
+
+> **Flow 1: New User Onboarding** - ✅ IMPLEMENTED
+
+The onboarding flow is now fully implemented:
+
+- **Route:** `/onboarding`
+- **File:** `app/(auth)/onboarding/page.tsx`
+- **Middleware:** Enforces onboarding for users without a family
+
+**Current Implementation:**
+1. User signs up via magic link
+2. Magic link redirects to `/auth/callback`
+3. Middleware checks for `family_members` record
+4. If no record exists, redirects to `/onboarding`
+5. Onboarding page creates `families` and `family_members` records
+6. User is redirected to dashboard
+
+**Not Yet Implemented:**
+- Invite family members (skip for now - can be done later from Family page)
+- Quick wins tour (tooltips)
+
+---
+
 ## Document History
 
 | Version | Date | Author | Changes |
 |---------|------|--------|---------|
 | 1.0 | 2024-12-23 | Hazel + Claude | Initial user flows |
 | 1.1 | 2024-12-23 | Claude | Updated for magic link (passwordless) auth |
+| 1.2 | 2024-12-26 | Claude | Added implementation status for onboarding flow |

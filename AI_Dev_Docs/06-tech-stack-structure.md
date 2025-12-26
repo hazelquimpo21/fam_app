@@ -37,6 +37,10 @@ fam/
 │   │   │   └── page.tsx
 │   │   ├── signup/
 │   │   │   └── page.tsx
+│   │   ├── check-email/
+│   │   │   └── page.tsx
+│   │   ├── onboarding/           # Family setup for new users
+│   │   │   └── page.tsx
 │   │   └── forgot-password/
 │   │       └── page.tsx
 │   │
@@ -715,7 +719,8 @@ fam_app/                       # ✅ Implemented
 │   ├── (auth)/               # ✅ Auth routes
 │   │   ├── login/            # ✅
 │   │   ├── signup/           # ✅
-│   │   └── check-email/      # ✅
+│   │   ├── check-email/      # ✅
+│   │   └── onboarding/       # ✅ Family setup
 │   ├── (app)/                # ✅ Authenticated routes
 │   │   ├── layout.tsx        # ✅ App shell
 │   │   ├── page.tsx          # ✅ Dashboard
@@ -801,3 +806,4 @@ fam_app/                       # ✅ Implemented
 | 1.2 | 2024-12-23 | Claude | Updated auth to magic link (passwordless) |
 | 1.3 | 2024-12-25 | Claude | Added 7 stub pages, updated project structure |
 | 1.4 | 2024-12-25 | Claude | All pages now connected to database (7 hooks total) |
+| 1.5 | 2024-12-26 | Claude | Added onboarding page for new user family creation |

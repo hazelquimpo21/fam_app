@@ -221,10 +221,10 @@ npm run dev
 
 ### Phase 2.5 (High Priority)
 
-1. **Onboarding Flow**
-   - Create family on signup
-   - Link user to family_members table
-   - Redirect to dashboard
+1. ~~**Onboarding Flow**~~ ✅ Complete
+   - ~~Create family on signup~~
+   - ~~Link user to family_members table~~
+   - ~~Redirect to dashboard~~
 
 2. **Create/Edit Modals**
    - Task creation modal
@@ -373,5 +373,6 @@ Keep files under 400 lines. Extract components when they grow.
 | 1.4 | 2024-12-25 | Claude | Added useGoals and useProjects hooks |
 | 1.5 | 2024-12-25 | Claude | Connected ALL pages to database (inbox, today, goals, projects, someday, family) |
 | 1.6 | 2024-12-25 | Claude | Wired dashboard to real data (tasks, habits, goals with live updates) |
+| 1.7 | 2024-12-26 | Claude | Added onboarding flow for new users (family creation) |
 
 *This document is auto-generated. See individual docs for detailed specs.*

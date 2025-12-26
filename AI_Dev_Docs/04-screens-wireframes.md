@@ -149,6 +149,57 @@ Before diving into screens, reference these design decisions:
 
 ---
 
+## Screen 0: Onboarding — Family Setup
+
+**URL:** `/onboarding`
+
+**Purpose:** Create a family for new authenticated users who don't have one yet
+
+### Layout
+
+```
+┌────────────────────────────────────────────────────┐
+│                                                    │
+│            Welcome to Fam!                         │
+│    Let's set up your family command center.        │
+│                                                    │
+├────────────────────────────────────────────────────┤
+│                                                    │
+│  Family Name                                       │
+│  ┌──────────────────────────────────────────────┐  │
+│  │ The Smith Family                             │  │
+│  └──────────────────────────────────────────────┘  │
+│  This is how your family will be identified.       │
+│                                                    │
+│  Your Name                                         │
+│  ┌──────────────────────────────────────────────┐  │
+│  │ Hazel                                        │  │
+│  └──────────────────────────────────────────────┘  │
+│                                                    │
+│  Your Color                                        │
+│  ● ● ● ● ● ● ● ●   ← Color picker                 │
+│  This color will identify you throughout the app.  │
+│                                                    │
+│  ┌──────────────────────────────────────────────┐  │
+│  │              Get Started                     │  │
+│  └──────────────────────────────────────────────┘  │
+│                                                    │
+│  You'll be able to invite other family members     │
+│  later.                                            │
+│                                                    │
+└────────────────────────────────────────────────────┘
+```
+
+### Behavior
+
+- Shown to authenticated users without a family_member record
+- Pre-fills user name from auth metadata if available
+- Creates family record then family_member record as owner
+- Redirects to dashboard on success
+- Middleware enforces this page for users without family
+
+---
+
 ## Screen 1: Home — Family Dashboard
 
 **URL:** `/`
@@ -915,6 +966,7 @@ Stack cards vertically:
 
 | Screen | Route | Status | Notes |
 |--------|-------|--------|-------|
+| Screen 0: Onboarding | `/onboarding` | ✅ Complete | Family setup for new users |
 | G1: Navigation Sidebar | All `/` routes | ✅ Complete | Desktop sidebar working |
 | G2: Mobile Navigation | All `/` routes | 🔨 Pending | Using responsive sidebar |
 | G3: Top Bar | All `/` routes | ✅ Complete | With user menu |
@@ -949,3 +1001,4 @@ Stack cards vertically:
 | 1.1 | 2024-12-23 | Claude | Auth screens updated to magic link (passwordless) |
 | 1.2 | 2024-12-25 | Claude | Added implementation status section |
 | 1.3 | 2024-12-25 | Claude | All core screens now connected to database |
+| 1.4 | 2024-12-26 | Claude | Added onboarding screen for new user family setup |
