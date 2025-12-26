@@ -394,7 +394,7 @@ Stack cards vertically:
 
 ### Processing Behavior
 
-**→ Task:** Opens task form pre-filled with title. User adds details, saves. Item removed from inbox.
+**→ Task:** Opens TaskModal pre-filled with title. User adds details (assignee, project, goal, due date), saves. Original inbox item deleted automatically.
 
 **→ Project:** Opens project creation or project picker. Creates project with item as first task or note.
 
@@ -403,6 +403,8 @@ Stack cards vertically:
 **Delete:** Soft delete with undo toast.
 
 **Process All Mode:** Steps through each item. After action, auto-advances to next. Shows progress (2/5 processed).
+
+**Implementation Note:** TaskModal integration complete - clicking "Task" button opens full task form modal with all entity pickers (FamilyMemberPicker, ProjectPicker, GoalPicker).
 
 ---
 
@@ -469,6 +471,9 @@ Stack cards vertically:
 - Each task shows: checkbox, title, time (if any), assignee, project badge
 - Filter by family member available
 - Completing task: animation, moves to done (hidden unless toggled)
+- **Click task row → Opens TaskModal for editing**
+
+**Implementation Note:** Click-to-edit via TaskModal is fully implemented. Checkbox stops event propagation to prevent opening modal when completing tasks.
 
 ---
 
@@ -504,11 +509,14 @@ Stack cards vertically:
 ### Row Behavior
 
 - Hover: shows quick actions (edit, delete, move to project)
-- Click row: opens detail side panel
+- **Click row: opens TaskModal for editing**
 - Check: completes with animation
 - Recurring indicator (🔄) on recurring tasks
 - Overdue dates in red
 - Sorting by clicking column headers
+- "New Task" button opens TaskModal in create mode
+
+**Implementation Note:** TaskModal is fully integrated - click any task to open the edit form with all entity pickers (FamilyMemberPicker, ProjectPicker, GoalPicker). Quick add creates inbox tasks, "New Task" button opens full modal.
 
 ---
 
@@ -568,65 +576,66 @@ Stack cards vertically:
 
 ---
 
-## Screen 7: Task Detail (Side Panel)
+## Screen 7: Task Detail (Modal - Implemented)
 
-**Opens from:** Task list, kanban card, today view, etc.
+**Opens from:** Task list, kanban card, today view, inbox triage, etc.
 
-### Layout
+**Implementation:** Using TaskModal (`components/modals/task-modal.tsx`) instead of side panel for better mobile experience.
+
+### Layout (Current Implementation)
 
 ```
-┌──────────────────────────────────────┐
-│ ✕                              [···] │  ← More menu
-├──────────────────────────────────────┤
-│ [ ] Review camp options              │  ← Checkbox + Title (editable)
-│                                      │
-│ ┌──────────────────────────────────┐ │
-│ │ Description                      │ │
-│ │ Look at Camp Widjiwagan,         │ │
-│ │ YMCA camps, and that one Sarah   │ │
-│ │ recommended...                   │ │
-│ └──────────────────────────────────┘ │
-├──────────────────────────────────────┤
-│ Status        [Active ▼]             │
-│ Due date      [Dec 23 📅]            │
-│ Scheduled     [Dec 23 📅]            │
-│ Assigned to   [👤 Hazel ▼]           │
-│ Project       [📁 Summer Camps ▼]    │
-│ Goal          [🎯 None ▼]            │
-│ Priority      [● Medium ▼]           │
-│ Place         [📍 None ▼]            │
-│ Related to    [👤 Miles ▼]           │  ← Task is "about" Miles
-│ Tags          [+ Add tag]            │
-├──────────────────────────────────────┤
-│ 🔄 Recurrence                        │
-│ [Does not repeat ▼]                  │
-│                                      │
-│ If recurring, shows:                 │
-│ Every [1] [week ▼] on [Mon, Wed, Fri]│
-│ Ends: [Never ▼]                      │
-├──────────────────────────────────────┤
-│ ✓ Subtasks                     [+ ]  │
-│ [✓] Look up Camp Widjiwagan          │
-│ [ ] Check YMCA website               │
-│ [ ] Text Sarah for recommendation    │
-│ Progress: 1/3                        │
-├──────────────────────────────────────┤
-│ 💬 Notes                             │
-│ ┌──────────────────────────────────┐ │
-│ │ Dec 22: Sarah said Camp Birch is │ │
-│ │ great for first-timers           │ │
-│ └──────────────────────────────────┘ │
-├──────────────────────────────────────┤
-│ Created Dec 20 by Hazel              │
-│ Last updated Dec 22                  │
-└──────────────────────────────────────┘
+┌────────────────────────────────────────────────────┐
+│ Edit Task                                      ✕   │
+├────────────────────────────────────────────────────┤
+│                                                    │
+│ Title *                                            │
+│ ┌────────────────────────────────────────────────┐ │
+│ │ Review camp options                            │ │
+│ └────────────────────────────────────────────────┘ │
+│                                                    │
+│ Description                                        │
+│ ┌────────────────────────────────────────────────┐ │
+│ │ Look at Camp Widjiwagan, YMCA camps...         │ │
+│ └────────────────────────────────────────────────┘ │
+│                                                    │
+│ Status          Priority        Due Date          │
+│ [Active ▼]      [Medium ▼]      [📅 Dec 23]      │
+│                                                    │
+│ Assigned To                Project                │
+│ [👤 Hazel ▼]               [📁 Summer Camps ▼]   │
+│                                                    │
+│ Goal                                               │
+│ [🎯 None ▼]                                       │
+│                                                    │
+├────────────────────────────────────────────────────┤
+│                         [Cancel]  [Save Task]      │
+│                                   ⌘+Enter          │
+└────────────────────────────────────────────────────┘
 ```
 
-### More Menu Options
-- Duplicate task
-- Move to project
-- Convert to someday
-- Delete
+### Current Features
+- ✅ Title and description editing
+- ✅ Status selector (inbox, active, waiting_for, done)
+- ✅ Priority selector (low, medium, high)
+- ✅ Due date picker (native input)
+- ✅ Assigned to picker (FamilyMemberPicker)
+- ✅ Project picker (ProjectPicker)
+- ✅ Goal picker (GoalPicker)
+- ✅ Keyboard shortcut (Cmd/Ctrl+Enter to save)
+- ✅ Loading states during mutation
+- ✅ Toast notifications
+
+### Future Enhancements (Not Yet Built)
+- Scheduled date (separate from due date)
+- Place picker
+- Related to picker (family member)
+- Tags
+- Recurrence settings
+- Subtasks management
+- Notes/comments section
+- Created/updated metadata display
+- More menu (duplicate, convert to someday, delete)
 
 ---
 
@@ -974,11 +983,11 @@ Stack cards vertically:
 | G5: Search Modal | Global | 🔨 Pending | Not yet implemented |
 | Screen 1: Family Dashboard | `/` | ✅ Complete | Stats cards, preview |
 | Screen 2: Personal Dashboard | `/me` | 🔨 Pending | Not yet implemented |
-| Screen 3: Inbox | `/inbox` | ✅ **Connected** | Quick capture, processing actions |
-| Screen 4: Today | `/today` | ✅ **Connected** | Daily focus with habits, overdue, tasks |
-| Screen 5: Tasks List | `/tasks` | ✅ Complete | Full functionality |
+| Screen 3: Inbox | `/inbox` | ✅ **Connected** | Quick capture, triage to TaskModal |
+| Screen 4: Today | `/today` | ✅ **Connected** | Daily focus, click task → TaskModal |
+| Screen 5: Tasks List | `/tasks` | ✅ Complete | Full functionality + TaskModal |
 | Screen 6: Tasks Kanban | `/tasks?view=kanban` | 🔨 Pending | View toggle pending |
-| Screen 7: Task Detail | Side panel | 🔨 Pending | Not yet implemented |
+| Screen 7: Task Detail | TaskModal | ✅ **Complete** | Modal form (not side panel) |
 | Screen 8: Calendar | `/calendar` | 🔨 Pending | Not yet implemented |
 | Screen 9: Habits | `/habits` | ✅ Complete | Full functionality |
 | Screen 10: Goals | `/goals` | ✅ **Connected** | Goal tracking with progress bars |
@@ -1002,3 +1011,4 @@ Stack cards vertically:
 | 1.2 | 2024-12-25 | Claude | Added implementation status section |
 | 1.3 | 2024-12-25 | Claude | All core screens now connected to database |
 | 1.4 | 2024-12-26 | Claude | Added onboarding screen for new user family setup |
+| 1.5 | 2024-12-26 | Claude | Updated Task Detail to reflect TaskModal implementation (modal vs side panel) |
