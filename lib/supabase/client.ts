@@ -89,13 +89,17 @@ function getSupabaseAnonKey(): string {
  * - Real-time subscriptions
  * - Client-side data queries
  *
+ * Note: @supabase/ssr's createBrowserClient handles singleton behavior internally.
+ * It's safe to call this function multiple times - it returns a cached client.
+ * We removed the debug log here since it was creating excessive noise in the console.
+ *
  * @example
  * const supabase = createClient()
  * const { data } = await supabase.from('tasks').select('*')
  */
 export function createClient() {
-  logger.debug('Creating Supabase browser client');
-
+  // Note: createBrowserClient from @supabase/ssr handles caching internally
+  // so calling this multiple times is safe and efficient
   return createBrowserClient(
     getSupabaseUrl(),
     getSupabaseAnonKey()

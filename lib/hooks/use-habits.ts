@@ -6,9 +6,29 @@
  * ============================================================================
  *
  * React Query hooks for habit operations:
- * - Fetching habits
- * - Logging habits (done/skipped)
- * - Creating/updating habits
+ * - Fetching habits (useHabits, useHabitLogs, useWeeklyHabitLogs)
+ * - Logging habits done/skipped (useLogHabit)
+ * - Creating habits (useCreateHabit) - REQUIRES family_id for RLS!
+ * - Updating habits (useUpdateHabit)
+ *
+ * AI Dev Notes:
+ * -------------
+ * 1. IMPORTANT: When creating habits, you MUST include `family_id` and `created_by`
+ *    in the insert. This is required for Supabase RLS (Row Level Security) policies.
+ *    Without these fields, you'll get a 403 Forbidden error.
+ *
+ * 2. The useHabits hook returns habits with their today's log status attached.
+ *    This is optimized to reduce database queries.
+ *
+ * 3. useWeeklyHabitLogs is a batch query that fetches logs for ALL habits at once,
+ *    rather than making N queries for N habits. Use this for efficient week progress display.
+ *
+ * 4. Optimistic updates are used in useLogHabit and useUpdateHabit for instant UI feedback.
+ *
+ * Database Tables Used:
+ * - habits: Main habit data
+ * - habit_logs: Daily completion records (done/skipped/missed)
+ * - family_members: For owner info and RLS validation
  *
  * ============================================================================
  */
@@ -335,6 +355,18 @@ export interface UpdateHabitInput {
 
 /**
  * Create a new habit
+ *
+ * This hook fetches the user's family_id before creating the habit.
+ * The family_id is required for RLS (Row Level Security) policies to work correctly.
+ *
+ * Flow:
+ * 1. Get current authenticated user from Supabase Auth
+ * 2. Look up family_members record to get family_id
+ * 3. Insert habit with family_id and created_by
+ *
+ * @example
+ * const createHabit = useCreateHabit()
+ * createHabit.mutate({ title: 'Exercise daily', frequency: 'daily' })
  */
 export function useCreateHabit() {
   const queryClient = useQueryClient();
@@ -344,16 +376,57 @@ export function useCreateHabit() {
     mutationFn: async (input: CreateHabitInput) => {
       logger.info('➕ Creating habit...', { title: input.title });
 
+      // Step 1: Get the current user's family_id and member_id
+      // This is required for RLS policies to allow the insert
+      const { data: { user } } = await supabase.auth.getUser();
+
+      if (!user) {
+        logger.error('❌ No authenticated user');
+        throw new Error('You must be logged in to create habits');
+      }
+
+      const { data: member, error: memberError } = await supabase
+        .from('family_members')
+        .select('id, family_id')
+        .eq('auth_user_id', user.id)
+        .maybeSingle();
+
+      if (memberError) {
+        logger.error('❌ Failed to get family info', { error: memberError.message });
+        throw new Error('Failed to get your family information');
+      }
+
+      if (!member) {
+        logger.error('❌ User has no family membership');
+        throw new Error('Please complete onboarding to create habits');
+      }
+
+      logger.debug('👤 Got family context for habit creation', {
+        familyId: member.family_id,
+        memberId: member.id,
+      });
+
+      // Step 2: Create the habit with family_id and created_by
       const { data, error } = await supabase
         .from('habits')
         .insert({
-          ...input,
+          title: input.title,
+          description: input.description,
           frequency: input.frequency || 'daily',
+          target_days_per_week: input.target_days_per_week,
+          days_of_week: input.days_of_week,
+          owner_id: input.owner_id || member.id, // Default owner to current user
+          goal_id: input.goal_id,
+          family_id: member.family_id, // Required for RLS
+          created_by: member.id, // Track who created this habit
           is_active: true,
           current_streak: 0,
           longest_streak: 0,
         })
-        .select()
+        .select(`
+          *,
+          owner:family_members!owner_id(id, name, color, avatar_url)
+        `)
         .single();
 
       if (error) {
@@ -361,7 +434,7 @@ export function useCreateHabit() {
         throw error;
       }
 
-      logger.success('✅ Habit created!', { title: data?.title });
+      logger.success('✅ Habit created!', { title: data?.title, habitId: data?.id });
       return data as Habit;
     },
 
@@ -370,8 +443,10 @@ export function useCreateHabit() {
       toast.success('🔄 Habit created!');
     },
 
-    onError: () => {
-      toast.error('Failed to create habit');
+    onError: (error) => {
+      const message = error instanceof Error ? error.message : 'Failed to create habit';
+      toast.error(message);
+      logger.error('Create habit error', { error });
     },
   });
 }
