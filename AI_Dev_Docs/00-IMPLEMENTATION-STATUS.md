@@ -1,7 +1,7 @@
 # Fam - Implementation Status
 
 > **Last Updated:** December 2024
-> **Status:** MVP Phase 2.6 Complete - Task Modal & Entity Pickers Added
+> **Status:** MVP Phase 2.7 Complete - Full Triage Flow with Goal/Habit Modals
 
 ---
 
@@ -18,7 +18,7 @@
 | Dashboard | ✅ Complete | 95% |
 | Goals Feature | ✅ Complete | 80% |
 | Projects Feature | ✅ Complete | 80% |
-| Inbox Feature | ✅ Complete | 80% |
+| Inbox Feature | ✅ Complete | 95% |
 | Today Feature | ✅ Complete | 80% |
 | Someday Feature | ✅ Complete | 80% |
 | Family Feature | ✅ Complete | 75% |
@@ -105,6 +105,8 @@ Tables: families, family_members, tasks, subtasks, habits, habit_logs,
 | ProjectPicker | `components/shared/project-picker.tsx` | Select project with color/status |
 | GoalPicker | `components/shared/goal-picker.tsx` | Select goal with progress bar |
 | TaskModal | `components/modals/task-modal.tsx` | Full task create/edit form |
+| GoalModal | `components/modals/goal-modal.tsx` | Full goal create/edit form (qualitative/quantitative) |
+| HabitModal | `components/modals/habit-modal.tsx` | Habit create form with frequency, goal linking |
 | AppShell | `components/layout/app-shell.tsx` | Main wrapper |
 | Sidebar | `components/layout/sidebar.tsx` | Navigation |
 | TopBar | `components/layout/top-bar.tsx` | User menu |
@@ -232,9 +234,10 @@ npm run dev
    - ~~Link user to family_members table~~
    - ~~Redirect to dashboard~~
 
-2. ~~**Create/Edit Modals**~~ ✅ TaskModal Complete
+2. ~~**Create/Edit Modals**~~ ✅ Core Modals Complete
    - ~~Task creation modal~~ ✅
-   - Goal creation modal (pending)
+   - ~~Goal creation modal~~ ✅ (qualitative + quantitative support)
+   - ~~Habit creation modal~~ ✅ (with goal linking)
    - Project creation modal (pending)
    - Someday item creation modal (pending)
 
@@ -340,7 +343,7 @@ fam_app/
 ├── components/
 │   ├── ui/                     # 7 components (button, input, card, checkbox, spinner, dialog, select)
 │   ├── shared/                 # 7 components (avatar, badge, empty-state, progress-bar, family-member-picker, project-picker, goal-picker)
-│   ├── modals/                 # 1 component (task-modal)
+│   ├── modals/                 # 3 components (task-modal, goal-modal, habit-modal)
 │   ├── layout/                 # 3 components
 │   └── providers.tsx
 ├── lib/
@@ -385,5 +388,6 @@ Keep files under 400 lines. Extract components when they grow.
 | 1.6 | 2024-12-25 | Claude | Wired dashboard to real data (tasks, habits, goals with live updates) |
 | 1.7 | 2024-12-26 | Claude | Added onboarding flow for new users (family creation) |
 | 1.8 | 2024-12-26 | Claude | Added TaskModal, Dialog, Select, entity pickers (FamilyMember, Project, Goal), ProgressBar |
+| 1.9 | 2024-12-26 | Claude | Added GoalModal, HabitModal, full inbox triage (Goal/Habit), linked entity counts on Goals/Projects pages |
 
 *This document is auto-generated. See individual docs for detailed specs.*
