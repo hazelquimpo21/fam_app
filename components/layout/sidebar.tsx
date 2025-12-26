@@ -32,10 +32,12 @@ import {
   Users,
   Settings,
   LogOut,
+  Shield,
 } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
 import { Avatar } from '@/components/shared/avatar';
 import { useAuth } from '@/lib/hooks/use-auth';
+import { useAdmin } from '@/lib/hooks/use-admin';
 import { logger } from '@/lib/utils/logger';
 
 /**
@@ -115,6 +117,7 @@ function NavLink({ item, isActive }: NavLinkProps) {
 export function Sidebar() {
   const pathname = usePathname();
   const { familyMember, signOut, authState } = useAuth();
+  const { isAdmin } = useAdmin();
 
   /**
    * Handle user logout
@@ -173,6 +176,19 @@ export function Sidebar() {
             />
           ))}
         </div>
+
+        {/* Admin navigation (only visible to admins) */}
+        {isAdmin && (
+          <>
+            <div className="my-4 border-t border-neutral-200" />
+            <div className="space-y-1">
+              <NavLink
+                item={{ label: 'Admin', href: '/admin', icon: Shield }}
+                isActive={pathname === '/admin'}
+              />
+            </div>
+          </>
+        )}
       </nav>
 
       {/* ━━━━━ User Profile (Bottom) ━━━━━ */}
