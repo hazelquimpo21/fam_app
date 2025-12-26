@@ -11,6 +11,9 @@
  * ============================================================================
  */
 
+// Profile types are defined separately for modularity
+import type { FamilyProfile, MemberProfile } from '@/types/profiles';
+
 // ============================================================================
 // 📦 ENUMS - These match the database enums exactly
 // ============================================================================
@@ -91,6 +94,8 @@ export interface Family {
   id: string;
   name: string;
   settings: FamilySettings;
+  /** Rich family profile for personalization - see types/profiles.ts */
+  profile: FamilyProfile;
   created_at: string;
   updated_at: string;
 }
@@ -115,6 +120,8 @@ export interface FamilyMember {
   avatar_url: string | null;
   birthday: string | null;   // ISO date string
   preferences: Record<string, unknown>;
+  /** Rich member profile for personalization - see types/profiles.ts */
+  profile: MemberProfile;
   created_at: string;
   updated_at: string;
 }

@@ -17,6 +17,7 @@
  */
 
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import {
   Settings,
   User,
@@ -28,6 +29,8 @@ import {
   Globe,
   Moon,
   Sun,
+  Home,
+  Sparkles,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -148,6 +151,37 @@ function ToggleSwitch({ checked, onChange, disabled }: ToggleSwitchProps) {
 }
 
 /**
+ * Settings Link Component - For navigation to sub-pages
+ */
+interface SettingsLinkProps {
+  href: string;
+  icon: React.ReactNode;
+  iconColor?: string;
+  label: string;
+  description: string;
+}
+
+function SettingsLink({ href, icon, iconColor = 'text-indigo-600', label, description }: SettingsLinkProps) {
+  return (
+    <Link
+      href={href}
+      className="flex items-center gap-4 py-3 px-1 rounded-lg hover:bg-neutral-50 transition-colors group"
+    >
+      <div className={cn('p-2 bg-neutral-100 rounded-lg', iconColor)}>
+        {icon}
+      </div>
+      <div className="flex-1">
+        <p className="font-medium text-neutral-900 group-hover:text-indigo-600 transition-colors">
+          {label}
+        </p>
+        <p className="text-sm text-neutral-500">{description}</p>
+      </div>
+      <ChevronRight className="h-5 w-5 text-neutral-400 group-hover:text-indigo-600 transition-colors" />
+    </Link>
+  );
+}
+
+/**
  * Settings Page Component
  */
 export default function SettingsPage() {
@@ -184,8 +218,34 @@ export default function SettingsPage() {
         <h1 className="text-xl font-semibold text-neutral-900">Settings</h1>
       </div>
 
-      {/* Profile Section */}
-      <SettingsSection title="Profile" icon={<User className="h-5 w-5 text-indigo-600" />}>
+      {/* Profiles Section - Links to detailed profile pages */}
+      <SettingsSection
+        title="Profiles"
+        icon={<Sparkles className="h-5 w-5 text-purple-500" />}
+      >
+        <p className="text-sm text-neutral-500 mb-3">
+          Set up your profiles for personalized AI suggestions
+        </p>
+        <div className="space-y-1">
+          <SettingsLink
+            href="/settings/my-profile"
+            icon={<User className="h-5 w-5" />}
+            iconColor="text-indigo-600"
+            label="My Profile"
+            description="Personality, interests, preferences"
+          />
+          <SettingsLink
+            href="/settings/family-profile"
+            icon={<Home className="h-5 w-5" />}
+            iconColor="text-green-600"
+            label="Family Profile"
+            description="Values, traditions, shared interests"
+          />
+        </div>
+      </SettingsSection>
+
+      {/* Basic Info Section */}
+      <SettingsSection title="Your Info" icon={<User className="h-5 w-5 text-indigo-600" />}>
         <div className="flex items-center gap-4 py-3">
           <Avatar
             name={mockUser.name}
@@ -197,9 +257,11 @@ export default function SettingsPage() {
             <p className="font-medium text-neutral-900">{mockUser.name}</p>
             <p className="text-sm text-neutral-500">{mockUser.email}</p>
           </div>
-          <Button variant="outline" size="sm">
-            Edit Profile
-          </Button>
+          <Link href="/settings/my-profile">
+            <Button variant="outline" size="sm">
+              Edit Profile
+            </Button>
+          </Link>
         </div>
         <SettingsRow label="Email" description="Your login email">
           <span className="text-sm text-neutral-600">{mockUser.email}</span>
