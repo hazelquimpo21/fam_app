@@ -9,13 +9,23 @@
  *
  * Route: /tasks
  *
+ * Features:
+ * - Status filtering (All, Inbox, Active, Done)
+ * - Quick add for new tasks (creates in inbox)
+ * - Click task to edit in modal
+ * - Checkbox to mark complete
+ * - "New Task" button for full task creation
+ *
+ * User Stories Addressed:
+ * - US-3.1: Create Task with details (via TaskModal)
+ * - US-3.2: Click task to open detail panel (TaskModal in edit mode)
+ *
  * ============================================================================
  */
 
 import { useState } from 'react';
 import {
   Plus,
-  Filter,
   CheckSquare,
   Clock,
   AlertCircle,
@@ -29,12 +39,18 @@ import { Badge } from '@/components/shared/badge';
 import { Avatar } from '@/components/shared/avatar';
 import { EmptyState } from '@/components/shared/empty-state';
 import { Spinner } from '@/components/ui/spinner';
+import { TaskModal } from '@/components/modals/task-modal';
 import { cn } from '@/lib/utils/cn';
+import { logger } from '@/lib/utils/logger';
 import { useTasks, useCompleteTask, useCreateTask } from '@/lib/hooks/use-tasks';
 import type { Task, TaskStatus } from '@/types/database';
 
+// ============================================================================
+// Constants
+// ============================================================================
+
 /**
- * Status filter options
+ * Status filter options for the filter tabs
  */
 const statusFilters: { value: TaskStatus | 'all'; label: string; icon: React.ReactNode }[] = [
   { value: 'all', label: 'All', icon: <CheckSquare className="h-4 w-4" /> },
@@ -43,8 +59,12 @@ const statusFilters: { value: TaskStatus | 'all'; label: string; icon: React.Rea
   { value: 'done', label: 'Done', icon: <CheckSquare className="h-4 w-4" /> },
 ];
 
+// ============================================================================
+// Utility Functions
+// ============================================================================
+
 /**
- * Format due date for display
+ * Format due date for display with smart labels (Today, Tomorrow, overdue, etc.)
  */
 function formatDueDate(dateStr: string | null): string {
   if (!dateStr) return '';
@@ -81,7 +101,7 @@ function formatDueDate(dateStr: string | null): string {
 }
 
 /**
- * Check if a date is overdue
+ * Check if a date is overdue (before today)
  */
 function isOverdue(dateStr: string | null): boolean {
   if (!dateStr) return false;
@@ -91,15 +111,19 @@ function isOverdue(dateStr: string | null): boolean {
   return date < today;
 }
 
-/**
- * Task Item Component
- */
+// ============================================================================
+// TaskItem Component
+// ============================================================================
+
 interface TaskItemProps {
   task: Task;
   onComplete: (id: string) => void;
-  onClick: (id: string) => void;
+  onClick: (task: Task) => void;
 }
 
+/**
+ * Individual task row with checkbox, title, meta info, and assignee
+ */
 function TaskItem({ task, onComplete, onClick }: TaskItemProps) {
   const overdue = isOverdue(task.due_date) && task.status !== 'done';
 
@@ -109,11 +133,11 @@ function TaskItem({ task, onComplete, onClick }: TaskItemProps) {
         'flex items-start gap-3 rounded-lg border p-4 transition-colors cursor-pointer',
         task.status === 'done'
           ? 'border-neutral-100 bg-neutral-50'
-          : 'border-neutral-200 bg-white hover:border-neutral-300'
+          : 'border-neutral-200 bg-white hover:border-neutral-300 hover:shadow-sm'
       )}
-      onClick={() => onClick(task.id)}
+      onClick={() => onClick(task)}
     >
-      {/* Checkbox */}
+      {/* Checkbox - stop propagation to prevent opening modal */}
       <div className="pt-0.5" onClick={(e) => e.stopPropagation()}>
         <Checkbox
           checked={task.status === 'done'}
@@ -135,9 +159,9 @@ function TaskItem({ task, onComplete, onClick }: TaskItemProps) {
           {task.title}
         </p>
 
-        {/* Meta info */}
+        {/* Meta info row */}
         <div className="flex flex-wrap items-center gap-2 mt-1">
-          {/* Due date */}
+          {/* Due date with overdue styling */}
           {task.due_date && (
             <span
               className={cn(
@@ -159,7 +183,7 @@ function TaskItem({ task, onComplete, onClick }: TaskItemProps) {
         </div>
       </div>
 
-      {/* Assignee */}
+      {/* Assignee avatar */}
       {task.assigned_to && (
         <Avatar
           name={task.assigned_to.name}
@@ -172,15 +196,20 @@ function TaskItem({ task, onComplete, onClick }: TaskItemProps) {
   );
 }
 
-/**
- * Quick Add Form Component
- */
+// ============================================================================
+// QuickAddForm Component
+// ============================================================================
+
 interface QuickAddFormProps {
   onSubmit: (title: string) => void;
+  onOpenFullForm: () => void;
   isLoading: boolean;
 }
 
-function QuickAddForm({ onSubmit, isLoading }: QuickAddFormProps) {
+/**
+ * Inline form for quickly adding tasks to inbox
+ */
+function QuickAddForm({ onSubmit, onOpenFullForm, isLoading }: QuickAddFormProps) {
   const [title, setTitle] = useState('');
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -192,25 +221,37 @@ function QuickAddForm({ onSubmit, isLoading }: QuickAddFormProps) {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="flex gap-2">
-      <Input
-        value={title}
-        onChange={(e) => setTitle(e.target.value)}
-        placeholder="Add a task... (press Enter)"
-        className="flex-1"
-      />
-      <Button type="submit" loading={isLoading} disabled={!title.trim()}>
-        <Plus className="h-4 w-4" />
+    <div className="flex gap-2">
+      <form onSubmit={handleSubmit} className="flex gap-2 flex-1">
+        <Input
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          placeholder="Quick add to inbox... (press Enter)"
+          className="flex-1"
+        />
+        <Button type="submit" loading={isLoading} disabled={!title.trim()}>
+          <Plus className="h-4 w-4" />
+        </Button>
+      </form>
+      <Button variant="outline" onClick={onOpenFullForm}>
+        New Task
       </Button>
-    </form>
+    </div>
   );
 }
 
+// ============================================================================
+// TasksPage Component (Main Export)
+// ============================================================================
+
 /**
- * Tasks Page Component
+ * Main Tasks page with filtering, quick add, and task modal
  */
 export default function TasksPage() {
+  // UI State
   const [statusFilter, setStatusFilter] = useState<TaskStatus | 'all'>('all');
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedTask, setSelectedTask] = useState<Task | null>(null);
 
   // Fetch tasks with filter
   const filters = statusFilter === 'all' ? {} : { status: statusFilter };
@@ -221,28 +262,50 @@ export default function TasksPage() {
   const createTask = useCreateTask();
 
   /**
-   * Handle task completion
+   * Handle task completion toggle
    */
   const handleComplete = (taskId: string) => {
+    logger.info('Completing task', { taskId });
     completeTask.mutate(taskId);
   };
 
   /**
-   * Handle task click (open detail view)
+   * Handle task click - open in edit modal
    */
-  const handleTaskClick = (taskId: string) => {
-    // In a real app, this would open a detail panel or navigate to detail page
-    console.log('Open task:', taskId);
+  const handleTaskClick = (task: Task) => {
+    logger.info('Opening task for edit', { taskId: task.id, title: task.title });
+    setSelectedTask(task);
+    setIsModalOpen(true);
   };
 
   /**
-   * Handle quick add
+   * Handle quick add - creates task in inbox
    */
   const handleQuickAdd = (title: string) => {
+    logger.info('Quick adding task to inbox', { title });
     createTask.mutate({
       title,
       status: 'inbox',
     });
+  };
+
+  /**
+   * Handle opening full create form
+   */
+  const handleOpenFullForm = () => {
+    logger.info('Opening full task creation form');
+    setSelectedTask(null); // Clear any selected task to ensure create mode
+    setIsModalOpen(true);
+  };
+
+  /**
+   * Handle modal close - clear selected task
+   */
+  const handleModalClose = (open: boolean) => {
+    setIsModalOpen(open);
+    if (!open) {
+      setSelectedTask(null);
+    }
   };
 
   // Group tasks by status for better organization
@@ -251,11 +314,12 @@ export default function TasksPage() {
 
   return (
     <div className="space-y-6">
-      {/* Header with quick add */}
+      {/* Header with quick add and new task button */}
       <Card>
         <CardContent className="p-4">
           <QuickAddForm
             onSubmit={handleQuickAdd}
+            onOpenFullForm={handleOpenFullForm}
             isLoading={createTask.isPending}
           />
         </CardContent>
@@ -303,12 +367,13 @@ export default function TasksPage() {
               icon={<CheckSquare className="h-12 w-12" />}
               title="No tasks yet"
               description="Add your first task above to get started!"
+              action={{ label: 'Create Task', onClick: handleOpenFullForm }}
             />
           </CardContent>
         </Card>
       ) : (
         <div className="space-y-4">
-          {/* Active tasks */}
+          {/* Active tasks section */}
           {activeTasks.length > 0 && (
             <div className="space-y-2">
               <h2 className="text-sm font-medium text-neutral-500 uppercase tracking-wider">
@@ -327,7 +392,7 @@ export default function TasksPage() {
             </div>
           )}
 
-          {/* Completed tasks */}
+          {/* Completed tasks section */}
           {statusFilter !== 'active' && completedTasks.length > 0 && (
             <div className="space-y-2">
               <h2 className="text-sm font-medium text-neutral-500 uppercase tracking-wider">
@@ -347,6 +412,14 @@ export default function TasksPage() {
           )}
         </div>
       )}
+
+      {/* Task Modal for create/edit */}
+      <TaskModal
+        open={isModalOpen}
+        onOpenChange={handleModalClose}
+        task={selectedTask}
+        initialStatus="active"
+      />
     </div>
   );
 }

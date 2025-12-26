@@ -15,33 +15,50 @@
  * - Quick capture input
  * - List of unprocessed items from database
  * - Processing actions (→ Task, → Project, → Someday, Delete)
+ * - TaskModal integration for full task details when triaging to Task
+ *
+ * User Stories Addressed:
+ * - US-2.1: Quick capture to inbox
+ * - US-2.2: Triage inbox items
+ * - US-3.1: Create task with full details (via TaskModal)
  *
  * ============================================================================
  */
 
-import { useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Inbox, Plus, ArrowRight, Trash2, FolderOpen, Sparkles, CheckSquare, Loader2 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { EmptyState } from '@/components/shared/empty-state';
+import { TaskModal } from '@/components/modals/task-modal';
 import { useInboxTasks, useCreateTask, useUpdateTask, useDeleteTask } from '@/lib/hooks/use-tasks';
 import { useCreateSomedayItem } from '@/lib/hooks/use-someday';
 import { useCreateProject } from '@/lib/hooks/use-projects';
 import { logger } from '@/lib/utils/logger';
 import type { Task } from '@/types/database';
 
-/**
- * InboxItem Component
- * Displays a single inbox item with processing actions
- */
+// ============================================================================
+// InboxItem Component
+// ============================================================================
+
 interface InboxItemProps {
   item: Task;
-  onProcess: (id: string, action: 'task' | 'project' | 'someday' | 'delete') => void;
+  onTaskClick: (item: Task) => void;
+  onProcess: (id: string, action: 'project' | 'someday' | 'delete') => void;
   isProcessing: boolean;
 }
 
-function InboxItem({ item, onProcess, isProcessing }: InboxItemProps) {
+/**
+ * InboxItem - Displays a single inbox item with processing actions
+ *
+ * Actions:
+ * - Task: Opens TaskModal for full task creation with pre-filled title
+ * - Project: Creates a project and deletes the inbox item
+ * - Someday: Creates a someday item and deletes the inbox item
+ * - Delete: Soft deletes the inbox item
+ */
+function InboxItem({ item, onTaskClick, onProcess, isProcessing }: InboxItemProps) {
   return (
     <Card className="transition-all hover:shadow-md">
       <CardContent className="p-4">
@@ -59,15 +76,17 @@ function InboxItem({ item, onProcess, isProcessing }: InboxItemProps) {
 
           {/* Processing actions */}
           <div className="flex flex-wrap gap-2">
+            {/* Task button - opens TaskModal */}
             <Button
               size="sm"
               variant="outline"
               leftIcon={<CheckSquare className="h-4 w-4" />}
-              onClick={() => onProcess(item.id, 'task')}
+              onClick={() => onTaskClick(item)}
               disabled={isProcessing}
             >
               Task
             </Button>
+            {/* Project button - quick convert */}
             <Button
               size="sm"
               variant="outline"
@@ -77,6 +96,7 @@ function InboxItem({ item, onProcess, isProcessing }: InboxItemProps) {
             >
               Project
             </Button>
+            {/* Someday button - quick convert */}
             <Button
               size="sm"
               variant="outline"
@@ -86,6 +106,7 @@ function InboxItem({ item, onProcess, isProcessing }: InboxItemProps) {
             >
               Someday
             </Button>
+            {/* Delete button */}
             <Button
               size="sm"
               variant="ghost"
@@ -102,6 +123,10 @@ function InboxItem({ item, onProcess, isProcessing }: InboxItemProps) {
     </Card>
   );
 }
+
+// ============================================================================
+// InboxSkeleton Component
+// ============================================================================
 
 /**
  * Loading skeleton for inbox items
@@ -130,11 +155,19 @@ function InboxSkeleton() {
   );
 }
 
+// ============================================================================
+// InboxPage Component (Main Export)
+// ============================================================================
+
 /**
- * Inbox Page Component
+ * Inbox page with quick capture and triage actions
  */
 export default function InboxPage() {
   const inputRef = useRef<HTMLInputElement>(null);
+
+  // Modal state for TaskModal
+  const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
+  const [selectedInboxItem, setSelectedInboxItem] = useState<Task | null>(null);
 
   // Fetch inbox items from database
   const { data: inboxItems = [], isLoading, error } = useInboxTasks();
@@ -157,10 +190,40 @@ export default function InboxPage() {
   }, [inboxItems.length, isLoading]);
 
   /**
-   * Handle processing an inbox item
-   * Converts the item to a task, project, someday item, or deletes it
+   * Handle clicking "Task" button - opens TaskModal with pre-filled title
    */
-  const handleProcess = async (id: string, action: 'task' | 'project' | 'someday' | 'delete') => {
+  const handleTaskClick = (item: Task) => {
+    logger.info('Opening TaskModal for inbox item', { id: item.id, title: item.title });
+    setSelectedInboxItem(item);
+    setIsTaskModalOpen(true);
+  };
+
+  /**
+   * Handle TaskModal success - delete the original inbox item
+   */
+  const handleTaskModalSuccess = async () => {
+    if (selectedInboxItem) {
+      logger.info('Task created from inbox, deleting original', { id: selectedInboxItem.id });
+      await deleteTask.mutateAsync(selectedInboxItem.id);
+      setSelectedInboxItem(null);
+    }
+  };
+
+  /**
+   * Handle TaskModal close
+   */
+  const handleTaskModalClose = (open: boolean) => {
+    setIsTaskModalOpen(open);
+    if (!open) {
+      setSelectedInboxItem(null);
+    }
+  };
+
+  /**
+   * Handle processing an inbox item (project, someday, or delete)
+   * Task processing is handled separately via TaskModal
+   */
+  const handleProcess = async (id: string, action: 'project' | 'someday' | 'delete') => {
     const item = inboxItems.find((i) => i.id === id);
     if (!item) {
       logger.error('Item not found for processing', { id });
@@ -170,14 +233,6 @@ export default function InboxPage() {
     logger.info('Processing inbox item', { id, action, title: item.title });
 
     switch (action) {
-      case 'task':
-        // Update the task status from 'inbox' to 'active'
-        await updateTask.mutateAsync({
-          id,
-          status: 'active',
-        });
-        break;
-
       case 'project':
         // Create a new project from this item, then delete the inbox item
         await createProject.mutateAsync({
@@ -321,6 +376,7 @@ export default function InboxPage() {
               <InboxItem
                 key={item.id}
                 item={item}
+                onTaskClick={handleTaskClick}
                 onProcess={handleProcess}
                 isProcessing={isProcessing}
               />
@@ -328,6 +384,15 @@ export default function InboxPage() {
           </div>
         )
       )}
+
+      {/* TaskModal for converting inbox item to full task */}
+      <TaskModal
+        open={isTaskModalOpen}
+        onOpenChange={handleTaskModalClose}
+        initialTitle={selectedInboxItem?.title}
+        initialStatus="active"
+        onSuccess={handleTaskModalSuccess}
+      />
     </div>
   );
 }
