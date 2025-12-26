@@ -1,7 +1,7 @@
 # Fam - Implementation Status
 
 > **Last Updated:** December 2024
-> **Status:** MVP Phase 2 Complete - All Core Pages Wired to Database
+> **Status:** MVP Phase 2.5 Complete - Onboarding Flow Added
 
 ---
 
@@ -11,8 +11,9 @@
 |------|--------|------------|
 | Database Schema | ✅ Complete | 100% |
 | Authentication (Magic Link) | ✅ Complete | 100% |
+| Onboarding Flow | ✅ Complete | 100% |
 | Core UI Components | ✅ Complete | ~40% |
-| Tasks Feature | ✅ Complete | 95% |
+| Tasks Feature | ✅ Complete | 100% |
 | Habits Feature | ✅ Complete | 90% |
 | Dashboard | ✅ Complete | 95% |
 | Goals Feature | ✅ Complete | 80% |
@@ -66,6 +67,22 @@ Tables: families, family_members, tasks, subtasks, habits, habit_logs,
 - ✅ Session management
 - ✅ Protected routes
 - ✅ Auth state hook with `sendMagicLink` method
+- ✅ Onboarding flow for new users
+
+### 2.5 Onboarding Flow (100% Complete)
+
+**Files:**
+- `app/(auth)/onboarding/page.tsx` - Family creation page
+- `middleware.ts` - Enforces onboarding for new users
+- `lib/supabase/middleware.ts` - Family membership check
+
+**Features:**
+- ✅ Automatic redirect to onboarding for users without a family
+- ✅ Family creation with name and timezone
+- ✅ Family member creation with name, email, color picker
+- ✅ User set as owner role
+- ✅ Graceful handling of auth states (loading, needs_family)
+- ✅ Server-side enforcement via middleware
 
 ### 3. UI Components (~40% Complete)
 
@@ -157,11 +174,12 @@ Tables: families, family_members, tasks, subtasks, habits, habit_logs,
 | Page | Route | Status | Notes |
 |------|-------|--------|-------|
 | Dashboard | `/` | ✅ **Connected** | Real-time stats, tasks, habits, goals from DB |
-| Tasks | `/tasks` | ✅ | List, filters, quick add, connected to DB |
+| Tasks | `/tasks` | ✅ **Connected** | List, filters, quick add, connected to DB |
 | Habits | `/habits` | ✅ | Today view, streaks, connected to DB |
 | Login | `/login` | ✅ | Magic link (passwordless) |
 | Signup | `/signup` | ✅ | Magic link (passwordless) |
 | Check Email | `/check-email` | ✅ | Confirmation after magic link |
+| Onboarding | `/onboarding` | ✅ **NEW** | Family creation for new users |
 | Inbox | `/inbox` | ✅ **Connected** | Quick capture, processing actions, connected to DB |
 | Today | `/today` | ✅ **Connected** | Daily focus with habits, overdue, today's tasks |
 | Goals | `/goals` | ✅ **Connected** | Goal tracking with progress bars, grouped by owner |
@@ -305,7 +323,8 @@ fam_app/
 │   ├── (auth)/
 │   │   ├── login/page.tsx      # Magic link login
 │   │   ├── signup/page.tsx     # Magic link signup
-│   │   └── check-email/page.tsx # Email confirmation
+│   │   ├── check-email/page.tsx # Email confirmation
+│   │   └── onboarding/page.tsx # Family setup (new users)
 │   ├── auth/callback/route.ts   # Magic link callback
 │   ├── layout.tsx              # Root layout
 │   └── globals.css
