@@ -1,7 +1,7 @@
 # Fam - Implementation Status
 
 > **Last Updated:** December 2024
-> **Status:** MVP Phase 2.8 Complete - Project/Someday Modals with Inbox Badge
+> **Status:** MVP Phase 2.9 Complete - Habits/Today Modal Connections & Real Data
 
 ---
 
@@ -14,12 +14,12 @@
 | Onboarding Flow | ✅ Complete | 100% |
 | Core UI Components | ✅ Complete | ~60% |
 | Tasks Feature | ✅ Complete | 100% |
-| Habits Feature | ✅ Complete | 90% |
+| Habits Feature | ✅ Complete | 95% |
 | Dashboard | ✅ Complete | 95% |
 | Goals Feature | ✅ Complete | 80% |
 | Projects Feature | ✅ Complete | 95% |
 | Inbox Feature | ✅ Complete | 100% |
-| Today Feature | ✅ Complete | 80% |
+| Today Feature | ✅ Complete | 95% |
 | Someday Feature | ✅ Complete | 95% |
 | Family Feature | ✅ Complete | 75% |
 | Settings Feature | ✅ Stub | 20% |
@@ -133,9 +133,11 @@ Tables: families, family_members, tasks, subtasks, habits, habit_logs,
 
 **File:** `lib/hooks/use-habits.ts`
 - ✅ `useHabits()` - List with today's status
-- ✅ `useHabitLogs(habitId, start, end)` - Log history
+- ✅ `useHabitLogs(habitId, start, end)` - Log history for single habit
+- ✅ `useWeeklyHabitLogs(habitIds)` - Batch fetch weekly logs for all habits (efficient)
 - ✅ `useLogHabit()` - Log done/skipped with optimistic update
 - ✅ `useCreateHabit()` - Create new habit
+- ✅ `useUpdateHabit()` - Update existing habit with optimistic update
 
 **File:** `lib/hooks/use-goals.ts`
 - ✅ `useGoals(filters)` - List with filtering (status, owner, family goals)
@@ -185,7 +187,7 @@ Tables: families, family_members, tasks, subtasks, habits, habit_logs,
 |------|-------|--------|-------|
 | Dashboard | `/` | ✅ **Connected** | Real-time stats, tasks, habits, goals from DB |
 | Tasks | `/tasks` | ✅ **Connected** | List, filters, quick add, connected to DB |
-| Habits | `/habits` | ✅ | Today view, streaks, connected to DB |
+| Habits | `/habits` | ✅ **Connected** | Week progress, click-to-edit via HabitModal, streaks |
 | Login | `/login` | ✅ | Magic link (passwordless) |
 | Signup | `/signup` | ✅ | Magic link (passwordless) |
 | Check Email | `/check-email` | ✅ | Confirmation after magic link |
@@ -392,5 +394,6 @@ Keep files under 400 lines. Extract components when they grow.
 | 1.8 | 2024-12-26 | Claude | Added TaskModal, Dialog, Select, entity pickers (FamilyMember, Project, Goal), ProgressBar |
 | 1.9 | 2024-12-26 | Claude | Added GoalModal, HabitModal, full inbox triage (Goal/Habit), linked entity counts on Goals/Projects pages |
 | 2.0 | 2024-12-26 | Claude | Added ProjectModal, SomedayModal, inbox badge count, wired create/edit on Projects & Someday pages |
+| 2.1 | 2024-12-26 | Claude | Habits/Today modal connections: useUpdateHabit, useWeeklyHabitLogs, click-to-edit habits, create habit from Today |
 
 *This document is auto-generated. See individual docs for detailed specs.*

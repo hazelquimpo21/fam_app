@@ -92,7 +92,7 @@ export function useHabits() {
 }
 
 /**
- * Fetch habit logs for a date range
+ * Fetch habit logs for a single habit over a date range
  */
 export function useHabitLogs(habitId: string, startDate: string, endDate: string) {
   const supabase = createClient();
@@ -119,6 +119,93 @@ export function useHabitLogs(habitId: string, startDate: string, endDate: string
     },
     enabled: !!habitId,
     staleTime: 1000 * 60 * 5, // 5 minutes
+  });
+}
+
+/**
+ * Weekly habit logs mapped by habit ID
+ * Map<habitId, Set<completedDateStrings>>
+ */
+export type WeeklyHabitLogsMap = Map<string, Set<string>>;
+
+/**
+ * Get the start and end dates of the current week (Sunday-Saturday)
+ */
+function getWeekDateRange(): { startDate: string; endDate: string } {
+  const today = new Date();
+  const currentDay = today.getDay();
+  const startOfWeek = new Date(today);
+  startOfWeek.setDate(today.getDate() - currentDay);
+  const endOfWeek = new Date(startOfWeek);
+  endOfWeek.setDate(startOfWeek.getDate() + 6);
+
+  return {
+    startDate: startOfWeek.toISOString().split('T')[0],
+    endDate: endOfWeek.toISOString().split('T')[0],
+  };
+}
+
+/**
+ * Fetch weekly habit logs for all habits
+ *
+ * Returns a Map where keys are habit IDs and values are Sets of completed date strings.
+ * This is more efficient than fetching logs for each habit individually.
+ *
+ * @example
+ * ```tsx
+ * const { data: weekLogs } = useWeeklyHabitLogs(habits);
+ * const completedDays = weekLogs?.get(habitId) || new Set();
+ * ```
+ */
+export function useWeeklyHabitLogs(habitIds: string[]) {
+  const supabase = createClient();
+  const { startDate, endDate } = getWeekDateRange();
+
+  return useQuery({
+    queryKey: ['habits', 'weekly-logs', startDate, endDate, habitIds],
+    queryFn: async (): Promise<WeeklyHabitLogsMap> => {
+      if (habitIds.length === 0) {
+        return new Map();
+      }
+
+      logger.info('📊 Fetching weekly habit logs...', {
+        habitCount: habitIds.length,
+        startDate,
+        endDate,
+      });
+
+      const { data, error } = await supabase
+        .from('habit_logs')
+        .select('habit_id, log_date, status')
+        .in('habit_id', habitIds)
+        .gte('log_date', startDate)
+        .lte('log_date', endDate)
+        .eq('status', 'done'); // Only fetch completed days
+
+      if (error) {
+        logger.error('❌ Failed to fetch weekly habit logs', { error: error.message });
+        throw error;
+      }
+
+      // Build the map: habitId -> Set of completed date strings
+      const logsMap: WeeklyHabitLogsMap = new Map();
+
+      // Initialize empty sets for all habits
+      habitIds.forEach((id) => logsMap.set(id, new Set()));
+
+      // Populate with actual data
+      data?.forEach((log) => {
+        const habitSet = logsMap.get(log.habit_id);
+        if (habitSet) {
+          habitSet.add(log.log_date);
+        }
+      });
+
+      logger.success('✅ Fetched weekly logs', { logsCount: data?.length ?? 0 });
+      return logsMap;
+    },
+    enabled: habitIds.length > 0,
+    staleTime: 1000 * 60, // 1 minute (same as habits)
   });
 }
 
@@ -231,6 +318,22 @@ export interface CreateHabitInput {
 }
 
 /**
+ * Input for updating an existing habit
+ * All fields optional - only provided fields will be updated
+ */
+export interface UpdateHabitInput {
+  id: string;
+  title?: string;
+  description?: string | null;
+  frequency?: 'daily' | 'weekly' | 'custom';
+  target_days_per_week?: number | null;
+  days_of_week?: number[] | null;
+  owner_id?: string | null;
+  goal_id?: string | null;
+  is_active?: boolean;
+}
+
+/**
  * Create a new habit
  */
 export function useCreateHabit() {
@@ -269,6 +372,87 @@ export function useCreateHabit() {
 
     onError: () => {
       toast.error('Failed to create habit');
+    },
+  });
+}
+
+/**
+ * Update an existing habit
+ *
+ * Used by HabitModal in edit mode. Supports partial updates.
+ *
+ * @example
+ * ```tsx
+ * const updateHabit = useUpdateHabit();
+ * updateHabit.mutate({ id: habitId, title: 'New Title', frequency: 'weekly' });
+ * ```
+ */
+export function useUpdateHabit() {
+  const queryClient = useQueryClient();
+  const supabase = createClient();
+
+  return useMutation({
+    mutationFn: async ({ id, ...updates }: UpdateHabitInput) => {
+      logger.info('✏️ Updating habit...', { id, updates });
+
+      const { data, error } = await supabase
+        .from('habits')
+        .update({
+          ...updates,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', id)
+        .select(`
+          *,
+          owner:family_members!owner_id(id, name, color, avatar_url)
+        `)
+        .single();
+
+      if (error) {
+        logger.error('❌ Failed to update habit', { error: error.message });
+        throw error;
+      }
+
+      logger.success('✅ Habit updated!', { id, title: data?.title });
+      return data as Habit;
+    },
+
+    // Optimistic update for instant UI feedback
+    onMutate: async ({ id, ...updates }) => {
+      await queryClient.cancelQueries({ queryKey: queryKeys.habits.today() });
+
+      const previousHabits = queryClient.getQueryData<HabitWithTodayStatus[]>(
+        queryKeys.habits.today()
+      );
+
+      if (previousHabits) {
+        queryClient.setQueryData<HabitWithTodayStatus[]>(
+          queryKeys.habits.today(),
+          (old) =>
+            old?.map((habit) =>
+              habit.id === id ? { ...habit, ...updates } : habit
+            )
+        );
+      }
+
+      return { previousHabits };
+    },
+
+    onError: (_err, _vars, context) => {
+      // Rollback on error
+      if (context?.previousHabits) {
+        queryClient.setQueryData(queryKeys.habits.today(), context.previousHabits);
+      }
+      toast.error('Failed to update habit');
+    },
+
+    onSuccess: () => {
+      toast.success('Habit updated!');
+    },
+
+    onSettled: () => {
+      // Refetch to ensure consistency
+      queryClient.invalidateQueries({ queryKey: queryKeys.habits.all });
     },
   });
 }

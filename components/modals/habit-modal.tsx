@@ -55,7 +55,12 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { FamilyMemberPicker } from '@/components/shared/family-member-picker';
 import { GoalPicker } from '@/components/shared/goal-picker';
-import { useCreateHabit, type CreateHabitInput } from '@/lib/hooks/use-habits';
+import {
+  useCreateHabit,
+  useUpdateHabit,
+  type CreateHabitInput,
+  type UpdateHabitInput,
+} from '@/lib/hooks/use-habits';
 import { logger } from '@/lib/utils/logger';
 import { cn } from '@/lib/utils/cn';
 import type { Habit, HabitFrequency } from '@/types/database';
@@ -169,12 +174,11 @@ export function HabitModal({
   );
   const [showAdvanced, setShowAdvanced] = React.useState(false);
 
-  // Mutations
+  // Mutations - use create for new habits, update for existing
   const createHabit = useCreateHabit();
-  // Note: useUpdateHabit would go here if we had it
-  // For now, we only support create mode for habits
+  const updateHabit = useUpdateHabit();
 
-  const isPending = createHabit.isPending;
+  const isPending = createHabit.isPending || updateHabit.isPending;
 
   // Reset form when habit changes or modal opens
   React.useEffect(() => {
@@ -232,22 +236,45 @@ export function HabitModal({
     logger.info('Saving habit...', { isEditMode, title: formData.title });
 
     try {
-      // Create new habit
-      const habitInput: CreateHabitInput = {
-        title: formData.title.trim(),
-        description: formData.description.trim() || undefined,
-        frequency: formData.frequency,
-        target_days_per_week: formData.frequency === 'weekly'
-          ? formData.target_days_per_week
-          : undefined,
-        days_of_week: formData.frequency === 'custom'
-          ? formData.days_of_week
-          : undefined,
-        owner_id: formData.owner_id || undefined,
-        goal_id: formData.goal_id || undefined,
-      };
+      let result: Habit;
 
-      const result = await createHabit.mutateAsync(habitInput);
+      if (isEditMode && habit) {
+        // Update existing habit
+        const updateInput: UpdateHabitInput = {
+          id: habit.id,
+          title: formData.title.trim(),
+          description: formData.description.trim() || null,
+          frequency: formData.frequency,
+          target_days_per_week: formData.frequency === 'weekly'
+            ? formData.target_days_per_week
+            : null,
+          days_of_week: formData.frequency === 'custom'
+            ? formData.days_of_week
+            : null,
+          owner_id: formData.owner_id,
+          goal_id: formData.goal_id,
+        };
+
+        result = await updateHabit.mutateAsync(updateInput);
+      } else {
+        // Create new habit
+        const createInput: CreateHabitInput = {
+          title: formData.title.trim(),
+          description: formData.description.trim() || undefined,
+          frequency: formData.frequency,
+          target_days_per_week: formData.frequency === 'weekly'
+            ? formData.target_days_per_week
+            : undefined,
+          days_of_week: formData.frequency === 'custom'
+            ? formData.days_of_week
+            : undefined,
+          owner_id: formData.owner_id || undefined,
+          goal_id: formData.goal_id || undefined,
+        };
+
+        result = await createHabit.mutateAsync(createInput);
+      }
+
       onSuccess?.(result);
 
       // Close modal on success
