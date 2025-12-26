@@ -1,7 +1,7 @@
 # Fam - Implementation Status
 
 > **Last Updated:** December 2024
-> **Status:** MVP Phase 2.5 Complete - Onboarding Flow Added
+> **Status:** MVP Phase 2.6 Complete - Task Modal & Entity Pickers Added
 
 ---
 
@@ -12,7 +12,7 @@
 | Database Schema | ✅ Complete | 100% |
 | Authentication (Magic Link) | ✅ Complete | 100% |
 | Onboarding Flow | ✅ Complete | 100% |
-| Core UI Components | ✅ Complete | ~40% |
+| Core UI Components | ✅ Complete | ~60% |
 | Tasks Feature | ✅ Complete | 100% |
 | Habits Feature | ✅ Complete | 90% |
 | Dashboard | ✅ Complete | 95% |
@@ -84,9 +84,9 @@ Tables: families, family_members, tasks, subtasks, habits, habit_logs,
 - ✅ Graceful handling of auth states (loading, needs_family)
 - ✅ Server-side enforcement via middleware
 
-### 3. UI Components (~40% Complete)
+### 3. UI Components (~60% Complete)
 
-**Built (11 components):**
+**Built (18 components):**
 
 | Component | File | Features |
 |-----------|------|----------|
@@ -95,16 +95,22 @@ Tables: families, family_members, tasks, subtasks, habits, habit_logs,
 | Card | `components/ui/card.tsx` | Composable (Header/Title/Content) |
 | Checkbox | `components/ui/checkbox.tsx` | Animated SVG |
 | Spinner | `components/ui/spinner.tsx` | 3 sizes |
+| Dialog | `components/ui/dialog.tsx` | Modal with Header/Body/Footer, ESC close, focus trap |
+| Select | `components/ui/select.tsx` | Dropdown with keyboard nav, click-outside |
 | Avatar | `components/shared/avatar.tsx` | Image + initials fallback |
 | Badge | `components/shared/badge.tsx` | 6 variants + StreakBadge |
 | EmptyState | `components/shared/empty-state.tsx` | Icon, action button |
+| ProgressBar | `components/shared/progress-bar.tsx` | 3 sizes, 5 variants (auto color) |
+| FamilyMemberPicker | `components/shared/family-member-picker.tsx` | Select family member, shows "(you)" |
+| ProjectPicker | `components/shared/project-picker.tsx` | Select project with color/status |
+| GoalPicker | `components/shared/goal-picker.tsx` | Select goal with progress bar |
+| TaskModal | `components/modals/task-modal.tsx` | Full task create/edit form |
 | AppShell | `components/layout/app-shell.tsx` | Main wrapper |
 | Sidebar | `components/layout/sidebar.tsx` | Navigation |
 | TopBar | `components/layout/top-bar.tsx` | User menu |
 
-**Not Yet Built (~25 components):**
-- Select, Dialog, Progress, Skeleton, Tooltip
-- DatePicker, FamilyMemberPicker, ProjectPicker
+**Not Yet Built (~18 components):**
+- DatePicker, Skeleton, Tooltip
 - QuickAddModal, SearchModal, ConfirmDialog
 - Feature-specific components (TaskCard, HabitCard as standalone)
 
@@ -219,29 +225,32 @@ npm run dev
 
 ## Next Steps (Priority Order)
 
-### Phase 2.5 (High Priority)
+### Phase 2.5 (High Priority) ✅ Complete
 
 1. ~~**Onboarding Flow**~~ ✅ Complete
    - ~~Create family on signup~~
    - ~~Link user to family_members table~~
    - ~~Redirect to dashboard~~
 
-2. **Create/Edit Modals**
-   - Task creation modal
-   - Goal creation modal
-   - Project creation modal
-   - Someday item creation modal
+2. ~~**Create/Edit Modals**~~ ✅ TaskModal Complete
+   - ~~Task creation modal~~ ✅
+   - Goal creation modal (pending)
+   - Project creation modal (pending)
+   - Someday item creation modal (pending)
 
-3. **Task Detail Panel**
-   - Slide-out panel
-   - Full edit form
-   - Subtasks management
+3. ~~**Task Detail Panel**~~ ✅ Via TaskModal
+   - ~~Modal form~~ ✅ (using modal instead of slide-out)
+   - ~~Full edit form~~ ✅
+   - Subtasks management (pending)
 
-4. **Additional Components**
-   - DatePicker
-   - Dialog/Modal
-   - Select dropdown
-   - FamilyMemberPicker
+4. ~~**Additional Components**~~ ✅ Core Complete
+   - DatePicker (pending)
+   - ~~Dialog/Modal~~ ✅
+   - ~~Select dropdown~~ ✅
+   - ~~FamilyMemberPicker~~ ✅
+   - ~~ProjectPicker~~ ✅
+   - ~~GoalPicker~~ ✅
+   - ~~ProgressBar~~ ✅
 
 ### Phase 3 (Medium Priority)
 
@@ -329,8 +338,9 @@ fam_app/
 │   ├── layout.tsx              # Root layout
 │   └── globals.css
 ├── components/
-│   ├── ui/                     # 5 components
-│   ├── shared/                 # 3 components
+│   ├── ui/                     # 7 components (button, input, card, checkbox, spinner, dialog, select)
+│   ├── shared/                 # 7 components (avatar, badge, empty-state, progress-bar, family-member-picker, project-picker, goal-picker)
+│   ├── modals/                 # 1 component (task-modal)
 │   ├── layout/                 # 3 components
 │   └── providers.tsx
 ├── lib/
@@ -374,5 +384,6 @@ Keep files under 400 lines. Extract components when they grow.
 | 1.5 | 2024-12-25 | Claude | Connected ALL pages to database (inbox, today, goals, projects, someday, family) |
 | 1.6 | 2024-12-25 | Claude | Wired dashboard to real data (tasks, habits, goals with live updates) |
 | 1.7 | 2024-12-26 | Claude | Added onboarding flow for new users (family creation) |
+| 1.8 | 2024-12-26 | Claude | Added TaskModal, Dialog, Select, entity pickers (FamilyMember, Project, Goal), ProgressBar |
 
 *This document is auto-generated. See individual docs for detailed specs.*

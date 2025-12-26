@@ -104,17 +104,82 @@ interface CheckboxProps {
 
 **File:** `components/ui/select.tsx`
 
-Standard shadcn select with our styling.
+Custom dropdown component with keyboard navigation and click-outside handling.
+
+**Props:**
+```tsx
+interface SelectProps {
+  value: string | null
+  onChange: (value: string | null) => void
+  placeholder?: string
+  disabled?: boolean
+  allowClear?: boolean
+  className?: string
+  children: React.ReactNode  // SelectOption components
+}
+
+interface SelectOptionProps {
+  value: string
+  children: React.ReactNode
+  disabled?: boolean
+}
+```
+
+**Usage:**
+```tsx
+<Select value={status} onChange={setStatus} placeholder="Select status...">
+  <SelectOption value="active">Active</SelectOption>
+  <SelectOption value="done">Done</SelectOption>
+  <SelectDivider />
+  <SelectOption value="archived">Archived</SelectOption>
+</Select>
+```
 
 ### Dialog / Modal
 
 **File:** `components/ui/dialog.tsx`
+
+Accessible modal dialog with composable parts.
 
 **Sizes:** `sm` (400px), `default` (500px), `lg` (700px), `full` (90vw)
 
 **Animation:**
 - Backdrop fades in (150ms)
 - Content scales from 0.95 with fade (200ms)
+
+**Props:**
+```tsx
+interface DialogProps {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  size?: 'sm' | 'default' | 'lg' | 'full'
+  children: React.ReactNode
+}
+```
+
+**Usage:**
+```tsx
+<Dialog open={isOpen} onOpenChange={setIsOpen} size="default">
+  <DialogHeader>
+    <DialogTitle>Edit Task</DialogTitle>
+    <DialogDescription>Make changes to your task below.</DialogDescription>
+  </DialogHeader>
+  <DialogBody>
+    {/* Form content */}
+  </DialogBody>
+  <DialogFooter>
+    <Button variant="outline" onClick={() => setIsOpen(false)}>Cancel</Button>
+    <Button onClick={handleSave}>Save</Button>
+  </DialogFooter>
+</Dialog>
+```
+
+**Features:**
+- ESC key closes the dialog
+- Click outside closes the dialog
+- Body scroll lock when open
+- Focus trap within modal
+- Accessible ARIA attributes
 
 ### Card
 
@@ -128,19 +193,38 @@ Standard shadcn select with our styling.
 | `interactive` | Default + hover shadow + cursor pointer |
 | `flat` | Subtle bg color, no shadow |
 
-### Progress
+### Progress / ProgressBar
 
-**File:** `components/ui/progress.tsx`
+**File:** `components/shared/progress-bar.tsx`
+
+Visual progress indicator with auto-coloring based on percentage.
 
 **Props:**
 ```tsx
-interface ProgressProps {
+interface ProgressBarProps {
   value: number  // 0-100
-  max?: number   // default 100
-  variant?: 'default' | 'success' | 'warning' | 'error'
-  size?: 'sm' | 'default' | 'lg'
-  showLabel?: boolean
+  size?: 'sm' | 'md' | 'lg'
+  variant?: 'default' | 'success' | 'warning' | 'error' | 'auto'
+  className?: string
 }
+```
+
+**Sizes:**
+| Size | Height |
+|------|--------|
+| sm | 4px |
+| md | 8px |
+| lg | 12px |
+
+**Auto Variant Behavior:**
+- 0-33%: error (red)
+- 34-66%: warning (yellow)
+- 67-100%: success (green)
+
+**Usage:**
+```tsx
+<ProgressBar value={75} size="md" variant="auto" />
+<ProgressBar value={42} size="sm" variant="default" />
 ```
 
 ### Skeleton
@@ -338,7 +422,7 @@ interface DatePickerProps {
 
 **File:** `components/shared/family-member-picker.tsx`
 
-Dropdown to select a family member.
+Dropdown to select a family member with avatar display.
 
 **Props:**
 ```tsx
@@ -346,16 +430,24 @@ interface FamilyMemberPickerProps {
   value: string | null          // family_member.id
   onChange: (id: string | null) => void
   placeholder?: string
-  allowClear?: boolean
-  excludeIds?: string[]         // Hide certain members
-  showUnassigned?: boolean      // Show "Unassigned" option
+  disabled?: boolean
+  allowNone?: boolean           // Show "Unassigned" option
+  className?: string
 }
 ```
+
+**Features:**
+- Shows avatar + name for each member
+- Current user marked with "(you)"
+- Optional "Unassigned" option
+- Click outside to close
+- ESC key to close
+- Animated dropdown
 
 **Dropdown Item:**
 ```
 ┌─────────────────────────────┐
-│ [Avatar] Hazel (you)        │
+│ [Avatar] Hazel (you)    ✓   │
 │ [Avatar] Mike               │
 │ [Avatar] Zelda              │
 │ [Avatar] Miles              │
@@ -364,9 +456,21 @@ interface FamilyMemberPickerProps {
 └─────────────────────────────┘
 ```
 
+**Usage:**
+```tsx
+<FamilyMemberPicker
+  value={assignedTo}
+  onChange={setAssignedTo}
+  placeholder="Assign to..."
+  allowNone
+/>
+```
+
 ### ProjectPicker
 
 **File:** `components/shared/project-picker.tsx`
+
+Dropdown to select a project with color and status indicators.
 
 **Props:**
 ```tsx
@@ -374,16 +478,87 @@ interface ProjectPickerProps {
   value: string | null          // project.id
   onChange: (id: string | null) => void
   placeholder?: string
-  allowClear?: boolean
-  allowCreate?: boolean         // Show "+ Create project"
+  disabled?: boolean
+  allowNone?: boolean           // Show "No project" option
+  className?: string
 }
+```
+
+**Features:**
+- Project color dot indicator
+- Status badge (planning, active, on_hold, completed)
+- "No project" option when allowNone=true
+- Fetches projects via useActiveProjects() hook
+
+**Dropdown Item:**
+```
+┌─────────────────────────────┐
+│ [○] No project          ✓   │
+│ ─────────────────────────── │
+│ [●] Summer Camps   Active   │
+│ [●] Japan Trip    Planning  │
+│ [●] Home Reno     On Hold   │
+└─────────────────────────────┘
+```
+
+**Usage:**
+```tsx
+<ProjectPicker
+  value={projectId}
+  onChange={setProjectId}
+  placeholder="Add to project..."
+  allowNone
+/>
 ```
 
 ### GoalPicker
 
 **File:** `components/shared/goal-picker.tsx`
 
-Similar pattern to ProjectPicker.
+Dropdown to select a goal with progress visualization.
+
+**Props:**
+```tsx
+interface GoalPickerProps {
+  value: string | null          // goal.id
+  onChange: (id: string | null) => void
+  placeholder?: string
+  disabled?: boolean
+  allowNone?: boolean           // Show "No goal" option
+  familyGoalsOnly?: boolean     // Only show family goals
+  personalGoalsOnly?: boolean   // Only show personal goals
+  ownerId?: string              // Filter by owner
+  className?: string
+}
+```
+
+**Features:**
+- Shows goal title with target icon
+- Family vs personal goal indicator (Users/User icon)
+- Progress bar for quantitative goals
+- Current/target value display
+
+**Dropdown Item:**
+```
+┌─────────────────────────────┐
+│ [🎯] No goal            ✓   │
+│ ─────────────────────────── │
+│ [🎯] Read 50 books    👥    │
+│      ████████░░ 42/50       │
+│ [🎯] Save $5K         👤    │
+│      ██████░░░░ $3.2k/$5k   │
+└─────────────────────────────┘
+```
+
+**Usage:**
+```tsx
+<GoalPicker
+  value={goalId}
+  onChange={setGoalId}
+  placeholder="Link to goal..."
+  allowNone
+/>
+```
 
 ### PlacePicker
 
@@ -573,22 +748,91 @@ interface TaskCheckboxProps {
 }
 ```
 
-#### TaskForm
+#### TaskForm / TaskModal
 
-**File:** `components/features/tasks/task-form.tsx`
+**File:** `components/modals/task-modal.tsx`
 
-Full task create/edit form.
+Full task create/edit modal with all entity pickers.
 
 **Props:**
 ```tsx
-interface TaskFormProps {
-  task?: Task                   // Edit mode if provided
-  defaultValues?: Partial<Task> // Pre-fill for create
-  projectId?: string            // Lock to project
-  onSubmit: (data: TaskFormData) => void
-  onCancel: () => void
-  loading?: boolean
+interface TaskModalProps {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  task?: Task | null            // Edit mode if provided
+  initialTitle?: string         // Pre-fill title for create
+  initialStatus?: TaskStatus    // Default status (default: 'active')
+  onSuccess?: () => void        // Called after successful save
 }
+```
+
+**Features:**
+- Create mode: empty form with optional initialTitle
+- Edit mode: pre-filled with existing task data
+- All entity pickers: FamilyMemberPicker, ProjectPicker, GoalPicker
+- Status selector: inbox, active, waiting_for, done
+- Priority selector: low, medium, high
+- Due date input (native date picker)
+- Description textarea
+- Keyboard shortcut: Cmd/Ctrl+Enter to save
+- Loading state during mutations
+- Toast notifications on success/error
+
+**Form Fields:**
+```
+┌────────────────────────────────────────────────────┐
+│ Edit Task                                      ✕   │
+├────────────────────────────────────────────────────┤
+│                                                    │
+│ Title *                                            │
+│ ┌────────────────────────────────────────────────┐ │
+│ │ Review camp options                            │ │
+│ └────────────────────────────────────────────────┘ │
+│                                                    │
+│ Description                                        │
+│ ┌────────────────────────────────────────────────┐ │
+│ │ Look into options for summer camp...           │ │
+│ └────────────────────────────────────────────────┘ │
+│                                                    │
+│ Status          Priority        Due Date          │
+│ [Active ▼]      [Medium ▼]      [📅 Dec 28]      │
+│                                                    │
+│ Assigned To                Project                │
+│ [👤 Hazel ▼]               [📁 Summer Camps ▼]   │
+│                                                    │
+│ Goal                                               │
+│ [🎯 None ▼]                                       │
+│                                                    │
+├────────────────────────────────────────────────────┤
+│                         [Cancel]  [Save Task]      │
+│                                   ⌘+Enter          │
+└────────────────────────────────────────────────────┘
+```
+
+**Usage:**
+```tsx
+// Create mode
+<TaskModal
+  open={isOpen}
+  onOpenChange={setIsOpen}
+  initialStatus="active"
+/>
+
+// Edit mode
+<TaskModal
+  open={isOpen}
+  onOpenChange={setIsOpen}
+  task={selectedTask}
+/>
+
+// Triage from inbox (with pre-filled title)
+<TaskModal
+  open={isOpen}
+  onOpenChange={setIsOpen}
+  initialTitle={inboxItem.title}
+  initialStatus="active"
+  onSuccess={handleDeleteInboxItem}
+/>
 ```
 
 #### TaskDetailPanel
@@ -968,9 +1212,9 @@ Prefer composition over configuration:
 | Checkbox | ✅ | ✅ | `components/ui/checkbox.tsx` | SVG animation |
 | Card | ✅ | ✅ | `components/ui/card.tsx` | Composable (Header, Title, Content) |
 | Spinner | ✅ | ✅ | `components/ui/spinner.tsx` | Multiple sizes |
-| Select | ✅ | 🔨 | - | Not yet built |
-| Dialog/Modal | ✅ | 🔨 | - | Not yet built |
-| Progress | ✅ | 🔨 | - | Not yet built |
+| Select | ✅ | ✅ | `components/ui/select.tsx` | Keyboard nav, click-outside |
+| Dialog/Modal | ✅ | ✅ | `components/ui/dialog.tsx` | ESC close, focus trap, composable |
+| Progress | ✅ | ✅ | `components/shared/progress-bar.tsx` | 3 sizes, 5 variants, auto-color |
 | Skeleton | ✅ | 🔨 | - | Not yet built |
 | Toast | ✅ | ✅ | Via Sonner | Using sonner library |
 | Tooltip | ✅ | 🔨 | - | Not yet built |
@@ -980,13 +1224,15 @@ Prefer composition over configuration:
 | Component | Spec | Implemented | Location | Notes |
 |-----------|------|-------------|----------|-------|
 | Avatar | ✅ | ✅ | `components/shared/avatar.tsx` | Initials fallback, colors |
-| AvatarGroup | ✅ | 🔨 | - | Not yet built |
+| AvatarGroup | ✅ | ✅ | `components/shared/avatar.tsx` | Overlap display, +N indicator |
 | Badge | ✅ | ✅ | `components/shared/badge.tsx` | Multiple variants |
 | StreakBadge | ✅ | ✅ | `components/shared/badge.tsx` | Fire emoji, animate prop |
 | EmptyState | ✅ | ✅ | `components/shared/empty-state.tsx` | Icon, action button |
-| DatePicker | ✅ | 🔨 | - | Not yet built |
-| FamilyMemberPicker | ✅ | 🔨 | - | Not yet built |
-| ProjectPicker | ✅ | 🔨 | - | Not yet built |
+| ProgressBar | ✅ | ✅ | `components/shared/progress-bar.tsx` | 3 sizes, auto-color |
+| DatePicker | ✅ | 🔨 | - | Not yet built (using native) |
+| FamilyMemberPicker | ✅ | ✅ | `components/shared/family-member-picker.tsx` | Avatar, "(you)" indicator |
+| ProjectPicker | ✅ | ✅ | `components/shared/project-picker.tsx` | Color dot, status badge |
+| GoalPicker | ✅ | ✅ | `components/shared/goal-picker.tsx` | Progress bar, family/personal |
 | QuickAddModal | ✅ | 🔨 | - | Not yet built |
 | SearchModal | ✅ | 🔨 | - | Not yet built |
 | ConfirmDialog | ✅ | 🔨 | - | Not yet built |
@@ -1007,7 +1253,7 @@ Prefer composition over configuration:
 |-----------|------|-------------|-------|
 | TaskCard | ✅ | ⚠️ Inline | Logic in tasks/page.tsx |
 | TaskList | ✅ | ⚠️ Inline | Logic in tasks/page.tsx |
-| TaskForm | ✅ | 🔨 | Quick add only |
+| TaskModal | ✅ | ✅ | `components/modals/task-modal.tsx` - Full create/edit |
 | HabitCard | ✅ | ⚠️ Inline | Logic in habits/page.tsx |
 | HabitHeatmap | ✅ | 🔨 | Not yet built |
 | GoalCard | ✅ | 🔨 | Not yet built |
@@ -1018,27 +1264,27 @@ Prefer composition over configuration:
 ### Implementation Summary
 
 **Total from spec:** ~40 components
-**Implemented:** 11 components (standalone files)
+**Implemented:** 18 components (standalone files)
 **Inline/Partial:** 4 components (logic in page files)
-**Pending:** ~25 components
+**Pending:** ~18 components
 
 ### Recommended Next Steps
 
 1. **High Priority:**
-   - `DatePicker` - needed for task/goal forms
-   - `Dialog/Modal` - needed for forms and confirmations
-   - `FamilyMemberPicker` - needed for assignments
-   - `Select` - needed for status/filter dropdowns
+   - `DatePicker` - native input used for now, custom picker later
+   - `ConfirmDialog` - needed for delete actions
+   - Goal creation modal
+   - Project creation modal
 
 2. **Medium Priority:**
    - Extract `TaskCard` to standalone component
    - Extract `HabitCard` to standalone component
-   - Build `ConfirmDialog` for delete actions
+   - `Skeleton` - loading placeholder animations
 
 3. **Lower Priority:**
    - `SearchModal` - global search
    - `QuickAddModal` - keyboard shortcut capture
-   - Feature-specific components (Meals, Goals, etc.)
+   - Feature-specific components (Meals, etc.)
 
 ---
 
@@ -1051,3 +1297,4 @@ Prefer composition over configuration:
 | 1.2 | 2024-12-23 | Claude | Auth pages updated to magic link flow |
 | 1.3 | 2024-12-25 | Claude | Pages now connected to DB (loading/error states inline) |
 | 1.4 | 2024-12-25 | Claude | Dashboard StatsCard now connected to real data |
+| 1.5 | 2024-12-26 | Claude | Added Dialog, Select, entity pickers (FamilyMember, Project, Goal), ProgressBar, TaskModal |

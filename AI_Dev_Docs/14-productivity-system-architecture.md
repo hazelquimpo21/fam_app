@@ -565,7 +565,7 @@ Parse dates and assignments from text:
 
 ## Implementation Priority
 
-### Phase 1: Foundation (Current State)
+### Phase 1: Foundation ✅ Complete
 - [x] Tasks with status workflow
 - [x] Habits with streaks
 - [x] Goals with progress
@@ -573,16 +573,23 @@ Parse dates and assignments from text:
 - [x] Someday items
 - [x] Basic inbox (tasks only)
 
-### Phase 2: Enhanced Inbox (Next)
-- [ ] Triage actions for all entity types
+### Phase 2: Enhanced Inbox ✅ Partially Complete
+- [x] Triage action: Task (via TaskModal with full form)
+- [x] Triage action: Project (quick convert)
+- [x] Triage action: Someday (quick convert)
+- [ ] Triage action: Habit (not yet implemented)
+- [ ] Triage action: Goal (not yet implemented)
 - [ ] "Process All" focused mode
 - [ ] Keyboard shortcuts for triage
 - [ ] Badge count on inbox
 
-### Phase 3: Connections
-- [ ] Goal progress from linked habits/tasks
-- [ ] Project progress visualization
-- [ ] "Supports Goal" picker on tasks/habits
+### Phase 3: Connections ✅ Partially Complete
+- [x] GoalPicker on TaskModal - link tasks to goals
+- [x] ProjectPicker on TaskModal - link tasks to projects
+- [x] Goal progress visualization (ProgressBar in GoalPicker)
+- [ ] Goal progress from linked habits/tasks (aggregation)
+- [ ] Project progress visualization on project cards
+- [ ] "Supports Goal" picker on habits
 - [ ] Backlinks (show what supports a goal)
 
 ### Phase 4: Weekly Review
@@ -602,14 +609,20 @@ Parse dates and assignments from text:
 
 ### New/Updated Components Needed
 
-| Component | Purpose | Priority |
-|-----------|---------|----------|
-| `InboxItem` | Captures with triage actions | High |
-| `TriageActions` | Quick buttons for processing | High |
-| `GoalProgress` | Shows goal + linked items | Medium |
-| `EntityPicker` | Select goal/project to link | Medium |
-| `WeeklyReview` | Guided review flow | Low |
-| `QuickCapture` | Universal add modal | High |
+| Component | Purpose | Priority | Status |
+|-----------|---------|----------|--------|
+| `InboxItem` | Captures with triage actions | High | ✅ Inline in inbox page |
+| `TriageActions` | Quick buttons for processing | High | ✅ Inline (Task/Project/Someday/Delete) |
+| `TaskModal` | Full task create/edit form | High | ✅ `components/modals/task-modal.tsx` |
+| `GoalPicker` | Select goal to link | Medium | ✅ `components/shared/goal-picker.tsx` |
+| `ProjectPicker` | Select project to link | Medium | ✅ `components/shared/project-picker.tsx` |
+| `FamilyMemberPicker` | Select assignee | Medium | ✅ `components/shared/family-member-picker.tsx` |
+| `ProgressBar` | Visual progress indicator | Medium | ✅ `components/shared/progress-bar.tsx` |
+| `Dialog` | Modal container | High | ✅ `components/ui/dialog.tsx` |
+| `Select` | Dropdown component | High | ✅ `components/ui/select.tsx` |
+| `GoalProgress` | Shows goal + linked items | Medium | 🔨 Pending |
+| `WeeklyReview` | Guided review flow | Low | 🔨 Pending |
+| `QuickCapture` | Universal add modal | High | 🔨 Pending |
 
 ### Data Requirements
 
@@ -707,3 +720,4 @@ CREATE TABLE inbox_items (
 | Version | Date | Author | Changes |
 |---------|------|--------|---------|
 | 1.0 | 2024-12-26 | Hazel + Claude | Initial productivity system architecture |
+| 1.1 | 2024-12-26 | Claude | Updated implementation status - TaskModal, entity pickers, inbox triage complete |
