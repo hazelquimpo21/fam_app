@@ -1435,13 +1435,13 @@ Prefer composition over configuration:
 | HabitModal | ✅ | ✅ | `components/modals/habit-modal.tsx` - Full create/edit |
 | ProjectModal | ✅ | ✅ | `components/modals/project-modal.tsx` - Full create/edit |
 | SomedayModal | ✅ | ✅ | `components/modals/someday-modal.tsx` - Full create/edit |
-| HabitCard | ✅ | ⚠️ Inline | Logic in habits/page.tsx - click-to-edit via HabitModal |
+| HabitCard | ✅ | ⚠️ Inline | Logic in habits/page.tsx + Dashboard - click-to-edit via HabitModal |
 | HabitHeatmap | ✅ | 🔨 | Not yet built |
-| GoalCard | ✅ | ⚠️ Inline | Logic in goals/page.tsx |
+| GoalCard | ✅ | ⚠️ Inline | Logic in goals/page.tsx + Dashboard - click-to-edit via GoalModal |
 | ProjectCard | ✅ | ⚠️ Inline | Logic in projects/page.tsx |
 | SomedayCard | ✅ | ⚠️ Inline | Logic in someday/page.tsx |
 | MealCalendar | ✅ | 🔨 | Not yet built |
-| StatsCard | ✅ | ⚠️ Inline | Logic in dashboard (connected to real data) |
+| StatsCard | ✅ | ⚠️ Inline | Logic in dashboard (connected to real data, click-to-edit with modals) |
 
 ### Implementation Summary
 
@@ -1483,3 +1483,4 @@ Prefer composition over configuration:
 | 1.5 | 2024-12-26 | Claude | Added Dialog, Select, entity pickers (FamilyMember, Project, Goal), ProgressBar, TaskModal |
 | 1.6 | 2024-12-26 | Claude | Added GoalModal, HabitModal, ProjectModal, SomedayModal documentation; updated implementation status |
 | 1.7 | 2024-12-26 | Claude | Updated HabitModal to document edit mode with useUpdateHabit; HabitCard click-to-edit |
+| 1.8 | 2024-12-26 | Claude | Updated implementation status to reflect Dashboard modal connections for HabitCard, GoalCard, StatsCard |

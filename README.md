@@ -556,7 +556,7 @@ logger.warn('Rate limit approaching') // ⚠️ [12:34:56] Rate limit approachin
 | Database Schema | ✅ Complete | 17 tables with RLS |
 | Magic Link Auth | ✅ Complete | Passwordless login |
 | Onboarding Flow | ✅ Complete | Family creation for new users |
-| Dashboard | ✅ **Connected** | Real-time stats, tasks, habits, goals from database |
+| Dashboard | ✅ **Connected** | Real-time stats, tasks, habits, goals with click-to-edit modals and Add buttons |
 | Tasks | ✅ Complete | Full CRUD with TaskModal |
 | Habits | ✅ Complete | Streaks, logging, HabitModal create/edit |
 | Goals | ✅ **Connected** | GoalModal with qualitative/quantitative support |

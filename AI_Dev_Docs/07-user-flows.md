@@ -756,6 +756,11 @@ The onboarding flow is now fully implemented:
 - Today page habit section with click-to-edit
 - Week progress display with real habit_logs data
 - Create habit from Today page (header button + empty state CTA)
+- **Dashboard habit section with click-to-edit** (toggle checkbox vs click card for edit)
+- **Dashboard "Add Habit" button** opens HabitModal in create mode
+
+**Click-to-Edit Pattern:**
+The habit toggle (checkbox) is separate from the card click action. Clicking the checkbox toggles the habit's completion status. Clicking anywhere else on the habit card opens the HabitModal for editing. This is achieved using `stopPropagation()` on the checkbox click event.
 
 **Not Yet Implemented:**
 - Skip functionality (long-press) - skip button exists but long-press not implemented
@@ -787,3 +792,4 @@ The onboarding flow is now fully implemented:
 | 1.2 | 2024-12-26 | Claude | Added implementation status for onboarding flow |
 | 1.3 | 2024-12-26 | Claude | Updated Flow 3 diagram with all triage options; added implementation status for all 8 flows |
 | 1.4 | 2024-12-26 | Claude | Updated Flow 7 with click-to-edit habits, Today page integration, real week progress |
+| 1.5 | 2024-12-26 | Claude | Updated Flow 7 with Dashboard habit click-to-edit and Add button; documented click vs toggle pattern |

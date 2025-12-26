@@ -5,30 +5,42 @@
  * 📥 Inbox Page
  * ============================================================================
  *
- * The inbox is a quick capture location for ideas, tasks, and thoughts that
- * need to be processed later. Users can capture anything here and then triage
- * it into the appropriate bucket.
+ * The inbox is a GTD-inspired quick capture location for ideas, tasks, and
+ * thoughts that need to be processed later. Users can capture anything here
+ * and then triage it into the appropriate bucket.
  *
  * Route: /inbox
  *
  * Features:
- * - Quick capture input for brain dumps
+ * - Quick capture input (brain dump with Enter to submit)
  * - List of unprocessed items from database
- * - Full triage actions: Task, Goal, Habit, Project, Someday, Delete
- * - Modal integration for full entity details when triaging
+ * - Full triage actions with modal support for ALL entity types
+ * - Inbox badge count shown in sidebar
+ *
+ * Triage Actions (all open modals except Delete):
+ * - Task → TaskModal (set due date, assignee, project, priority)
+ * - Goal → GoalModal (set target, type, owner, deadline)
+ * - Habit → HabitModal (set frequency, owner, goal link)
+ * - Project → ProjectModal (set status, owner, target date, icon)
+ * - Someday → SomedayModal (set category, estimated cost)
+ * - Delete → Immediate deletion (no modal)
  *
  * User Stories Addressed:
  * - US-2.1: Quick capture to inbox
  * - US-2.2: Triage inbox items to appropriate buckets
+ * - US-2.3: Convert inbox to project/someday with full details
  * - US-3.1: Create task with full details (via TaskModal)
  * - US-4.1: Create habit from inbox (via HabitModal)
  * - US-5.1: Create goal from inbox (via GoalModal)
+ * - US-6.1: Create project from inbox (via ProjectModal)
+ * - US-7.1: Create someday from inbox (via SomedayModal)
  *
  * Data Flow:
  * 1. User captures thought → Creates task with status='inbox'
- * 2. User clicks triage action → Opens appropriate modal
- * 3. Modal saves entity → onSuccess callback deletes original inbox item
- * 4. Query invalidation → UI updates automatically
+ * 2. User clicks triage action → Opens appropriate modal (title pre-filled)
+ * 3. User fills details and saves → Entity created in proper table
+ * 4. onSuccess callback → Original inbox item deleted
+ * 5. Query invalidation → UI updates, inbox count decrements
  *
  * ============================================================================
  */
@@ -50,12 +62,15 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { EmptyState } from '@/components/shared/empty-state';
+
+// All modals for complete triage workflow
 import { TaskModal } from '@/components/modals/task-modal';
 import { GoalModal } from '@/components/modals/goal-modal';
 import { HabitModal } from '@/components/modals/habit-modal';
-import { useInboxTasks, useCreateTask, useUpdateTask, useDeleteTask } from '@/lib/hooks/use-tasks';
-import { useCreateSomedayItem } from '@/lib/hooks/use-someday';
-import { useCreateProject } from '@/lib/hooks/use-projects';
+import { ProjectModal } from '@/components/modals/project-modal';
+import { SomedayModal } from '@/components/modals/someday-modal';
+
+import { useInboxTasks, useCreateTask, useDeleteTask } from '@/lib/hooks/use-tasks';
 import { logger } from '@/lib/utils/logger';
 import type { Task } from '@/types/database';
 
@@ -65,12 +80,14 @@ import type { Task } from '@/types/database';
 
 /**
  * Available triage actions for inbox items
- * - task: Opens TaskModal for full task creation
- * - goal: Opens GoalModal for goal creation
- * - habit: Opens HabitModal for habit creation
- * - project: Quick convert to project
- * - someday: Quick convert to someday item
- * - delete: Soft delete the item
+ *
+ * All entity types now use full modals for better UX:
+ * - task: Opens TaskModal for full task creation with due date, assignee, etc.
+ * - goal: Opens GoalModal for goal creation with target, type, owner
+ * - habit: Opens HabitModal for habit creation with frequency, goal linking
+ * - project: Opens ProjectModal for project creation with status, owner, date
+ * - someday: Opens SomedayModal for dream capture with category, cost
+ * - delete: Soft delete the item (immediate action, no modal)
  */
 type TriageAction = 'task' | 'goal' | 'habit' | 'project' | 'someday' | 'delete';
 
@@ -87,10 +104,12 @@ interface InboxItemProps {
 /**
  * InboxItem - Displays a single inbox item with full triage actions
  *
- * Actions are organized by entity type:
- * - Primary actions (modal-based): Task, Goal, Habit
- * - Secondary actions (quick convert): Project, Someday
- * - Destructive action: Delete
+ * All entity actions now open modals for full customization:
+ * - Task, Goal, Habit, Project, Someday → Open respective modals
+ * - Delete → Immediate action (no modal needed)
+ *
+ * Modals pre-fill the title from the inbox item and delete the
+ * original after successful entity creation.
  */
 function InboxItem({ item, onTriageClick, isProcessing }: InboxItemProps) {
   return (
@@ -140,7 +159,7 @@ function InboxItem({ item, onTriageClick, isProcessing }: InboxItemProps) {
             >
               Habit
             </Button>
-            {/* Project button - quick convert */}
+            {/* Project button - opens ProjectModal for full details */}
             <Button
               size="sm"
               variant="outline"
@@ -150,7 +169,7 @@ function InboxItem({ item, onTriageClick, isProcessing }: InboxItemProps) {
             >
               Project
             </Button>
-            {/* Someday button - quick convert */}
+            {/* Someday button - opens SomedayModal for category and cost */}
             <Button
               size="sm"
               variant="outline"
@@ -229,15 +248,12 @@ export default function InboxPage() {
   const { data: inboxItems = [], isLoading, error } = useInboxTasks();
 
   // Mutations for processing items
+  // Note: Project and Someday now use modals, so no direct create hooks needed here
   const createTask = useCreateTask();
-  const updateTask = useUpdateTask();
   const deleteTask = useDeleteTask();
-  const createSomeday = useCreateSomedayItem();
-  const createProject = useCreateProject();
 
   // Track if any mutation is in progress
-  const isProcessing = createTask.isPending || updateTask.isPending ||
-    deleteTask.isPending || createSomeday.isPending || createProject.isPending;
+  const isProcessing = createTask.isPending || deleteTask.isPending;
 
   // Log page load for debugging
   useEffect(() => {
@@ -247,46 +263,30 @@ export default function InboxPage() {
 
   /**
    * Handle clicking a triage action
-   * For modal-based actions (task, goal, habit), opens the appropriate modal
-   * For quick actions (project, someday, delete), processes immediately
+   *
+   * All entity types (except delete) now open modals for full customization.
+   * This gives users the ability to set all fields (owner, date, category, etc.)
+   * rather than just copying the title.
+   *
+   * Flow:
+   * 1. User clicks triage button → Modal opens with title pre-filled
+   * 2. User fills in additional details → Saves entity
+   * 3. onSuccess callback → Original inbox item is deleted
    */
   const handleTriageClick = async (item: Task, action: TriageAction) => {
-    logger.info('Triage action clicked', { id: item.id, action, title: item.title });
+    logger.info('📋 Triage action clicked', { id: item.id, action, title: item.title });
 
-    // Modal-based actions: store item and open modal
-    if (action === 'task' || action === 'goal' || action === 'habit') {
-      setSelectedInboxItem(item);
-      setActiveModal(action);
+    // Delete is the only immediate action (no modal needed)
+    if (action === 'delete') {
+      logger.info('🗑️ Deleting inbox item', { id: item.id });
+      await deleteTask.mutateAsync(item.id);
       return;
     }
 
-    // Quick actions: process immediately
-    switch (action) {
-      case 'project':
-        // Create a new project from this item, then delete the inbox item
-        await createProject.mutateAsync({
-          title: item.title,
-          description: item.description || undefined,
-          status: 'planning',
-        });
-        await deleteTask.mutateAsync(item.id);
-        break;
-
-      case 'someday':
-        // Create a someday item from this, then delete the inbox item
-        await createSomeday.mutateAsync({
-          title: item.title,
-          description: item.description || undefined,
-          category: 'other',
-        });
-        await deleteTask.mutateAsync(item.id);
-        break;
-
-      case 'delete':
-        // Soft delete the task
-        await deleteTask.mutateAsync(item.id);
-        break;
-    }
+    // All other actions open their respective modals
+    // The modal will call handleModalSuccess when done, which deletes the inbox item
+    setSelectedInboxItem(item);
+    setActiveModal(action);
   };
 
   /**
@@ -440,12 +440,18 @@ export default function InboxPage() {
       )}
 
       {/* ================================================================
-          Modals for triage actions
-          Each modal pre-fills the title from the inbox item and
-          calls handleModalSuccess on completion to delete the original
+          MODALS - Full triage workflow
+
+          Each modal pre-fills the title from the inbox item.
+          On successful save, handleModalSuccess is called to delete
+          the original inbox item (prevents duplicates).
+
+          All entity types now use modals for better UX:
+          - Users can set owner, dates, categories, etc.
+          - More consistent experience across all triage actions
           ================================================================ */}
 
-      {/* TaskModal - for converting inbox item to task */}
+      {/* TaskModal - convert to task with due date, assignee, project */}
       <TaskModal
         open={activeModal === 'task'}
         onOpenChange={handleModalClose}
@@ -454,7 +460,7 @@ export default function InboxPage() {
         onSuccess={handleModalSuccess}
       />
 
-      {/* GoalModal - for converting inbox item to goal */}
+      {/* GoalModal - convert to goal with target value, owner, deadline */}
       <GoalModal
         open={activeModal === 'goal'}
         onOpenChange={handleModalClose}
@@ -462,9 +468,25 @@ export default function InboxPage() {
         onSuccess={handleModalSuccess}
       />
 
-      {/* HabitModal - for converting inbox item to habit */}
+      {/* HabitModal - convert to habit with frequency, owner, goal link */}
       <HabitModal
         open={activeModal === 'habit'}
+        onOpenChange={handleModalClose}
+        initialTitle={selectedInboxItem?.title}
+        onSuccess={handleModalSuccess}
+      />
+
+      {/* ProjectModal - convert to project with status, owner, target date */}
+      <ProjectModal
+        open={activeModal === 'project'}
+        onOpenChange={handleModalClose}
+        initialTitle={selectedInboxItem?.title}
+        onSuccess={handleModalSuccess}
+      />
+
+      {/* SomedayModal - convert to dream with category, estimated cost */}
+      <SomedayModal
+        open={activeModal === 'someday'}
         onOpenChange={handleModalClose}
         initialTitle={selectedInboxItem?.title}
         onSuccess={handleModalSuccess}
