@@ -15,10 +15,21 @@
  * This page helps users focus on what needs to be done today without
  * the distraction of future tasks or completed items.
  *
+ * Features:
+ * - Habits grid with toggle
+ * - Overdue tasks section
+ * - Today's tasks section
+ * - Click task to edit in TaskModal
+ *
+ * User Stories Addressed:
+ * - US-1.2: See daily focus view
+ * - US-3.2: Click task to open detail panel
+ * - US-4.2: Toggle habits
+ *
  * ============================================================================
  */
 
-import { useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Sun,
   Clock,
@@ -26,21 +37,25 @@ import {
   Repeat,
   CheckSquare,
   Check,
-  Loader2,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge, StreakBadge } from '@/components/shared/badge';
 import { Avatar } from '@/components/shared/avatar';
 import { EmptyState } from '@/components/shared/empty-state';
+import { TaskModal } from '@/components/modals/task-modal';
 import { cn } from '@/lib/utils/cn';
 import { logger } from '@/lib/utils/logger';
 import { useTodayTasks, useOverdueTasks, useCompleteTask } from '@/lib/hooks/use-tasks';
 import { useHabits, useLogHabit, type HabitWithTodayStatus } from '@/lib/hooks/use-habits';
 import type { Task } from '@/types/database';
 
+// ============================================================================
+// SectionSkeleton Component
+// ============================================================================
+
 /**
- * Loading skeleton for sections
+ * Loading skeleton for task sections
  */
 function SectionSkeleton({ rows = 3 }: { rows?: number }) {
   return (
@@ -59,16 +74,19 @@ function SectionSkeleton({ rows = 3 }: { rows?: number }) {
   );
 }
 
-/**
- * HabitCard Component
- * Displays a single habit with toggle functionality
- */
+// ============================================================================
+// HabitCard Component
+// ============================================================================
+
 interface HabitCardProps {
   habit: HabitWithTodayStatus;
   onToggle: (habitId: string, completed: boolean) => void;
   isUpdating: boolean;
 }
 
+/**
+ * HabitCard - Displays a single habit with toggle functionality
+ */
 function HabitCard({ habit, onToggle, isUpdating }: HabitCardProps) {
   const isCompleted = habit.todayStatus === 'done';
   const owner = habit.owner as { name: string; color: string } | null;
@@ -112,18 +130,22 @@ function HabitCard({ habit, onToggle, isUpdating }: HabitCardProps) {
   );
 }
 
-/**
- * TaskRow Component
- * Displays a single task with checkbox
- */
+// ============================================================================
+// TaskRow Component
+// ============================================================================
+
 interface TaskRowProps {
   task: Task;
   onComplete: (taskId: string) => void;
+  onClick: (task: Task) => void;
   isOverdue?: boolean;
   isCompleting: boolean;
 }
 
-function TaskRow({ task, onComplete, isOverdue, isCompleting }: TaskRowProps) {
+/**
+ * TaskRow - Displays a single task with checkbox and click-to-edit
+ */
+function TaskRow({ task, onComplete, onClick, isOverdue, isCompleting }: TaskRowProps) {
   const assignee = task.assigned_to as { name: string; color: string } | null;
   const project = task.project as { title: string } | null;
 
@@ -138,18 +160,22 @@ function TaskRow({ task, onComplete, isOverdue, isCompleting }: TaskRowProps) {
 
   return (
     <div
+      onClick={() => onClick(task)}
       className={cn(
-        'flex items-center gap-3 rounded-lg border p-3 transition-colors',
+        'flex items-center gap-3 rounded-lg border p-3 transition-colors cursor-pointer',
         isOverdue
-          ? 'border-red-200 bg-white'
-          : 'border-neutral-200 bg-white hover:border-neutral-300'
+          ? 'border-red-200 bg-white hover:bg-red-50'
+          : 'border-neutral-200 bg-white hover:border-neutral-300 hover:shadow-sm'
       )}
     >
-      <Checkbox
-        checked={false}
-        onChange={() => onComplete(task.id)}
-        disabled={isCompleting}
-      />
+      {/* Checkbox - stop propagation to prevent opening modal */}
+      <div onClick={(e) => e.stopPropagation()}>
+        <Checkbox
+          checked={false}
+          onChange={() => onComplete(task.id)}
+          disabled={isCompleting}
+        />
+      </div>
       <div className="flex-1 min-w-0">
         <p className="font-medium text-neutral-900">{task.title}</p>
         <div className="flex items-center gap-2 text-xs text-neutral-500">
@@ -180,8 +206,12 @@ function TaskRow({ task, onComplete, isOverdue, isCompleting }: TaskRowProps) {
   );
 }
 
+// ============================================================================
+// TodayPage Component (Main Export)
+// ============================================================================
+
 /**
- * Today Page Component
+ * Today page - focused daily view
  */
 export default function TodayPage() {
   // Get current day for display
@@ -191,6 +221,10 @@ export default function TodayPage() {
     month: 'long',
     day: 'numeric',
   });
+
+  // Modal state
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedTask, setSelectedTask] = useState<Task | null>(null);
 
   // Fetch data from database
   const { data: todayTasks = [], isLoading: loadingToday } = useTodayTasks();
@@ -221,6 +255,25 @@ export default function TodayPage() {
   const handleCompleteTask = (taskId: string) => {
     logger.info('Completing task', { taskId });
     completeTask.mutate(taskId);
+  };
+
+  /**
+   * Handle clicking on a task - open in modal
+   */
+  const handleTaskClick = (task: Task) => {
+    logger.info('Opening task for edit', { taskId: task.id, title: task.title });
+    setSelectedTask(task);
+    setIsModalOpen(true);
+  };
+
+  /**
+   * Handle modal close
+   */
+  const handleModalClose = (open: boolean) => {
+    setIsModalOpen(open);
+    if (!open) {
+      setSelectedTask(null);
+    }
   };
 
   /**
@@ -307,6 +360,7 @@ export default function TodayPage() {
                     key={task.id}
                     task={task}
                     onComplete={handleCompleteTask}
+                    onClick={handleTaskClick}
                     isOverdue
                     isCompleting={completeTask.isPending}
                   />
@@ -341,6 +395,7 @@ export default function TodayPage() {
                   key={task.id}
                   task={task}
                   onComplete={handleCompleteTask}
+                  onClick={handleTaskClick}
                   isCompleting={completeTask.isPending}
                 />
               ))}
@@ -348,6 +403,13 @@ export default function TodayPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* Task Modal for editing */}
+      <TaskModal
+        open={isModalOpen}
+        onOpenChange={handleModalClose}
+        task={selectedTask}
+      />
     </div>
   );
 }
