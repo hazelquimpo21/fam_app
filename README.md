@@ -151,7 +151,8 @@ fam_app/
 │   ├── 📁 (auth)/              # Public auth routes
 │   │   ├── 📁 login/           # Magic link login
 │   │   ├── 📁 signup/          # Magic link signup
-│   │   └── 📁 check-email/     # Email confirmation
+│   │   ├── 📁 check-email/     # Email confirmation
+│   │   └── 📁 onboarding/      # Family setup (post-auth)
 │   │
 │   ├── 📁 auth/callback/       # Magic link callback handler
 │   ├── layout.tsx              # Root layout (providers)
@@ -296,18 +297,33 @@ Fam uses **passwordless magic link authentication** for better UX and security.
 │  5. /auth/callback exchanges code for session               │
 │                    │                                        │
 │                    ▼                                        │
-│  6. Redirect to / (dashboard)                               │
+│  6. Middleware checks for family_member record              │
+│                    │                                        │
+│        ┌──────────┴──────────┐                              │
+│        ▼                     ▼                              │
+│  Has family?             No family?                         │
+│        │                     │                              │
+│        ▼                     ▼                              │
+│  7a. Redirect to /      7b. Redirect to /onboarding         │
+│     (dashboard)              │                              │
+│                              ▼                              │
+│                   8. Create family + member                 │
+│                              │                              │
+│                              ▼                              │
+│                   9. Redirect to / (dashboard)              │
 │                                                             │
 └────────────────────────────────────────────────────────────┘
 ```
 
 ### Key Files
 
-- `middleware.ts` - Protects routes, handles session refresh
+- `middleware.ts` - Protects routes, handles session refresh, enforces onboarding
+- `lib/supabase/middleware.ts` - Session management, family membership check
 - `lib/hooks/use-auth.ts` - Auth state with `sendMagicLink` method
 - `app/(auth)/login/page.tsx` - Magic link login
 - `app/(auth)/signup/page.tsx` - Magic link signup
 - `app/(auth)/check-email/page.tsx` - Email confirmation screen
+- `app/(auth)/onboarding/page.tsx` - Family creation for new users
 - `app/auth/callback/route.ts` - Magic link callback handler
 
 ---
@@ -531,6 +547,7 @@ logger.warn('Rate limit approaching') // ⚠️ [12:34:56] Rate limit approachin
 |---------|--------|-------|
 | Database Schema | ✅ Complete | 17 tables with RLS |
 | Magic Link Auth | ✅ Complete | Passwordless login |
+| Onboarding Flow | ✅ Complete | Family creation for new users |
 | Dashboard | ✅ **Connected** | Real-time stats, tasks, habits, goals from database |
 | Tasks | ✅ Complete | Full CRUD, filters |
 | Habits | ✅ Complete | Streaks, logging |

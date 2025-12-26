@@ -72,13 +72,15 @@ if (!error) {
 //    - Redirect to dashboard (or onboarding if no family)
 
 // 4. In app, check for family membership
+// Use maybeSingle() to avoid 406 errors when no record exists
 const { data: member } = await supabase
   .from('family_members')
   .select('*, family:families(*)')
   .eq('auth_user_id', user.id)
-  .single()
+  .maybeSingle()
 
-// 5. If no family member exists, redirect to create/join family
+// 5. If no family member exists, redirect to onboarding (create family)
+// The middleware handles this automatically for protected routes
 if (!member) {
   router.push('/onboarding')
 }
@@ -619,11 +621,13 @@ export async function middleware(request: NextRequest) {
   }
 
   // Check if user has a family
+  // NOTE: Use maybeSingle() instead of single() to avoid 406 errors
+  // when the user doesn't have a family_member record yet (new users)
   const { data: member } = await supabase
     .from('family_members')
     .select('id')
     .eq('auth_user_id', session.user.id)
-    .single()
+    .maybeSingle()
 
   // Needs family setup
   if (!member && !ONBOARDING_ROUTES.some(route => pathname.startsWith(route))) {
@@ -740,3 +744,4 @@ export function useCreateInvite() {
 |---------|------|--------|---------|
 | 1.0 | 2024-12-23 | Hazel + Claude | Initial auth spec |
 | 1.1 | 2024-12-23 | Claude | Updated to magic link (passwordless) authentication |
+| 1.2 | 2024-12-26 | Claude | Added onboarding flow, fixed maybeSingle() usage |

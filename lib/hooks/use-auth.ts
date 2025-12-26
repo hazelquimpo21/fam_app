@@ -98,13 +98,18 @@ export function useAuth(): AuthContextValue {
   /**
    * Fetch family member data for the current authenticated user
    * Includes the associated family data via join
-   * 
+   *
+   * Uses maybeSingle() to avoid 406 errors when no record exists.
+   * This is expected during onboarding when user hasn't created a family yet.
+   *
    * @param userId - Supabase auth user ID
    * @returns Family member and family objects, or null if not found
    */
   const fetchFamilyMember = useCallback(async (userId: string) => {
     logger.debug('📋 Fetching family member data', { userId });
 
+    // Use maybeSingle() instead of single() to handle case when no record exists
+    // This prevents 406 "Not Acceptable" errors for new users without a family
     const { data, error } = await supabase
       .from('family_members')
       .select(`
@@ -112,11 +117,18 @@ export function useAuth(): AuthContextValue {
         family:families(*)
       `)
       .eq('auth_user_id', userId)
-      .single();
+      .maybeSingle();
 
     if (error) {
+      // Actual database error (not just "no rows found")
+      logger.error('❌ Failed to fetch family member', { error: error.message });
+      return { member: null, family: null };
+    }
+
+    if (!data) {
       // User exists in auth but hasn't joined/created a family yet
-      logger.warn('👤 No family member found (may need onboarding)', { userId });
+      // This is expected - they need to go through onboarding
+      logger.info('👤 No family member found (needs onboarding)', { userId });
       return { member: null, family: null };
     }
 

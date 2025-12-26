@@ -241,6 +241,9 @@ export interface CreateTaskInput {
 /**
  * Create a new task
  *
+ * This hook fetches the user's family_id before creating the task.
+ * The family_id is required for RLS policies to work correctly.
+ *
  * @example
  * const createTask = useCreateTask()
  * createTask.mutate({ title: 'Buy groceries', due_date: '2024-12-25' })
@@ -253,10 +256,40 @@ export function useCreateTask() {
     mutationFn: async (input: CreateTaskInput) => {
       logger.info('➕ Creating task...', { title: input.title });
 
+      // Step 1: Get the current user's family_id and member_id
+      // This is required for RLS policies to allow the insert
+      const { data: { user } } = await supabase.auth.getUser();
+
+      if (!user) {
+        logger.error('❌ No authenticated user');
+        throw new Error('You must be logged in to create tasks');
+      }
+
+      const { data: member, error: memberError } = await supabase
+        .from('family_members')
+        .select('id, family_id')
+        .eq('auth_user_id', user.id)
+        .maybeSingle();
+
+      if (memberError) {
+        logger.error('❌ Failed to get family info', { error: memberError.message });
+        throw new Error('Failed to get your family information');
+      }
+
+      if (!member) {
+        logger.error('❌ User has no family membership');
+        throw new Error('Please complete onboarding to create tasks');
+      }
+
+      logger.debug('👤 Got family context', { familyId: member.family_id, memberId: member.id });
+
+      // Step 2: Create the task with family_id
       const { data, error } = await supabase
         .from('tasks')
         .insert({
           ...input,
+          family_id: member.family_id,
+          created_by: member.id,
           status: input.status || 'inbox',
         })
         .select()
@@ -267,7 +300,7 @@ export function useCreateTask() {
         throw error;
       }
 
-      logger.success('✅ Task created!', { title: data?.title });
+      logger.success('✅ Task created!', { title: data?.title, taskId: data?.id });
       return data as Task;
     },
 
@@ -277,14 +310,15 @@ export function useCreateTask() {
 
       // Show success toast
       if (data.status === 'inbox') {
-        toast.success('📥 Added to inbox');
+        toast.success('Added to inbox');
       } else {
-        toast.success('✅ Task created!');
+        toast.success('Task created!');
       }
     },
 
     onError: (error) => {
-      toast.error('Failed to create task. Please try again.');
+      const message = error instanceof Error ? error.message : 'Failed to create task';
+      toast.error(message);
       logger.error('Create task error', { error });
     },
   });
