@@ -835,6 +835,178 @@ interface TaskModalProps {
 />
 ```
 
+#### GoalModal
+
+**File:** `components/modals/goal-modal.tsx`
+
+Full goal create/edit modal with qualitative/quantitative support.
+
+**Props:**
+```tsx
+interface GoalModalProps {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  goal?: Goal | null            // Edit mode if provided
+  initialTitle?: string         // Pre-fill title for create
+  onSuccess?: (goal: Goal) => void
+}
+```
+
+**Features:**
+- Create mode: empty form with optional initialTitle
+- Edit mode: pre-filled with existing goal data
+- Goal type toggle: qualitative (checkbox) vs quantitative (numeric)
+- Target value and unit for quantitative goals
+- Owner picker (family member)
+- Target date input
+- Family vs personal goal toggle
+- Keyboard shortcut: Cmd/Ctrl+Enter to save
+
+#### HabitModal
+
+**File:** `components/modals/habit-modal.tsx`
+
+Full habit create/edit modal with frequency and goal linking.
+
+**Props:**
+```tsx
+interface HabitModalProps {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  habit?: Habit | null          // Edit mode if provided
+  initialTitle?: string         // Pre-fill title for create
+  onSuccess?: (habit: Habit) => void
+}
+```
+
+**Features:**
+- Create mode: empty form with optional initialTitle
+- Edit mode: pre-filled with existing habit data
+- Frequency selector: daily, weekly (with day picker), monthly
+- Owner picker (family member)
+- Goal picker to link habit to goal
+- Icon/emoji selector
+- Keyboard shortcut: Cmd/Ctrl+Enter to save
+
+#### ProjectModal
+
+**File:** `components/modals/project-modal.tsx`
+
+Full project create/edit modal with status and owner.
+
+**Props:**
+```tsx
+interface ProjectModalProps {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  project?: Project | null      // Edit mode if provided
+  initialTitle?: string         // Pre-fill title for create
+  onSuccess?: (project: Project) => void
+}
+```
+
+**Features:**
+- Create mode: empty form with optional initialTitle
+- Edit mode: pre-filled with existing project data
+- Status selector: planning, active, on_hold, completed
+- Owner picker (family member)
+- Target date input
+- Icon/emoji selector (click to cycle)
+- Description and notes textareas (in "more options")
+- Keyboard shortcut: Cmd/Ctrl+Enter to save
+
+**Form Layout:**
+```
+┌────────────────────────────────────────────────────┐
+│ Create Project                                  ✕   │
+├────────────────────────────────────────────────────┤
+│                                                    │
+│ [📁] What's the project?                          │
+│                                                    │
+│ Status                                             │
+│ [Planning] [Active] [On Hold] [Completed]         │
+│                                                    │
+│ Owner                                              │
+│ [👤 Select owner... ▼]                            │
+│                                                    │
+│ Target date                                        │
+│ [📅 _____________]                                │
+│                                                    │
+│ [Show more options]                                │
+│                                                    │
+├────────────────────────────────────────────────────┤
+│                       [Cancel]  [Create Project]   │
+│                                   ⌘+Enter          │
+└────────────────────────────────────────────────────┘
+```
+
+#### SomedayModal
+
+**File:** `components/modals/someday-modal.tsx`
+
+Full someday item create/edit modal with category and estimated cost.
+
+**Props:**
+```tsx
+interface SomedayModalProps {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  item?: SomedayItem | null     // Edit mode if provided
+  initialTitle?: string         // Pre-fill title for create
+  initialCategory?: SomedayCategory
+  onSuccess?: (item: SomedayItem) => void
+}
+```
+
+**Features:**
+- Create mode: empty form with optional initialTitle and category
+- Edit mode: pre-filled with existing item data
+- Category selector: trip, purchase, experience, house, other
+- Category icons with color coding
+- Estimated cost input with $ prefix
+- Description textarea
+- Keyboard shortcut: Cmd/Ctrl+Enter to save
+
+**Category Config:**
+| Category | Icon | Color |
+|----------|------|-------|
+| trip | Plane | Blue |
+| purchase | ShoppingBag | Green |
+| experience | Lightbulb | Orange |
+| house | Home | Purple |
+| other | Sparkles | Amber |
+
+**Form Layout:**
+```
+┌────────────────────────────────────────────────────┐
+│ ✨ Add Dream                                    ✕   │
+├────────────────────────────────────────────────────┤
+│                                                    │
+│ What's your dream?                                 │
+│ ┌────────────────────────────────────────────────┐ │
+│ │                                                │ │
+│ └────────────────────────────────────────────────┘ │
+│                                                    │
+│ Category                                           │
+│ [✈️ Trip] [🛍️ Purchase] [💡 Experience]           │
+│ [🏠 House] [✨ Other]                             │
+│                                                    │
+│ Description                                        │
+│ ┌────────────────────────────────────────────────┐ │
+│ │ What makes this dream special?                 │ │
+│ └────────────────────────────────────────────────┘ │
+│                                                    │
+│ 💵 Estimated cost (optional)                      │
+│ ┌────────────────────────────────────────────────┐ │
+│ │ $ ___________                                  │ │
+│ └────────────────────────────────────────────────┘ │
+│                                                    │
+├────────────────────────────────────────────────────┤
+│                         [Cancel]  [Add Dream]      │
+│                                   ⌘+Enter          │
+└────────────────────────────────────────────────────┘
+```
+
 #### TaskDetailPanel
 
 **File:** `components/features/tasks/task-detail-panel.tsx`
@@ -1254,36 +1426,42 @@ Prefer composition over configuration:
 | TaskCard | ✅ | ⚠️ Inline | Logic in tasks/page.tsx |
 | TaskList | ✅ | ⚠️ Inline | Logic in tasks/page.tsx |
 | TaskModal | ✅ | ✅ | `components/modals/task-modal.tsx` - Full create/edit |
+| GoalModal | ✅ | ✅ | `components/modals/goal-modal.tsx` - Full create/edit |
+| HabitModal | ✅ | ✅ | `components/modals/habit-modal.tsx` - Full create/edit |
+| ProjectModal | ✅ | ✅ | `components/modals/project-modal.tsx` - Full create/edit |
+| SomedayModal | ✅ | ✅ | `components/modals/someday-modal.tsx` - Full create/edit |
 | HabitCard | ✅ | ⚠️ Inline | Logic in habits/page.tsx |
 | HabitHeatmap | ✅ | 🔨 | Not yet built |
-| GoalCard | ✅ | 🔨 | Not yet built |
-| ProjectCard | ✅ | 🔨 | Not yet built |
+| GoalCard | ✅ | ⚠️ Inline | Logic in goals/page.tsx |
+| ProjectCard | ✅ | ⚠️ Inline | Logic in projects/page.tsx |
+| SomedayCard | ✅ | ⚠️ Inline | Logic in someday/page.tsx |
 | MealCalendar | ✅ | 🔨 | Not yet built |
 | StatsCard | ✅ | ⚠️ Inline | Logic in dashboard (connected to real data) |
 
 ### Implementation Summary
 
-**Total from spec:** ~40 components
-**Implemented:** 18 components (standalone files)
-**Inline/Partial:** 4 components (logic in page files)
-**Pending:** ~18 components
+**Total from spec:** ~45 components
+**Implemented:** 23 components (standalone files)
+**Inline/Partial:** 8 components (logic in page files)
+**Pending:** ~14 components
 
 ### Recommended Next Steps
 
 1. **High Priority:**
    - `DatePicker` - native input used for now, custom picker later
    - `ConfirmDialog` - needed for delete actions
-   - Goal creation modal
-   - Project creation modal
 
 2. **Medium Priority:**
    - Extract `TaskCard` to standalone component
    - Extract `HabitCard` to standalone component
+   - Extract `GoalCard` to standalone component
+   - Extract `ProjectCard` to standalone component
    - `Skeleton` - loading placeholder animations
 
 3. **Lower Priority:**
    - `SearchModal` - global search
    - `QuickAddModal` - keyboard shortcut capture
+   - `HabitHeatmap` - 30/365 day visualization
    - Feature-specific components (Meals, etc.)
 
 ---
@@ -1298,3 +1476,4 @@ Prefer composition over configuration:
 | 1.3 | 2024-12-25 | Claude | Pages now connected to DB (loading/error states inline) |
 | 1.4 | 2024-12-25 | Claude | Dashboard StatsCard now connected to real data |
 | 1.5 | 2024-12-26 | Claude | Added Dialog, Select, entity pickers (FamilyMember, Project, Goal), ProgressBar, TaskModal |
+| 1.6 | 2024-12-26 | Claude | Added GoalModal, HabitModal, ProjectModal, SomedayModal documentation; updated implementation status |

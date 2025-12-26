@@ -180,19 +180,19 @@ This document maps the key multi-step user journeys in Fam. Each flow shows deci
 │                                  └──────────┘                              │
 │                                       │                                     │
 │                                       ▼                                     │
-│                     ┌─────────────────┼─────────────────┐                  │
-│                     │                 │                 │                  │
-│                     ▼                 ▼                 ▼                  │
-│               ┌──────────┐     ┌──────────┐     ┌──────────┐              │
-│               │ → Task   │     │ → Someday│     │ → Delete │              │
-│               │   Form   │     │   Form   │     │          │              │
-│               └──────────┘     └──────────┘     └──────────┘              │
-│                     │                 │                                    │
-│                     ▼                 ▼                                    │
-│               ┌──────────┐     ┌──────────┐                               │
-│               │  Task    │     │ Someday  │                               │
-│               │  List    │     │  List    │                               │
-│               └──────────┘     └──────────┘                               │
+│     ┌───────┬───────┬───────┬────────┼────────┬───────┐                   │
+│     │       │       │       │        │        │       │                   │
+│     ▼       ▼       ▼       ▼        ▼        ▼       ▼                   │
+│ ┌───────┐┌───────┐┌───────┐┌───────┐┌───────┐┌───────┐┌───────┐          │
+│ │→ Task ││→ Goal ││→ Habit││→ Proj ││→ Smday││Archive││Delete │          │
+│ │ Modal ││ Modal ││ Modal ││ Modal ││ Modal ││       ││       │          │
+│ └───────┘└───────┘└───────┘└───────┘└───────┘└───────┘└───────┘          │
+│     │       │       │       │        │                                    │
+│     ▼       ▼       ▼       ▼        ▼                                    │
+│ ┌───────┐┌───────┐┌───────┐┌───────┐┌───────┐                            │
+│ │ Task  ││ Goal  ││ Habit ││Project││Someday│                            │
+│ │ List  ││ List  ││ List  ││ List  ││ List  │                            │
+│ └───────┘└───────┘└───────┘└───────┘└───────┘                            │
 │                                                                             │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
@@ -231,12 +231,15 @@ This document maps the key multi-step user journeys in Fam. Each flow shows deci
 
 **Process Actions:**
 
-| Action | Result |
-|--------|--------|
-| → Task | Opens task form, title pre-filled. Save creates task, removes from inbox. |
-| → Project | Opens project picker or "Create new". Adds item as project note or first task. |
-| → Someday | Opens category picker (Trip, Purchase, etc.). Save creates someday item. |
-| Delete | Soft delete with 5-second undo toast. |
+| Action | Result | Modal Used |
+|--------|--------|------------|
+| → Task | Opens TaskModal, title pre-filled. Save creates task, removes from inbox. | `TaskModal` |
+| → Goal | Opens GoalModal, title pre-filled. Save creates goal, removes from inbox. | `GoalModal` |
+| → Habit | Opens HabitModal, title pre-filled. Save creates habit, removes from inbox. | `HabitModal` |
+| → Project | Opens ProjectModal, title pre-filled. Save creates project, removes from inbox. | `ProjectModal` |
+| → Someday | Opens SomedayModal with category picker. Save creates someday item, removes from inbox. | `SomedayModal` |
+| Archive | Marks inbox item as archived. Can be restored later. | - |
+| Delete | Soft delete with 5-second undo toast. | - |
 
 **Batch Processing Mode:**
 - "Process All" button enters focused mode
@@ -670,7 +673,7 @@ This document maps the key multi-step user journeys in Fam. Each flow shows deci
 
 ## Implementation Status
 
-> **Flow 1: New User Onboarding** - ✅ IMPLEMENTED
+### Flow 1: New User Onboarding - ✅ IMPLEMENTED
 
 The onboarding flow is now fully implemented:
 
@@ -692,6 +695,86 @@ The onboarding flow is now fully implemented:
 
 ---
 
+### Flow 2: Invited User Joining - 🔨 NOT YET IMPLEMENTED
+
+---
+
+### Flow 3: Quick Capture → Process - ✅ MOSTLY IMPLEMENTED
+
+**Implemented:**
+- Inbox page with list of items (`/inbox`)
+- Triage actions: Task, Goal, Habit, Project, Someday, Delete
+- All modals pre-fill title from inbox item
+- Inbox badge count in sidebar
+
+**Modals Available:**
+| Modal | File | Status |
+|-------|------|--------|
+| TaskModal | `components/modals/task-modal.tsx` | ✅ |
+| GoalModal | `components/modals/goal-modal.tsx` | ✅ |
+| HabitModal | `components/modals/habit-modal.tsx` | ✅ |
+| ProjectModal | `components/modals/project-modal.tsx` | ✅ |
+| SomedayModal | `components/modals/someday-modal.tsx` | ✅ |
+
+**Not Yet Implemented:**
+- Quick Add modal (global Cmd+K)
+- Batch processing mode ("Process All")
+- Smart text parsing
+- Archive functionality
+
+---
+
+### Flow 4: Create & Complete Task - ✅ IMPLEMENTED
+
+**Implemented:**
+- TaskModal for create/edit with all fields
+- Task completion with checkbox
+- Status changes (inbox → active → done)
+
+**Not Yet Implemented:**
+- Subtasks
+- Recurring tasks (next instance generation)
+- Draft auto-save
+
+---
+
+### Flow 5: Weekly Family Meeting - 🔨 NOT YET IMPLEMENTED
+
+---
+
+### Flow 6: Meal Planning - 🔨 NOT YET IMPLEMENTED
+
+---
+
+### Flow 7: Habit Tracking Daily - ✅ IMPLEMENTED
+
+**Implemented:**
+- Habits page with list (`/habits`)
+- Check/uncheck daily habits
+- Streak tracking and display
+- HabitModal for create/edit
+
+**Not Yet Implemented:**
+- Skip functionality (long-press)
+- Milestone celebrations (confetti)
+- Heatmap visualization
+
+---
+
+### Flow 8: Promote Someday to Project - 🔨 PARTIAL
+
+**Implemented:**
+- Someday page with list (`/someday`)
+- SomedayModal for create/edit
+- Can manually create projects
+
+**Not Yet Implemented:**
+- "Make it Happen" promotion button
+- Auto-linking someday → project
+- Promotion status tracking
+
+---
+
 ## Document History
 
 | Version | Date | Author | Changes |
@@ -699,3 +782,4 @@ The onboarding flow is now fully implemented:
 | 1.0 | 2024-12-23 | Hazel + Claude | Initial user flows |
 | 1.1 | 2024-12-23 | Claude | Updated for magic link (passwordless) auth |
 | 1.2 | 2024-12-26 | Claude | Added implementation status for onboarding flow |
+| 1.3 | 2024-12-26 | Claude | Updated Flow 3 diagram with all triage options; added implementation status for all 8 flows |

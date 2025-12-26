@@ -159,8 +159,14 @@ fam_app/
 │   └── globals.css             # Global styles
 │
 ├── 📁 components/               # React components
-│   ├── 📁 ui/                  # Base primitives (Button, Input, etc.)
-│   ├── 📁 shared/              # Shared components (Avatar, Badge, etc.)
+│   ├── 📁 ui/                  # Base primitives (Button, Input, Dialog, etc.)
+│   ├── 📁 shared/              # Shared components (Avatar, Badge, Pickers, etc.)
+│   ├── 📁 modals/              # Modal components for entity CRUD
+│   │   ├── task-modal.tsx      # Task create/edit modal
+│   │   ├── goal-modal.tsx      # Goal create/edit modal
+│   │   ├── habit-modal.tsx     # Habit create/edit modal
+│   │   ├── project-modal.tsx   # Project create/edit modal
+│   │   └── someday-modal.tsx   # Someday create/edit modal
 │   ├── 📁 features/            # Feature-specific components
 │   ├── 📁 layout/              # Layout components (Sidebar, TopBar)
 │   └── providers.tsx           # App providers wrapper
@@ -543,25 +549,37 @@ logger.warn('Rate limit approaching') // ⚠️ [12:34:56] Rate limit approachin
 
 > **Last Updated:** December 2024
 
+### Core Features
+
 | Feature | Status | Notes |
 |---------|--------|-------|
 | Database Schema | ✅ Complete | 17 tables with RLS |
 | Magic Link Auth | ✅ Complete | Passwordless login |
 | Onboarding Flow | ✅ Complete | Family creation for new users |
 | Dashboard | ✅ **Connected** | Real-time stats, tasks, habits, goals from database |
-| Tasks | ✅ Complete | Full CRUD, filters |
-| Habits | ✅ Complete | Streaks, logging |
-| Inbox | ✅ **Connected** | Quick capture, processing to tasks/projects/someday |
+| Tasks | ✅ Complete | Full CRUD with TaskModal |
+| Habits | ✅ Complete | Streaks, logging, HabitModal create/edit |
+| Goals | ✅ **Connected** | GoalModal with qualitative/quantitative support |
+| Projects | ✅ **Connected** | ProjectModal with status, owner, icons |
+| Someday | ✅ **Connected** | SomedayModal with categories and estimated cost |
+| Inbox | ✅ **Connected** | Full triage to any entity via modals (Task/Goal/Habit/Project/Someday) |
 | Today | ✅ **Connected** | Daily focus with habits, overdue, today's tasks |
-| Goals | ✅ **Connected** | Goal tracking with progress bars, family/personal grouping |
-| Projects | ✅ **Connected** | Project cards with status filtering |
-| Someday | ✅ **Connected** | Wishlist with categories, promote to project |
 | Family | ✅ **Connected** | Family member list, pending invites |
 | Settings | ✅ Stub | UI ready, needs preferences |
 | Meals | 🔨 Pending | Not started |
 | Calendar | 🔨 Pending | Not started |
 
-> **All core pages are now connected to the Supabase database** with React Query hooks for caching and real-time updates.
+### Modals (Entity CRUD)
+
+| Modal | File | Status |
+|-------|------|--------|
+| TaskModal | `components/modals/task-modal.tsx` | ✅ Complete |
+| GoalModal | `components/modals/goal-modal.tsx` | ✅ Complete |
+| HabitModal | `components/modals/habit-modal.tsx` | ✅ Complete |
+| ProjectModal | `components/modals/project-modal.tsx` | ✅ Complete |
+| SomedayModal | `components/modals/someday-modal.tsx` | ✅ Complete |
+
+> **All core pages are now connected to the Supabase database** with React Query hooks for caching and real-time updates. Full create/edit modals are available for all productivity entities.
 
 See `AI_Dev_Docs/00-IMPLEMENTATION-STATUS.md` for detailed status.
 

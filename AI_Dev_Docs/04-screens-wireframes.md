@@ -357,21 +357,21 @@ Stack cards vertically:
 │ │ Look into summer camp options                         │
 │ │ Added Dec 22                                          │
 │ │                                                        │
-│ │ [→ Task]  [→ Project]  [→ Someday]  [🗑️ Delete]       │
+│ │ [Task] [Goal] [Habit] [Project] [Someday] [Archive] [🗑️]│
 │ └────────────────────────────────────────────────────────┤
 │                                                          │
 │ ┌────────────────────────────────────────────────────────┤
 │ │ Call plumber about leak                               │
 │ │ Added Dec 23                                          │
 │ │                                                        │
-│ │ [→ Task]  [→ Project]  [→ Someday]  [🗑️ Delete]       │
+│ │ [Task] [Goal] [Habit] [Project] [Someday] [Archive] [🗑️]│
 │ └────────────────────────────────────────────────────────┤
 │                                                          │
 │ ┌────────────────────────────────────────────────────────┤
 │ │ Trip idea: Japan in spring                            │
 │ │ Added Dec 23                                          │
 │ │                                                        │
-│ │ [→ Task]  [→ Project]  [→ Someday]  [🗑️ Delete]       │
+│ │ [Task] [Goal] [Habit] [Project] [Someday] [Archive] [🗑️]│
 │ └────────────────────────────────────────────────────────┤
 │                                                          │
 └──────────────────────────────────────────────────────────┘
@@ -396,15 +396,26 @@ Stack cards vertically:
 
 **→ Task:** Opens TaskModal pre-filled with title. User adds details (assignee, project, goal, due date), saves. Original inbox item deleted automatically.
 
-**→ Project:** Opens project creation or project picker. Creates project with item as first task or note.
+**→ Goal:** Opens GoalModal pre-filled with title. User selects qualitative/quantitative, sets target, owner, deadline.
 
-**→ Someday:** Opens category picker (Trip, Purchase, etc.). Saves as someday item.
+**→ Habit:** Opens HabitModal pre-filled with title. User selects frequency, owner, linked goal.
+
+**→ Project:** Opens ProjectModal pre-filled with title. User selects status, owner, target date, icon.
+
+**→ Someday:** Opens SomedayModal with category picker (Trip, Purchase, Experience, House, Other). Includes estimated cost field.
+
+**Archive:** Marks as archived (can restore later).
 
 **Delete:** Soft delete with undo toast.
 
-**Process All Mode:** Steps through each item. After action, auto-advances to next. Shows progress (2/5 processed).
+**Process All Mode:** Steps through each item. After action, auto-advances to next. Shows progress (2/5 processed). (Not yet implemented)
 
-**Implementation Note:** TaskModal integration complete - clicking "Task" button opens full task form modal with all entity pickers (FamilyMemberPicker, ProjectPicker, GoalPicker).
+**Implementation Note:** All modals are fully implemented:
+- `TaskModal` - `components/modals/task-modal.tsx`
+- `GoalModal` - `components/modals/goal-modal.tsx`
+- `HabitModal` - `components/modals/habit-modal.tsx`
+- `ProjectModal` - `components/modals/project-modal.tsx`
+- `SomedayModal` - `components/modals/someday-modal.tsx`
 
 ---
 
@@ -976,27 +987,37 @@ Stack cards vertically:
 | Screen | Route | Status | Notes |
 |--------|-------|--------|-------|
 | Screen 0: Onboarding | `/onboarding` | ✅ Complete | Family setup for new users |
-| G1: Navigation Sidebar | All `/` routes | ✅ Complete | Desktop sidebar working |
+| G1: Navigation Sidebar | All `/` routes | ✅ Complete | Desktop sidebar with inbox badge |
 | G2: Mobile Navigation | All `/` routes | 🔨 Pending | Using responsive sidebar |
 | G3: Top Bar | All `/` routes | ✅ Complete | With user menu |
 | G4: Quick Add Modal | Global | 🔨 Pending | Not yet implemented |
 | G5: Search Modal | Global | 🔨 Pending | Not yet implemented |
 | Screen 1: Family Dashboard | `/` | ✅ Complete | Stats cards, preview |
 | Screen 2: Personal Dashboard | `/me` | 🔨 Pending | Not yet implemented |
-| Screen 3: Inbox | `/inbox` | ✅ **Connected** | Quick capture, triage to TaskModal |
+| Screen 3: Inbox | `/inbox` | ✅ **Connected** | Full triage with all 5 modals |
 | Screen 4: Today | `/today` | ✅ **Connected** | Daily focus, click task → TaskModal |
 | Screen 5: Tasks List | `/tasks` | ✅ Complete | Full functionality + TaskModal |
 | Screen 6: Tasks Kanban | `/tasks?view=kanban` | 🔨 Pending | View toggle pending |
 | Screen 7: Task Detail | TaskModal | ✅ **Complete** | Modal form (not side panel) |
 | Screen 8: Calendar | `/calendar` | 🔨 Pending | Not yet implemented |
-| Screen 9: Habits | `/habits` | ✅ Complete | Full functionality |
-| Screen 10: Goals | `/goals` | ✅ **Connected** | Goal tracking with progress bars |
-| Screen 11: Projects List | `/projects` | ✅ **Connected** | Status filtering, project cards |
+| Screen 9: Habits | `/habits` | ✅ **Connected** | Full functionality + HabitModal |
+| Screen 10: Goals | `/goals` | ✅ **Connected** | Goal tracking + GoalModal |
+| Screen 11: Projects List | `/projects` | ✅ **Connected** | Cards + ProjectModal create/edit |
 | Screen 12: Project Detail | `/projects/[id]` | 🔨 Pending | Not yet implemented |
 | Screen 13: Family Meeting | `/meeting` | 🔨 Pending | Not yet implemented |
-| Someday | `/someday` | ✅ **Connected** | Category tabs, promote to project |
+| Someday | `/someday` | ✅ **Connected** | Cards + SomedayModal create/edit |
 | Family | `/family` | ✅ **Connected** | Members list, pending invites |
 | Settings | `/settings` | ✅ Stub | UI with mock data |
+
+### Modals Implementation
+
+| Modal | File | Status | Notes |
+|-------|------|--------|-------|
+| TaskModal | `components/modals/task-modal.tsx` | ✅ Complete | Full create/edit with entity pickers |
+| GoalModal | `components/modals/goal-modal.tsx` | ✅ Complete | Qualitative/quantitative goals |
+| HabitModal | `components/modals/habit-modal.tsx` | ✅ Complete | Frequency, owner, goal linking |
+| ProjectModal | `components/modals/project-modal.tsx` | ✅ Complete | Status, owner, target date, icon |
+| SomedayModal | `components/modals/someday-modal.tsx` | ✅ Complete | Category, estimated cost |
 
 > **Note:** **"Connected"** screens are fully wired to Supabase with React Query hooks. "Stub" screens have UI scaffolding with mock data.
 
@@ -1012,3 +1033,4 @@ Stack cards vertically:
 | 1.3 | 2024-12-25 | Claude | All core screens now connected to database |
 | 1.4 | 2024-12-26 | Claude | Added onboarding screen for new user family setup |
 | 1.5 | 2024-12-26 | Claude | Updated Task Detail to reflect TaskModal implementation (modal vs side panel) |
+| 1.6 | 2024-12-26 | Claude | Updated Inbox wireframe with all triage options (Task/Goal/Habit/Project/Someday/Archive/Delete); added Modals Implementation table |
