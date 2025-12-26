@@ -270,6 +270,27 @@ Before diving into screens, reference these design decisions:
 - Family member colors for quick ID
 - Link to contacts if clicked
 
+### Modal Connections (Implemented)
+
+The Dashboard has full modal integration for creating and editing entities:
+
+**Habits Section:**
+- Click checkbox → Toggle habit completion (done/undone)
+- Click habit card → Opens HabitModal for editing
+- Click "Add Habit" button → Opens HabitModal in create mode
+
+**Goals Section:**
+- Click goal card → Opens GoalModal for editing
+- Click "Add Goal" button → Opens GoalModal in create mode
+- Click progress (+) button → Opens GoalModal for quick progress update
+
+**Tasks Section:**
+- Click task checkbox → Toggle task completion
+- Click task row → Opens TaskModal for editing
+- Click "Add Task" button → Opens TaskModal in create mode
+
+**Pattern Note:** For habits, the toggle action uses `stopPropagation()` to prevent the card click handler from firing when checking/unchecking habits.
+
 ### Mobile Layout
 
 Stack cards vertically:
@@ -1034,3 +1055,4 @@ Stack cards vertically:
 | 1.4 | 2024-12-26 | Claude | Added onboarding screen for new user family setup |
 | 1.5 | 2024-12-26 | Claude | Updated Task Detail to reflect TaskModal implementation (modal vs side panel) |
 | 1.6 | 2024-12-26 | Claude | Updated Inbox wireframe with all triage options (Task/Goal/Habit/Project/Someday/Archive/Delete); added Modals Implementation table |
+| 1.7 | 2024-12-26 | Claude | Added "Modal Connections" section to Dashboard documenting click-to-edit patterns for habits, goals, and tasks |
