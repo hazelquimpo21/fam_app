@@ -14,29 +14,32 @@
  * - Project cards with task progress (completed/total tasks)
  * - Status filtering (planning, active, completed)
  * - Owner display
- * - Project detail navigation
+ * - Create/edit projects via ProjectModal
+ * - Click card to open project modal for editing
  *
  * User Stories Addressed:
  * - US-6.1: View all projects with status
  * - US-6.2: See project progress (task completion)
- * - US-6.3: Navigate to project details
+ * - US-6.3: Navigate to project details (future: project detail page)
+ * - US-6.4: Create and edit projects via modal
  *
  * Data Flow:
  * 1. Fetch all projects from database
  * 2. Fetch all tasks to calculate per-project counts
  * 3. Filter projects by status
  * 4. Display cards with task progress
+ * 5. ProjectModal handles create/edit operations
  *
  * ============================================================================
  */
 
 import { useEffect, useState, useMemo } from 'react';
 import { FolderOpen, Plus, Clock, CheckCircle, Circle, MoreHorizontal, CheckSquare } from 'lucide-react';
-import Link from 'next/link';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Avatar } from '@/components/shared/avatar';
 import { EmptyState } from '@/components/shared/empty-state';
+import { ProjectModal } from '@/components/modals/project-modal';
 import { cn } from '@/lib/utils/cn';
 import { logger } from '@/lib/utils/logger';
 import { useProjects } from '@/lib/hooks/use-projects';
@@ -76,14 +79,18 @@ function formatRelativeTime(dateStr: string): string {
 /**
  * ProjectCard Component
  * Displays a single project with task progress
+ *
+ * Click behavior: Opens project modal for editing
  */
 interface ProjectCardProps {
   project: Project;
   totalTasks: number;
   completedTasks: number;
+  /** Called when card is clicked (opens edit modal) */
+  onClick?: () => void;
 }
 
-function ProjectCard({ project, totalTasks, completedTasks }: ProjectCardProps) {
+function ProjectCard({ project, totalTasks, completedTasks, onClick }: ProjectCardProps) {
   const owner = project.owner as { name: string; color: string } | null;
   const statusConfig = getStatusConfig(project.status);
 
@@ -96,90 +103,94 @@ function ProjectCard({ project, totalTasks, completedTasks }: ProjectCardProps) 
     : 0;
 
   return (
-    <Link href={`/projects/${project.id}`}>
-      <Card className="transition-all hover:shadow-md hover:border-neutral-300 h-full">
-        <CardContent className="p-4">
-          <div className="flex flex-col h-full space-y-3">
-            {/* Header with emoji and title */}
-            <div className="flex items-start justify-between gap-2">
-              <div className="flex items-start gap-3">
-                <span className="text-2xl">{emoji}</span>
-                <div>
-                  <h3 className="font-medium text-neutral-900">{project.title}</h3>
-                  <div className={cn('inline-flex px-2 py-0.5 rounded text-xs font-medium mt-1', statusConfig.className)}>
-                    {statusConfig.label}
-                  </div>
+    <Card
+      className={cn(
+        'transition-all hover:shadow-md hover:border-neutral-300 h-full',
+        onClick && 'cursor-pointer'
+      )}
+      onClick={onClick}
+    >
+      <CardContent className="p-4">
+        <div className="flex flex-col h-full space-y-3">
+          {/* Header with emoji and title */}
+          <div className="flex items-start justify-between gap-2">
+            <div className="flex items-start gap-3">
+              <span className="text-2xl">{emoji}</span>
+              <div>
+                <h3 className="font-medium text-neutral-900">{project.title}</h3>
+                <div className={cn('inline-flex px-2 py-0.5 rounded text-xs font-medium mt-1', statusConfig.className)}>
+                  {statusConfig.label}
                 </div>
               </div>
-              <button
-                className="p-1 rounded hover:bg-neutral-100 text-neutral-400 hover:text-neutral-600"
-                onClick={(e) => {
-                  e.preventDefault();
-                  logger.info('Project menu clicked', { projectId: project.id });
-                }}
-              >
-                <MoreHorizontal className="h-4 w-4" />
-              </button>
             </div>
+            <button
+              className="p-1 rounded hover:bg-neutral-100 text-neutral-400 hover:text-neutral-600"
+              onClick={(e) => {
+                e.stopPropagation(); // Prevent card click
+                logger.info('📁 Project menu clicked', { projectId: project.id });
+              }}
+            >
+              <MoreHorizontal className="h-4 w-4" />
+            </button>
+          </div>
 
-            {/* Owner */}
-            {owner && (
-              <div className="flex items-center gap-2">
-                <Avatar name={owner.name} color={owner.color} size="sm" />
-                <span className="text-sm text-neutral-600">{owner.name}</span>
+          {/* Owner */}
+          {owner && (
+            <div className="flex items-center gap-2">
+              <Avatar name={owner.name} color={owner.color} size="sm" />
+              <span className="text-sm text-neutral-600">{owner.name}</span>
+            </div>
+          )}
+
+          {/* Description (if any) */}
+          {project.description && (
+            <p className="text-sm text-neutral-500 line-clamp-2">{project.description}</p>
+          )}
+
+          {/* Task progress */}
+          {totalTasks > 0 && (
+            <div className="space-y-1">
+              <div className="flex items-center justify-between text-xs">
+                <span className="flex items-center gap-1 text-neutral-600">
+                  <CheckSquare className="h-3.5 w-3.5" />
+                  {completedTasks}/{totalTasks} tasks
+                </span>
+                <span className="text-neutral-500">{completionPercent}%</span>
               </div>
-            )}
-
-            {/* Description (if any) */}
-            {project.description && (
-              <p className="text-sm text-neutral-500 line-clamp-2">{project.description}</p>
-            )}
-
-            {/* Task progress */}
-            {totalTasks > 0 && (
-              <div className="space-y-1">
-                <div className="flex items-center justify-between text-xs">
-                  <span className="flex items-center gap-1 text-neutral-600">
-                    <CheckSquare className="h-3.5 w-3.5" />
-                    {completedTasks}/{totalTasks} tasks
-                  </span>
-                  <span className="text-neutral-500">{completionPercent}%</span>
-                </div>
-                <div className="h-1.5 rounded-full bg-neutral-100 overflow-hidden">
-                  <div
-                    className={cn(
-                      'h-full rounded-full transition-all',
-                      completionPercent === 100
-                        ? 'bg-green-500'
-                        : 'bg-indigo-500'
-                    )}
-                    style={{ width: `${completionPercent}%` }}
-                  />
-                </div>
-              </div>
-            )}
-
-            {/* Footer with updated time */}
-            <div className="space-y-1 mt-auto">
-              <div className="flex items-center justify-between text-xs text-neutral-500">
-                <span className="flex items-center gap-1">
-                  {project.status === 'completed' ? (
-                    <CheckCircle className="h-3 w-3 text-green-500" />
-                  ) : (
-                    <Circle className="h-3 w-3" />
+              <div className="h-1.5 rounded-full bg-neutral-100 overflow-hidden">
+                <div
+                  className={cn(
+                    'h-full rounded-full transition-all',
+                    completionPercent === 100
+                      ? 'bg-green-500'
+                      : 'bg-indigo-500'
                   )}
-                  {project.status === 'completed' ? 'Completed' : 'In progress'}
-                </span>
-                <span className="flex items-center gap-1">
-                  <Clock className="h-3 w-3" />
-                  Updated {formatRelativeTime(project.updated_at)}
-                </span>
+                  style={{ width: `${completionPercent}%` }}
+                />
               </div>
+            </div>
+          )}
+
+          {/* Footer with updated time */}
+          <div className="space-y-1 mt-auto">
+            <div className="flex items-center justify-between text-xs text-neutral-500">
+              <span className="flex items-center gap-1">
+                {project.status === 'completed' ? (
+                  <CheckCircle className="h-3 w-3 text-green-500" />
+                ) : (
+                  <Circle className="h-3 w-3" />
+                )}
+                {project.status === 'completed' ? 'Completed' : 'In progress'}
+              </span>
+              <span className="flex items-center gap-1">
+                <Clock className="h-3 w-3" />
+                Updated {formatRelativeTime(project.updated_at)}
+              </span>
             </div>
           </div>
-        </CardContent>
-      </Card>
-    </Link>
+        </div>
+      </CardContent>
+    </Card>
   );
 }
 
@@ -230,9 +241,19 @@ const statusFilters: { value: FilterValue; label: string }[] = [
 
 /**
  * Projects Page Component
+ *
+ * State:
+ * - activeFilter: Current status filter (all, active, planning, completed)
+ * - isProjectModalOpen: Whether the create/edit modal is open
+ * - selectedProject: Project being edited (null for create mode)
  */
 export default function ProjectsPage() {
+  // Filter state
   const [activeFilter, setActiveFilter] = useState<FilterValue>('all');
+
+  // Modal state for creating/editing projects
+  const [isProjectModalOpen, setIsProjectModalOpen] = useState(false);
+  const [selectedProject, setSelectedProject] = useState<Project | null>(null);
 
   // Fetch projects from database
   const { data: projects = [], isLoading, error } = useProjects();
@@ -265,6 +286,34 @@ export default function ProjectsPage() {
     if (activeFilter === 'all') return projects;
     return projects.filter((p) => p.status === activeFilter);
   }, [projects, activeFilter]);
+
+  /**
+   * Handle opening modal for new project
+   */
+  const handleAddProject = () => {
+    logger.info('➕ Opening ProjectModal for new project');
+    setSelectedProject(null);
+    setIsProjectModalOpen(true);
+  };
+
+  /**
+   * Handle clicking a project card to edit
+   */
+  const handleProjectClick = (project: Project) => {
+    logger.info('📁 Opening ProjectModal for edit', { projectId: project.id, title: project.title });
+    setSelectedProject(project);
+    setIsProjectModalOpen(true);
+  };
+
+  /**
+   * Handle modal close - reset selected project
+   */
+  const handleModalClose = (open: boolean) => {
+    setIsProjectModalOpen(open);
+    if (!open) {
+      setSelectedProject(null);
+    }
+  };
 
   // Log page load for debugging
   useEffect(() => {
@@ -307,7 +356,7 @@ export default function ProjectsPage() {
           <FolderOpen className="h-6 w-6 text-purple-600" />
           <h1 className="text-xl font-semibold text-neutral-900">Projects</h1>
         </div>
-        <Button leftIcon={<Plus className="h-4 w-4" />}>
+        <Button leftIcon={<Plus className="h-4 w-4" />} onClick={handleAddProject}>
           New Project
         </Button>
       </div>
@@ -347,7 +396,7 @@ export default function ProjectsPage() {
               }
               action={{
                 label: 'New Project',
-                onClick: () => logger.info('New project clicked'),
+                onClick: handleAddProject,
               }}
             />
           </CardContent>
@@ -363,12 +412,20 @@ export default function ProjectsPage() {
                   project={project}
                   totalTasks={counts.total}
                   completedTasks={counts.completed}
+                  onClick={() => handleProjectClick(project)}
                 />
               );
             })}
           </div>
         )
       )}
+
+      {/* ProjectModal for creating/editing projects */}
+      <ProjectModal
+        open={isProjectModalOpen}
+        onOpenChange={handleModalClose}
+        project={selectedProject}
+      />
     </div>
   );
 }
