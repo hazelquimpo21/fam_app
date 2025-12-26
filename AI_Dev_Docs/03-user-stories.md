@@ -746,6 +746,77 @@ Priority uses MoSCoW: **M**ust have, **S**hould have, **C**ould have, **W**on't 
 
 ---
 
+## Epic 15: Family & Member Profiles
+
+*(See `AI_Dev_Docs/15-profile-architecture.md` for full design spec)*
+
+### US-15.1: Edit Family Profile
+**Priority:** Should
+
+> **As a** family owner, **I want** to create a rich family profile, **so that** Fam understands our family's identity and values.
+
+**Acceptance Criteria:**
+- [ ] Can set family nickname and motto
+- [ ] Can select core values from a list (up to 5)
+- [ ] Can set yearly theme (optional)
+- [ ] Can add traditions (weekly, monthly, yearly, special)
+- [ ] Can add pets with names and types
+- [ ] Can set AI tone preference (encouraging, direct, playful)
+- [ ] Profile saves and displays on settings page
+
+### US-15.2: Edit Member Profile
+**Priority:** Should
+
+> **As a** family member, **I want** to build my personal profile, **so that** Fam can personalize my experience.
+
+**Acceptance Criteria:**
+- [ ] Can select personality type from fun options
+- [ ] Can set energy type (introvert/ambivert/extrovert)
+- [ ] Can set chronotype (morning/night/flexible)
+- [ ] Can select strengths and growth areas
+- [ ] Can set love language
+- [ ] Can add hobbies and current interests
+- [ ] Can set dietary restrictions and allergies
+- [ ] Can set reminder style preference
+- [ ] Profile completion indicator shows progress
+
+### US-15.3: Kid Profile
+**Priority:** Could
+
+> **As a** parent, **I want** to help my kid fill out a simplified profile, **so that** they feel included without being overwhelmed.
+
+**Acceptance Criteria:**
+- [ ] Simplified questions appropriate for kids (8+)
+- [ ] Focus on: favorite things, what they're good at, school info
+- [ ] Fun, visual interface
+- [ ] Parents can edit on behalf of younger kids
+
+### US-15.4: Progressive Profile Collection
+**Priority:** Could
+
+> **As a** user, **I want** to be prompted to fill out profile sections gradually, **so that** I'm not overwhelmed by a long form.
+
+**Acceptance Criteria:**
+- [ ] Dashboard shows profile prompts occasionally (not every time)
+- [ ] Prompts appear based on what's missing
+- [ ] Prompts are fun and quick ("What's your family's vibe?")
+- [ ] Can dismiss prompts temporarily
+- [ ] Completing prompts unlocks personalized suggestions
+
+### US-15.5: AI Personalization (Future)
+**Priority:** Won't (v1)
+
+> **As a** family, **I want** Fam to use our profiles for personalized suggestions, **so that** recommendations feel tailored to us.
+
+**Acceptance Criteria:**
+- [ ] Celebration messages match love language and preferred tone
+- [ ] Meal suggestions exclude allergens and respect dietary restrictions
+- [ ] Habit suggestions align with chronotype (morning habits for morning people)
+- [ ] Someday ideas match shared interests and travel style
+- [ ] Reminders use preferred reminder style
+
+---
+
 ## Non-Functional Stories
 
 ### US-NF.1: Fast Loading
@@ -787,3 +858,4 @@ Priority uses MoSCoW: **M**ust have, **S**hould have, **C**ould have, **W**on't 
 |---------|------|--------|---------|
 | 1.0 | 2024-12-23 | Hazel + Claude | Initial user stories |
 | 1.1 | 2024-12-23 | Claude | Updated auth stories for magic link (passwordless) |
+| 1.2 | 2024-12-26 | Claude | Added Epic 15: Family & Member Profiles (US-15.1 through US-15.5) |

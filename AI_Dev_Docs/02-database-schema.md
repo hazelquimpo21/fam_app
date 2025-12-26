@@ -85,7 +85,8 @@ CREATE TABLE families (
   name TEXT NOT NULL,
   created_at TIMESTAMPTZ DEFAULT now(),
   updated_at TIMESTAMPTZ DEFAULT now(),
-  settings JSONB DEFAULT '{}'::jsonb
+  settings JSONB DEFAULT '{}'::jsonb,
+  profile JSONB DEFAULT '{}'::jsonb  -- Rich family profile (future)
 );
 
 -- settings JSON structure:
@@ -94,6 +95,18 @@ CREATE TABLE families (
 --   "week_starts_on": "sunday",
 --   "meeting_day": "sunday",
 --   "meeting_time": "18:00"
+-- }
+
+-- profile JSON structure (see 15-profile-architecture.md for full spec):
+-- {
+--   "nickname": "Team J",
+--   "motto": "Adventure awaits!",
+--   "core_values": ["education", "adventure", "health"],
+--   "traditions": [{ "name": "Friday Movie Night", "frequency": "weekly" }],
+--   "life_stage": "young_kids",
+--   "pets": [{ "name": "Max", "type": "dog" }],
+--   "shared_interests": ["hiking", "board_games"],
+--   "ai_tone": "encouraging"
 -- }
 ```
 
@@ -108,27 +121,44 @@ CREATE TABLE family_members (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   family_id UUID NOT NULL REFERENCES families(id) ON DELETE CASCADE,
   auth_user_id UUID UNIQUE REFERENCES auth.users(id),
-  
-  -- Profile
+
+  -- Basic Identity
   name TEXT NOT NULL,
   email TEXT,
   role family_member_role_enum NOT NULL DEFAULT 'adult',
   color TEXT DEFAULT '#6B7280', -- hex color for UI
   avatar_url TEXT,
   birthday DATE,
-  
+
   -- Preferences (optional, for future personalization)
   preferences JSONB DEFAULT '{}'::jsonb,
-  
+
+  -- Rich Profile (see 15-profile-architecture.md)
+  profile JSONB DEFAULT '{}'::jsonb,
+
   -- Timestamps
   created_at TIMESTAMPTZ DEFAULT now(),
   updated_at TIMESTAMPTZ DEFAULT now(),
-  
+
   CONSTRAINT unique_family_member UNIQUE (family_id, email)
 );
 
 CREATE INDEX idx_family_members_family ON family_members(family_id);
 CREATE INDEX idx_family_members_auth ON family_members(auth_user_id);
+
+-- profile JSON structure (see 15-profile-architecture.md for full spec):
+-- {
+--   "personality_type": "The Organizer",
+--   "energy_type": "ambivert",
+--   "chronotype": "morning",
+--   "love_language": "words",
+--   "strengths": ["organization", "creativity"],
+--   "hobbies": ["reading", "yoga"],
+--   "dietary_restrictions": ["vegetarian"],
+--   "allergies": ["tree_nuts"],
+--   "reminder_style": "gentle",
+--   "preferred_ai_tone": "encouraging"
+-- }
 ```
 
 ---
@@ -1029,10 +1059,16 @@ When creating tables, use this order to respect foreign key dependencies:
 
 ## Future Considerations
 
+### Profile Extensions *(See `15-profile-architecture.md`)*
+- `families.profile` JSONB - Rich family profile (identity, values, traditions, AI preferences)
+- `family_members.profile` JSONB - Rich member profile (personality, interests, dietary, communication prefs)
+- GIN indexes on profile columns for querying: `CREATE INDEX idx_family_profile ON families USING GIN (profile);`
+
 ### AI Integration Points
 - `tasks.ai_suggested` BOOLEAN - flag AI-generated suggestions
 - `recipes.ai_generated` BOOLEAN - flag AI-generated recipes
 - `ai_logs` table - track AI interactions for improvement
+- Profile-based context for personalized AI responses
 
 ### File Attachments (v2)
 - `attachments` table with polymorphic relationship
@@ -1110,3 +1146,4 @@ All 14 enums from the spec are implemented:
 | 1.0 | 2024-12-23 | Hazel + Claude | Initial schema |
 | 1.1 | 2024-12-23 | Claude | Added implementation status |
 | 1.2 | 2024-12-23 | Claude | Auth updated to magic link (no password storage needed) |
+| 1.3 | 2024-12-26 | Claude | Added `profile` JSONB columns to families and family_members; added Profile Extensions to Future Considerations |

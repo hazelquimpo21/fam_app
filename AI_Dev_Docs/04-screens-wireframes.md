@@ -1029,6 +1029,8 @@ Stack cards vertically:
 | Someday | `/someday` | ✅ **Connected** | Cards + SomedayModal create/edit |
 | Family | `/family` | ✅ **Connected** | Members list, pending invites |
 | Settings | `/settings` | ✅ Stub | UI with mock data |
+| **Family Profile** | `/settings/family-profile` | 📋 Planned | See `15-profile-architecture.md` |
+| **Member Profile** | `/settings/profile` | 📋 Planned | See `15-profile-architecture.md` |
 
 ### Modals Implementation
 
@@ -1056,3 +1058,4 @@ Stack cards vertically:
 | 1.5 | 2024-12-26 | Claude | Updated Task Detail to reflect TaskModal implementation (modal vs side panel) |
 | 1.6 | 2024-12-26 | Claude | Updated Inbox wireframe with all triage options (Task/Goal/Habit/Project/Someday/Archive/Delete); added Modals Implementation table |
 | 1.7 | 2024-12-26 | Claude | Added "Modal Connections" section to Dashboard documenting click-to-edit patterns for habits, goals, and tasks |
+| 1.8 | 2024-12-26 | Claude | Added Family Profile and Member Profile screens to implementation table (planned); see `15-profile-architecture.md` for wireframes |
