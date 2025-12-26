@@ -752,10 +752,13 @@ The onboarding flow is now fully implemented:
 - Habits page with list (`/habits`)
 - Check/uncheck daily habits
 - Streak tracking and display
-- HabitModal for create/edit
+- HabitModal for create (+ button) and edit (click habit card)
+- Today page habit section with click-to-edit
+- Week progress display with real habit_logs data
+- Create habit from Today page (header button + empty state CTA)
 
 **Not Yet Implemented:**
-- Skip functionality (long-press)
+- Skip functionality (long-press) - skip button exists but long-press not implemented
 - Milestone celebrations (confetti)
 - Heatmap visualization
 
@@ -783,3 +786,4 @@ The onboarding flow is now fully implemented:
 | 1.1 | 2024-12-23 | Claude | Updated for magic link (passwordless) auth |
 | 1.2 | 2024-12-26 | Claude | Added implementation status for onboarding flow |
 | 1.3 | 2024-12-26 | Claude | Updated Flow 3 diagram with all triage options; added implementation status for all 8 flows |
+| 1.4 | 2024-12-26 | Claude | Updated Flow 7 with click-to-edit habits, Today page integration, real week progress |

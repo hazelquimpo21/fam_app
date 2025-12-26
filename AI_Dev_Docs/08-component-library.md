@@ -880,13 +880,18 @@ interface HabitModalProps {
 ```
 
 **Features:**
-- Create mode: empty form with optional initialTitle
-- Edit mode: pre-filled with existing habit data
-- Frequency selector: daily, weekly (with day picker), monthly
+- Create mode: empty form with optional initialTitle (uses `useCreateHabit`)
+- Edit mode: pre-filled with existing habit data (uses `useUpdateHabit`)
+- Frequency selector: daily, weekly (with target days picker), custom (specific days)
 - Owner picker (family member)
 - Goal picker to link habit to goal
-- Icon/emoji selector
+- "More options" toggle for description/goal
 - Keyboard shortcut: Cmd/Ctrl+Enter to save
+- Optimistic updates for instant feedback
+
+**Usage from Habits/Today pages:**
+- Click "New Habit" button → opens in create mode
+- Click habit card → opens in edit mode
 
 #### ProjectModal
 
@@ -1430,7 +1435,7 @@ Prefer composition over configuration:
 | HabitModal | ✅ | ✅ | `components/modals/habit-modal.tsx` - Full create/edit |
 | ProjectModal | ✅ | ✅ | `components/modals/project-modal.tsx` - Full create/edit |
 | SomedayModal | ✅ | ✅ | `components/modals/someday-modal.tsx` - Full create/edit |
-| HabitCard | ✅ | ⚠️ Inline | Logic in habits/page.tsx |
+| HabitCard | ✅ | ⚠️ Inline | Logic in habits/page.tsx - click-to-edit via HabitModal |
 | HabitHeatmap | ✅ | 🔨 | Not yet built |
 | GoalCard | ✅ | ⚠️ Inline | Logic in goals/page.tsx |
 | ProjectCard | ✅ | ⚠️ Inline | Logic in projects/page.tsx |
@@ -1477,3 +1482,4 @@ Prefer composition over configuration:
 | 1.4 | 2024-12-25 | Claude | Dashboard StatsCard now connected to real data |
 | 1.5 | 2024-12-26 | Claude | Added Dialog, Select, entity pickers (FamilyMember, Project, Goal), ProgressBar, TaskModal |
 | 1.6 | 2024-12-26 | Claude | Added GoalModal, HabitModal, ProjectModal, SomedayModal documentation; updated implementation status |
+| 1.7 | 2024-12-26 | Claude | Updated HabitModal to document edit mode with useUpdateHabit; HabitCard click-to-edit |
