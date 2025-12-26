@@ -1,7 +1,7 @@
 # Fam - Implementation Status
 
 > **Last Updated:** December 2024
-> **Status:** MVP Phase 2.7 Complete - Full Triage Flow with Goal/Habit Modals
+> **Status:** MVP Phase 2.8 Complete - Project/Someday Modals with Inbox Badge
 
 ---
 
@@ -17,10 +17,10 @@
 | Habits Feature | ✅ Complete | 90% |
 | Dashboard | ✅ Complete | 95% |
 | Goals Feature | ✅ Complete | 80% |
-| Projects Feature | ✅ Complete | 80% |
-| Inbox Feature | ✅ Complete | 95% |
+| Projects Feature | ✅ Complete | 95% |
+| Inbox Feature | ✅ Complete | 100% |
 | Today Feature | ✅ Complete | 80% |
-| Someday Feature | ✅ Complete | 80% |
+| Someday Feature | ✅ Complete | 95% |
 | Family Feature | ✅ Complete | 75% |
 | Settings Feature | ✅ Stub | 20% |
 | Meals Feature | 🔨 Pending | 0% |
@@ -107,6 +107,8 @@ Tables: families, family_members, tasks, subtasks, habits, habit_logs,
 | TaskModal | `components/modals/task-modal.tsx` | Full task create/edit form |
 | GoalModal | `components/modals/goal-modal.tsx` | Full goal create/edit form (qualitative/quantitative) |
 | HabitModal | `components/modals/habit-modal.tsx` | Habit create form with frequency, goal linking |
+| ProjectModal | `components/modals/project-modal.tsx` | Project create/edit form with status, owner, icon |
+| SomedayModal | `components/modals/someday-modal.tsx` | Someday item create/edit form with category, cost |
 | AppShell | `components/layout/app-shell.tsx` | Main wrapper |
 | Sidebar | `components/layout/sidebar.tsx` | Navigation |
 | TopBar | `components/layout/top-bar.tsx` | User menu |
@@ -234,12 +236,12 @@ npm run dev
    - ~~Link user to family_members table~~
    - ~~Redirect to dashboard~~
 
-2. ~~**Create/Edit Modals**~~ ✅ Core Modals Complete
+2. ~~**Create/Edit Modals**~~ ✅ All Entity Modals Complete
    - ~~Task creation modal~~ ✅
    - ~~Goal creation modal~~ ✅ (qualitative + quantitative support)
    - ~~Habit creation modal~~ ✅ (with goal linking)
-   - Project creation modal (pending)
-   - Someday item creation modal (pending)
+   - ~~Project creation modal~~ ✅ (with status, owner, icon)
+   - ~~Someday item creation modal~~ ✅ (with category, estimated cost)
 
 3. ~~**Task Detail Panel**~~ ✅ Via TaskModal
    - ~~Modal form~~ ✅ (using modal instead of slide-out)
@@ -343,7 +345,7 @@ fam_app/
 ├── components/
 │   ├── ui/                     # 7 components (button, input, card, checkbox, spinner, dialog, select)
 │   ├── shared/                 # 7 components (avatar, badge, empty-state, progress-bar, family-member-picker, project-picker, goal-picker)
-│   ├── modals/                 # 3 components (task-modal, goal-modal, habit-modal)
+│   ├── modals/                 # 5 components (task-modal, goal-modal, habit-modal, project-modal, someday-modal)
 │   ├── layout/                 # 3 components
 │   └── providers.tsx
 ├── lib/
@@ -389,5 +391,6 @@ Keep files under 400 lines. Extract components when they grow.
 | 1.7 | 2024-12-26 | Claude | Added onboarding flow for new users (family creation) |
 | 1.8 | 2024-12-26 | Claude | Added TaskModal, Dialog, Select, entity pickers (FamilyMember, Project, Goal), ProgressBar |
 | 1.9 | 2024-12-26 | Claude | Added GoalModal, HabitModal, full inbox triage (Goal/Habit), linked entity counts on Goals/Projects pages |
+| 2.0 | 2024-12-26 | Claude | Added ProjectModal, SomedayModal, inbox badge count, wired create/edit on Projects & Someday pages |
 
 *This document is auto-generated. See individual docs for detailed specs.*

@@ -573,15 +573,15 @@ Parse dates and assignments from text:
 - [x] Someday items
 - [x] Basic inbox (tasks only)
 
-### Phase 2: Enhanced Inbox ✅ Partially Complete
+### Phase 2: Enhanced Inbox ✅ Mostly Complete
 - [x] Triage action: Task (via TaskModal with full form)
-- [x] Triage action: Project (quick convert)
-- [x] Triage action: Someday (quick convert)
-- [ ] Triage action: Habit (not yet implemented)
-- [ ] Triage action: Goal (not yet implemented)
+- [x] Triage action: Project (via ProjectModal - quick convert with modal)
+- [x] Triage action: Someday (via SomedayModal - quick convert with modal)
+- [x] Triage action: Habit (via HabitModal with full form)
+- [x] Triage action: Goal (via GoalModal with full form)
+- [x] Badge count on inbox (sidebar shows unprocessed count)
 - [ ] "Process All" focused mode
 - [ ] Keyboard shortcuts for triage
-- [ ] Badge count on inbox
 
 ### Phase 3: Connections ✅ Partially Complete
 - [x] GoalPicker on TaskModal - link tasks to goals
@@ -612,8 +612,12 @@ Parse dates and assignments from text:
 | Component | Purpose | Priority | Status |
 |-----------|---------|----------|--------|
 | `InboxItem` | Captures with triage actions | High | ✅ Inline in inbox page |
-| `TriageActions` | Quick buttons for processing | High | ✅ Inline (Task/Project/Someday/Delete) |
+| `TriageActions` | Quick buttons for processing | High | ✅ Inline (Task/Habit/Goal/Project/Someday/Delete) |
 | `TaskModal` | Full task create/edit form | High | ✅ `components/modals/task-modal.tsx` |
+| `GoalModal` | Full goal create/edit form | High | ✅ `components/modals/goal-modal.tsx` |
+| `HabitModal` | Full habit create/edit form | High | ✅ `components/modals/habit-modal.tsx` |
+| `ProjectModal` | Full project create/edit form | High | ✅ `components/modals/project-modal.tsx` |
+| `SomedayModal` | Full someday create/edit form | High | ✅ `components/modals/someday-modal.tsx` |
 | `GoalPicker` | Select goal to link | Medium | ✅ `components/shared/goal-picker.tsx` |
 | `ProjectPicker` | Select project to link | Medium | ✅ `components/shared/project-picker.tsx` |
 | `FamilyMemberPicker` | Select assignee | Medium | ✅ `components/shared/family-member-picker.tsx` |
@@ -721,3 +725,4 @@ CREATE TABLE inbox_items (
 |---------|------|--------|---------|
 | 1.0 | 2024-12-26 | Hazel + Claude | Initial productivity system architecture |
 | 1.1 | 2024-12-26 | Claude | Updated implementation status - TaskModal, entity pickers, inbox triage complete |
+| 1.2 | 2024-12-26 | Claude | Phase 2 mostly complete - all modals (Goal, Habit, Project, Someday) implemented, inbox badge added |

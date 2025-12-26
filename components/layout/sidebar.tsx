@@ -10,9 +10,13 @@
  *
  * Features:
  * - Main navigation with active state highlighting
+ * - Inbox badge count (shows unprocessed items)
  * - Secondary navigation (Family, Settings)
  * - User profile section with logout functionality
  * - Responsive design (hidden on mobile, overlay when toggled)
+ *
+ * User Stories Addressed:
+ * - US-2.2: Badge count on inbox in navigation
  *
  * ============================================================================
  */
@@ -38,6 +42,7 @@ import { cn } from '@/lib/utils/cn';
 import { Avatar } from '@/components/shared/avatar';
 import { useAuth } from '@/lib/hooks/use-auth';
 import { useAdmin } from '@/lib/hooks/use-admin';
+import { useInboxTasks } from '@/lib/hooks/use-tasks';
 import { logger } from '@/lib/utils/logger';
 
 /**
@@ -111,6 +116,7 @@ function NavLink({ item, isActive }: NavLinkProps) {
  * Main navigation sidebar with:
  * - App logo and branding
  * - Main navigation items (Dashboard, Inbox, Today, Tasks, etc.)
+ * - Inbox badge showing unprocessed item count
  * - Secondary navigation (Family, Settings)
  * - User profile with logout button
  */
@@ -118,6 +124,25 @@ export function Sidebar() {
   const pathname = usePathname();
   const { familyMember, signOut, authState } = useAuth();
   const { isAdmin } = useAdmin();
+
+  // Fetch inbox items to show badge count
+  const { data: inboxItems = [] } = useInboxTasks();
+  const inboxCount = inboxItems.length;
+
+  /**
+   * Build navigation items with dynamic badge counts
+   *
+   * The inbox item gets a badge showing the number of unprocessed items.
+   * This helps users know when they have items to triage.
+   */
+  const navItemsWithBadges = React.useMemo(() => {
+    return mainNavItems.map((item) => {
+      if (item.href === '/inbox' && inboxCount > 0) {
+        return { ...item, badge: inboxCount };
+      }
+      return item;
+    });
+  }, [inboxCount]);
 
   /**
    * Handle user logout
@@ -154,7 +179,7 @@ export function Sidebar() {
       {/* ━━━━━ Main Navigation ━━━━━ */}
       <nav className="flex-1 space-y-1 overflow-y-auto p-3">
         <div className="space-y-1">
-          {mainNavItems.map((item) => (
+          {navItemsWithBadges.map((item) => (
             <NavLink
               key={item.href}
               item={item}

@@ -10,10 +10,12 @@
  * - TaskModal: Create/edit tasks with full details
  * - GoalModal: Create/edit goals (qualitative/quantitative)
  * - HabitModal: Create habits with frequency and goal linking
+ * - ProjectModal: Create/edit projects with status and owner
+ * - SomedayModal: Create/edit someday dreams with category and cost
  *
  * Usage:
  * ```tsx
- * import { TaskModal, GoalModal, HabitModal } from '@/components/modals';
+ * import { TaskModal, GoalModal, HabitModal, ProjectModal, SomedayModal } from '@/components/modals';
  * ```
  *
  * ============================================================================
@@ -22,3 +24,5 @@
 export { TaskModal, type TaskModalProps } from './task-modal';
 export { GoalModal, type GoalModalProps } from './goal-modal';
 export { HabitModal, type HabitModalProps } from './habit-modal';
+export { ProjectModal, type ProjectModalProps } from './project-modal';
+export { SomedayModal, type SomedayModalProps } from './someday-modal';
