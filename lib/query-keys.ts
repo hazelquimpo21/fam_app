@@ -172,6 +172,27 @@ export const queryKeys = {
     invites: () => [...queryKeys.family.all, 'invites'] as const,
   },
 
+  // ━━━━━ Profiles ━━━━━
+  profiles: {
+    /** Base key for all profile queries */
+    all: ['profiles'] as const,
+
+    /** Family profile (there's only one per family) */
+    family: () => [...queryKeys.profiles.all, 'family'] as const,
+
+    /** Member profile for a specific member */
+    member: (memberId: string) => [...queryKeys.profiles.all, 'member', memberId] as const,
+
+    /** Current user's member profile */
+    current: () => [...queryKeys.profiles.all, 'current'] as const,
+
+    /** Profile completion stats for family */
+    familyCompletion: () => [...queryKeys.profiles.all, 'family', 'completion'] as const,
+
+    /** Profile completion stats for member */
+    memberCompletion: (memberId: string) => [...queryKeys.profiles.all, 'member', memberId, 'completion'] as const,
+  },
+
   // ━━━━━ Dashboard ━━━━━
   dashboard: {
     /** Base key for dashboard queries */
