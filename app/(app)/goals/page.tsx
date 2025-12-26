@@ -11,24 +11,49 @@
  * Route: /goals
  *
  * Features:
- * - Goal progress bars
+ * - Goal progress bars (quantitative goals)
+ * - Linked tasks and habits count (supporting entities)
  * - Grouping by family member
- * - Goal status visualization
+ * - Goal status visualization (on_track, at_risk, behind)
  * - Target dates
+ * - Create new goals via GoalModal
+ *
+ * User Stories Addressed:
+ * - US-5.1: Create Goal with details
+ * - US-5.2: View Goal Progress
+ * - US-5.4: View All Goals
+ *
+ * Data Flow:
+ * 1. Fetch all active goals from database
+ * 2. Fetch linked tasks/habits for each goal (or use aggregate counts)
+ * 3. Group by family goals vs personal (by owner)
+ * 4. Display with progress bars and status indicators
  *
  * ============================================================================
  */
 
-import { useEffect, useMemo } from 'react';
-import { Target, Plus, TrendingUp, AlertTriangle, Check, Calendar, Loader2 } from 'lucide-react';
+import { useState, useEffect, useMemo } from 'react';
+import {
+  Target,
+  Plus,
+  TrendingUp,
+  AlertTriangle,
+  Check,
+  Calendar,
+  RefreshCw,
+  CheckSquare,
+} from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Avatar } from '@/components/shared/avatar';
 import { EmptyState } from '@/components/shared/empty-state';
+import { GoalModal } from '@/components/modals/goal-modal';
 import { cn } from '@/lib/utils/cn';
 import { logger } from '@/lib/utils/logger';
 import { useGoals } from '@/lib/hooks/use-goals';
-import type { Goal, GoalStatus } from '@/types/database';
+import { useTasks } from '@/lib/hooks/use-tasks';
+import { useHabits } from '@/lib/hooks/use-habits';
+import type { Goal, GoalStatus, Task, Habit } from '@/types/database';
 
 /**
  * Calculate goal status based on progress and target date
@@ -89,13 +114,23 @@ function getStatusConfig(status: 'on_track' | 'at_risk' | 'behind') {
 
 /**
  * GoalCard Component
- * Displays a single goal with progress bar
+ * Displays a single goal with progress bar and linked entity counts
  */
 interface GoalCardProps {
   goal: Goal;
+  linkedTasksCount: number;
+  linkedHabitsCount: number;
+  completedTasksCount: number;
+  onClick?: () => void;
 }
 
-function GoalCard({ goal }: GoalCardProps) {
+function GoalCard({
+  goal,
+  linkedTasksCount,
+  linkedHabitsCount,
+  completedTasksCount,
+  onClick,
+}: GoalCardProps) {
   const owner = goal.owner as { name: string; color: string } | null;
   const status = calculateGoalStatus(goal);
   const statusConfig = getStatusConfig(status);
@@ -121,8 +156,17 @@ function GoalCard({ goal }: GoalCardProps) {
     return value.toString();
   };
 
+  // Check if there are linked entities
+  const hasLinkedEntities = linkedTasksCount > 0 || linkedHabitsCount > 0;
+
   return (
-    <Card className="transition-all hover:shadow-md">
+    <Card
+      className={cn(
+        'transition-all hover:shadow-md',
+        onClick && 'cursor-pointer'
+      )}
+      onClick={onClick}
+    >
       <CardContent className="p-4">
         <div className="space-y-3">
           {/* Header with title and owner */}
@@ -161,6 +205,24 @@ function GoalCard({ goal }: GoalCardProps) {
                   style={{ width: `${Math.min(progress, 100)}%` }}
                 />
               </div>
+            </div>
+          )}
+
+          {/* Linked entities (tasks and habits supporting this goal) */}
+          {hasLinkedEntities && (
+            <div className="flex items-center gap-3 text-xs text-neutral-500">
+              {linkedTasksCount > 0 && (
+                <span className="flex items-center gap-1" title="Linked tasks">
+                  <CheckSquare className="h-3.5 w-3.5" />
+                  {completedTasksCount}/{linkedTasksCount} tasks
+                </span>
+              )}
+              {linkedHabitsCount > 0 && (
+                <span className="flex items-center gap-1" title="Linked habits">
+                  <RefreshCw className="h-3.5 w-3.5" />
+                  {linkedHabitsCount} {linkedHabitsCount === 1 ? 'habit' : 'habits'}
+                </span>
+              )}
             </div>
           )}
 
@@ -219,8 +281,52 @@ function GoalsSkeleton() {
  * Goals Page Component
  */
 export default function GoalsPage() {
+  // Modal state
+  const [isGoalModalOpen, setIsGoalModalOpen] = useState(false);
+  const [selectedGoal, setSelectedGoal] = useState<Goal | null>(null);
+
   // Fetch goals from database
   const { data: goals = [], isLoading, error } = useGoals({ status: 'active' });
+
+  // Fetch all tasks and habits to calculate linked counts
+  // Note: We fetch all and filter locally to avoid N+1 queries
+  const { data: allTasks = [] } = useTasks({});
+  const { data: allHabits = [] } = useHabits();
+
+  // Calculate linked entity counts for each goal
+  const linkedEntityCounts = useMemo(() => {
+    const counts = new Map<string, {
+      tasksCount: number;
+      completedTasksCount: number;
+      habitsCount: number;
+    }>();
+
+    // Count tasks per goal
+    allTasks.forEach((task) => {
+      if (task.goal_id) {
+        if (!counts.has(task.goal_id)) {
+          counts.set(task.goal_id, { tasksCount: 0, completedTasksCount: 0, habitsCount: 0 });
+        }
+        const entry = counts.get(task.goal_id)!;
+        entry.tasksCount++;
+        if (task.status === 'done') {
+          entry.completedTasksCount++;
+        }
+      }
+    });
+
+    // Count habits per goal
+    allHabits.forEach((habit) => {
+      if (habit.goal_id) {
+        if (!counts.has(habit.goal_id)) {
+          counts.set(habit.goal_id, { tasksCount: 0, completedTasksCount: 0, habitsCount: 0 });
+        }
+        counts.get(habit.goal_id)!.habitsCount++;
+      }
+    });
+
+    return counts;
+  }, [allTasks, allHabits]);
 
   // Group goals by family vs personal
   const { familyGoals, memberGoals } = useMemo(() => {
@@ -249,15 +355,45 @@ export default function GoalsPage() {
     };
   }, [goals]);
 
+  /**
+   * Handle clicking a goal card - opens the edit modal
+   */
+  const handleGoalClick = (goal: Goal) => {
+    logger.info('Goal clicked', { id: goal.id, title: goal.title });
+    setSelectedGoal(goal);
+    setIsGoalModalOpen(true);
+  };
+
+  /**
+   * Handle opening create modal
+   */
+  const handleAddGoal = () => {
+    logger.info('Add Goal button clicked');
+    setSelectedGoal(null);
+    setIsGoalModalOpen(true);
+  };
+
+  /**
+   * Handle modal close
+   */
+  const handleModalClose = (open: boolean) => {
+    setIsGoalModalOpen(open);
+    if (!open) {
+      setSelectedGoal(null);
+    }
+  };
+
   // Log page load for debugging
   useEffect(() => {
-    logger.info('Goals page loaded', {
+    logger.info('🎯 Goals page loaded', {
       totalGoals: goals.length,
       familyGoals: familyGoals.length,
       memberGroups: memberGoals.length,
+      linkedTasks: allTasks.filter(t => t.goal_id).length,
+      linkedHabits: allHabits.filter(h => h.goal_id).length,
     });
     logger.divider('Goals');
-  }, [goals.length, familyGoals.length, memberGoals.length]);
+  }, [goals.length, familyGoals.length, memberGoals.length, allTasks, allHabits]);
 
   const hasGoals = goals.length > 0;
 
@@ -288,10 +424,10 @@ export default function GoalsPage() {
       {/* Header with add button */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <Target className="h-6 w-6 text-purple-600" />
+          <Target className="h-6 w-6 text-amber-500" />
           <h1 className="text-xl font-semibold text-neutral-900">Goals</h1>
         </div>
-        <Button leftIcon={<Plus className="h-4 w-4" />}>
+        <Button leftIcon={<Plus className="h-4 w-4" />} onClick={handleAddGoal}>
           Add Goal
         </Button>
       </div>
@@ -304,12 +440,12 @@ export default function GoalsPage() {
         <Card>
           <CardContent className="p-8">
             <EmptyState
-              icon={<Target className="h-16 w-16 text-purple-500" />}
+              icon={<Target className="h-16 w-16 text-amber-500" />}
               title="No goals yet"
               description="Set your first goal and start tracking your progress!"
               action={{
                 label: 'Add Goal',
-                onClick: () => logger.info('Add goal clicked'),
+                onClick: handleAddGoal,
               }}
             />
           </CardContent>
@@ -324,9 +460,23 @@ export default function GoalsPage() {
             Family Goals
           </h2>
           <div className="grid gap-4 sm:grid-cols-2">
-            {familyGoals.map((goal) => (
-              <GoalCard key={goal.id} goal={goal} />
-            ))}
+            {familyGoals.map((goal) => {
+              const counts = linkedEntityCounts.get(goal.id) || {
+                tasksCount: 0,
+                completedTasksCount: 0,
+                habitsCount: 0,
+              };
+              return (
+                <GoalCard
+                  key={goal.id}
+                  goal={goal}
+                  linkedTasksCount={counts.tasksCount}
+                  completedTasksCount={counts.completedTasksCount}
+                  linkedHabitsCount={counts.habitsCount}
+                  onClick={() => handleGoalClick(goal)}
+                />
+              );
+            })}
           </div>
         </div>
       )}
@@ -340,13 +490,34 @@ export default function GoalsPage() {
               {owner.name}'s Goals
             </h2>
             <div className="grid gap-4 sm:grid-cols-2">
-              {memberGoalsList.map((goal) => (
-                <GoalCard key={goal.id} goal={goal} />
-              ))}
+              {memberGoalsList.map((goal) => {
+                const counts = linkedEntityCounts.get(goal.id) || {
+                  tasksCount: 0,
+                  completedTasksCount: 0,
+                  habitsCount: 0,
+                };
+                return (
+                  <GoalCard
+                    key={goal.id}
+                    goal={goal}
+                    linkedTasksCount={counts.tasksCount}
+                    completedTasksCount={counts.completedTasksCount}
+                    linkedHabitsCount={counts.habitsCount}
+                    onClick={() => handleGoalClick(goal)}
+                  />
+                );
+              })}
             </div>
           </div>
         )
       ))}
+
+      {/* GoalModal for creating/editing goals */}
+      <GoalModal
+        open={isGoalModalOpen}
+        onOpenChange={handleModalClose}
+        goal={selectedGoal}
+      />
     </div>
   );
 }

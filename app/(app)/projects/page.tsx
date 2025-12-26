@@ -11,16 +11,27 @@
  * Route: /projects
  *
  * Features:
- * - Project cards with progress bars
+ * - Project cards with task progress (completed/total tasks)
  * - Status filtering (planning, active, completed)
  * - Owner display
  * - Project detail navigation
+ *
+ * User Stories Addressed:
+ * - US-6.1: View all projects with status
+ * - US-6.2: See project progress (task completion)
+ * - US-6.3: Navigate to project details
+ *
+ * Data Flow:
+ * 1. Fetch all projects from database
+ * 2. Fetch all tasks to calculate per-project counts
+ * 3. Filter projects by status
+ * 4. Display cards with task progress
  *
  * ============================================================================
  */
 
 import { useEffect, useState, useMemo } from 'react';
-import { FolderOpen, Plus, Clock, CheckCircle, Circle, MoreHorizontal } from 'lucide-react';
+import { FolderOpen, Plus, Clock, CheckCircle, Circle, MoreHorizontal, CheckSquare } from 'lucide-react';
 import Link from 'next/link';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -29,6 +40,7 @@ import { EmptyState } from '@/components/shared/empty-state';
 import { cn } from '@/lib/utils/cn';
 import { logger } from '@/lib/utils/logger';
 import { useProjects } from '@/lib/hooks/use-projects';
+import { useTasks } from '@/lib/hooks/use-tasks';
 import type { Project, ProjectStatus } from '@/types/database';
 
 /**
@@ -63,18 +75,25 @@ function formatRelativeTime(dateStr: string): string {
 
 /**
  * ProjectCard Component
- * Displays a single project with progress
+ * Displays a single project with task progress
  */
 interface ProjectCardProps {
   project: Project;
+  totalTasks: number;
+  completedTasks: number;
 }
 
-function ProjectCard({ project }: ProjectCardProps) {
+function ProjectCard({ project, totalTasks, completedTasks }: ProjectCardProps) {
   const owner = project.owner as { name: string; color: string } | null;
   const statusConfig = getStatusConfig(project.status);
 
   // Use icon as emoji fallback
   const emoji = project.icon || '📁';
+
+  // Calculate completion percentage
+  const completionPercent = totalTasks > 0
+    ? Math.round((completedTasks / totalTasks) * 100)
+    : 0;
 
   return (
     <Link href={`/projects/${project.id}`}>
@@ -116,7 +135,31 @@ function ProjectCard({ project }: ProjectCardProps) {
               <p className="text-sm text-neutral-500 line-clamp-2">{project.description}</p>
             )}
 
-            {/* Footer with status and updated time */}
+            {/* Task progress */}
+            {totalTasks > 0 && (
+              <div className="space-y-1">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="flex items-center gap-1 text-neutral-600">
+                    <CheckSquare className="h-3.5 w-3.5" />
+                    {completedTasks}/{totalTasks} tasks
+                  </span>
+                  <span className="text-neutral-500">{completionPercent}%</span>
+                </div>
+                <div className="h-1.5 rounded-full bg-neutral-100 overflow-hidden">
+                  <div
+                    className={cn(
+                      'h-full rounded-full transition-all',
+                      completionPercent === 100
+                        ? 'bg-green-500'
+                        : 'bg-indigo-500'
+                    )}
+                    style={{ width: `${completionPercent}%` }}
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* Footer with updated time */}
             <div className="space-y-1 mt-auto">
               <div className="flex items-center justify-between text-xs text-neutral-500">
                 <span className="flex items-center gap-1">
@@ -194,6 +237,29 @@ export default function ProjectsPage() {
   // Fetch projects from database
   const { data: projects = [], isLoading, error } = useProjects();
 
+  // Fetch all tasks to calculate per-project counts
+  const { data: allTasks = [] } = useTasks({});
+
+  // Calculate task counts per project
+  const projectTaskCounts = useMemo(() => {
+    const counts = new Map<string, { total: number; completed: number }>();
+
+    allTasks.forEach((task) => {
+      if (task.project_id) {
+        if (!counts.has(task.project_id)) {
+          counts.set(task.project_id, { total: 0, completed: 0 });
+        }
+        const entry = counts.get(task.project_id)!;
+        entry.total++;
+        if (task.status === 'done') {
+          entry.completed++;
+        }
+      }
+    });
+
+    return counts;
+  }, [allTasks]);
+
   // Filter projects based on selected filter
   const filteredProjects = useMemo(() => {
     if (activeFilter === 'all') return projects;
@@ -202,13 +268,14 @@ export default function ProjectsPage() {
 
   // Log page load for debugging
   useEffect(() => {
-    logger.info('Projects page loaded', {
+    logger.info('📁 Projects page loaded', {
       totalProjects: projects.length,
       filteredCount: filteredProjects.length,
       activeFilter,
+      projectsWithTasks: projectTaskCounts.size,
     });
     logger.divider('Projects');
-  }, [projects.length, filteredProjects.length, activeFilter]);
+  }, [projects.length, filteredProjects.length, activeFilter, projectTaskCounts.size]);
 
   // Error state
   if (error) {
@@ -288,9 +355,17 @@ export default function ProjectsPage() {
       ) : (
         !isLoading && (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {filteredProjects.map((project) => (
-              <ProjectCard key={project.id} project={project} />
-            ))}
+            {filteredProjects.map((project) => {
+              const counts = projectTaskCounts.get(project.id) || { total: 0, completed: 0 };
+              return (
+                <ProjectCard
+                  key={project.id}
+                  project={project}
+                  totalTasks={counts.total}
+                  completedTasks={counts.completed}
+                />
+              );
+            })}
           </div>
         )
       )}
