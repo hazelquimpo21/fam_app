@@ -22,6 +22,7 @@
 | Today Feature | ✅ Complete | 95% |
 | Someday Feature | ✅ Complete | 95% |
 | Family Feature | ✅ Complete | 75% |
+| **Profiles Feature** | 📋 Planned | 0% |
 | Settings Feature | ✅ Stub | 20% |
 | Meals Feature | 🔨 Pending | 0% |
 
@@ -261,33 +262,50 @@ npm run dev
 
 ### Phase 3 (Medium Priority)
 
-5. **Real-time Updates**
+5. **Family & Member Profiles** *(See `AI_Dev_Docs/15-profile-architecture.md`)*
+   - Add `profile` JSONB column to families and family_members tables
+   - Create `useProfiles` hooks for reading/updating profiles
+   - Build Family Profile page (`/settings/family-profile`)
+   - Build Member Profile page (`/settings/profile`)
+   - Progressive profile collection prompts
+   - Prepare for AI personalization integration
+
+6. **Real-time Updates**
    - Supabase subscriptions
    - Cross-family-member sync
 
-6. **Improve Settings Page**
+7. **Improve Settings Page**
    - Connect to actual user preferences
    - Theme switching (light/dark)
    - Notification preferences
 
 ### Phase 4 (Lower Priority)
 
-7. **Meals & Recipes**
+8. **Meals & Recipes**
    - Recipe library
    - Meal calendar
    - Grocery list generation
 
-8. **Family Meeting View**
+9. **Family Meeting View**
    - Weekly check-in UI
    - Milestone celebration
 
-9. **Calendar View**
-   - All dated items
-   - Week/month views
+10. **Calendar View**
+    - All dated items
+    - Week/month views
 
-10. **Personal Dashboard (/me)**
+11. **Personal Dashboard (/me)**
     - User-specific view
     - Personal goals and habits
+
+### Phase 5 (AI Integration)
+
+12. **AI-Powered Personalization** *(Enabled by Profiles)*
+    - Profile context builder for AI prompts
+    - Personalized task suggestions
+    - Smart celebration messages based on love language
+    - Meal planning with dietary awareness
+    - Context-aware reminders
 
 ---
 
@@ -396,5 +414,6 @@ Keep files under 400 lines. Extract components when they grow.
 | 2.0 | 2024-12-26 | Claude | Added ProjectModal, SomedayModal, inbox badge count, wired create/edit on Projects & Someday pages |
 | 2.1 | 2024-12-26 | Claude | Habits/Today modal connections: useUpdateHabit, useWeeklyHabitLogs, click-to-edit habits, create habit from Today |
 | 3.0 | 2024-12-26 | Claude | Dashboard & Inbox UI/UX: Dashboard habits/goals click-to-edit, Add buttons open modals; Inbox triage uses modals for Project/Someday; Today Add Task button |
+| 3.1 | 2024-12-26 | Claude | Added Profiles Feature to roadmap (Phase 3), AI Integration (Phase 5); references 15-profile-architecture.md |
 
 *This document is auto-generated. See individual docs for detailed specs.*

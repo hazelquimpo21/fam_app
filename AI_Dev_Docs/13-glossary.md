@@ -271,6 +271,45 @@ A family member with restricted access. Can view family data, complete assigned 
 
 ---
 
+## Profiles & Personalization
+
+*(See `AI_Dev_Docs/15-profile-architecture.md` for full spec)*
+
+### Family Profile
+Rich information about the family as a unit—identity, values, traditions, household context, and AI preferences. Stored as JSONB in `families.profile`.
+
+**Key sections:** Identity (nickname, motto), Values, Traditions, Household, Shared Interests, AI Preferences
+
+### Member Profile
+Personalized information about an individual family member—personality, interests, health/dietary, communication preferences. Stored as JSONB in `family_members.profile`.
+
+**Key sections:** Personality, Strengths, Motivation (love language), Interests, Health/Dietary, Communication Preferences
+
+### Tradition
+A recurring family ritual or practice (e.g., "Friday Movie Night", "Summer Camping Trip"). Part of the family profile.
+
+**Frequencies:** weekly, monthly, yearly, special
+
+### Chronotype
+Whether someone is a morning person, night owl, or flexible. Used for suggesting optimal times for habits and tasks.
+
+**Values:** `morning`, `night`, `flexible`
+
+### Love Language
+How a family member prefers to give and receive appreciation. Used for personalizing celebration messages.
+
+**Values:** `words` (Words of Affirmation), `acts` (Acts of Service), `gifts`, `time` (Quality Time), `touch` (Physical Touch)
+
+### AI Tone
+The preferred communication style for AI-generated content.
+
+**Values:** `encouraging`, `direct`, `playful`, `minimal`
+
+### Progressive Profile Collection
+The strategy of gathering profile information gradually over time through contextual prompts rather than one long form. Makes profile-building feel like a scrapbook, not a government form.
+
+---
+
 ## UI Concepts
 
 ### Dashboard
@@ -337,3 +376,4 @@ A WebSocket connection that pushes database changes to the client immediately.
 |---------|------|--------|---------|
 | 1.0 | 2024-12-23 | Hazel + Claude | Initial glossary |
 | 1.1 | 2024-12-23 | Claude | Added magic link auth clarification |
+| 1.2 | 2024-12-26 | Claude | Added Profiles & Personalization section (Family Profile, Member Profile, Tradition, Chronotype, Love Language, AI Tone, Progressive Profile Collection) |

@@ -61,6 +61,12 @@ Families juggle tasks, meals, appointments, goals, vendor contacts, and dreams a
 - Projects (containers for tasks, notes, links)
 - Someday items (categorized wishlists)
 
+**Profiles** *(See `AI_Dev_Docs/15-profile-architecture.md`)*
+- Family Profile (identity, values, traditions, household info, AI preferences)
+- Member Profiles (personality, interests, health/dietary, communication preferences)
+- Progressive profile collection (feels like building a scrapbook, not filling forms)
+- Foundation for AI personalization
+
 **People & Libraries**
 - Family members (profiles, colors, roles)
 - Contacts (friends, extended family with birthdays)
@@ -96,7 +102,7 @@ Families juggle tasks, meals, appointments, goals, vendor contacts, and dreams a
 - Time estimates / energy levels
 - Contexts beyond places
 - File attachments (use links for now)
-- AI-powered suggestions
+- AI-powered suggestions *(Profile architecture now in place to enable this)*
 
 ---
 
@@ -223,7 +229,7 @@ Families juggle tasks, meals, appointments, goals, vendor contacts, and dreams a
 
 ## Open Questions for Future Phases
 
-1. How deep should AI integration go? (Smart task suggestions, meal recommendations based on preferences, auto-categorization)
+1. ~~How deep should AI integration go?~~ *(Answered: See `15-profile-architecture.md` for AI use cases enabled by profiles—smart suggestions, personalized celebrations, dietary-aware meal planning, context-aware reminders)*
 
 2. Should there be a "family score" or gamification layer for kids?
 
@@ -312,3 +318,4 @@ fam_app/
 | 1.0 | 2024-12-23 | Hazel + Claude | Initial PRD |
 | 1.1 | 2024-12-23 | Claude | Added implementation status section |
 | 1.2 | 2024-12-23 | Claude | Updated auth to magic link (passwordless) |
+| 1.3 | 2024-12-26 | Claude | Added Profiles to V1 scope; updated AI integration as "architected for" via profiles |

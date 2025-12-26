@@ -262,13 +262,19 @@ Tasks flow through these states:
 | Table | Purpose |
 |-------|---------|
 | `families` | Top-level container for all data |
-| `family_members` | Users linked to a family |
+| `family_members` | Users linked to a family (with rich profiles) |
 | `tasks` | To-do items with status, dates, assignments |
 | `habits` | Recurring practices with streaks |
 | `habit_logs` | Daily check-ins for habits |
 | `goals` | Outcomes with progress tracking |
 | `projects` | Containers for related tasks |
 | `milestones` | Celebrations and achievements |
+
+**Profile Data:**
+- `families.profile` - JSONB with family identity, values, traditions, AI preferences
+- `family_members.profile` - JSONB with personality, interests, dietary restrictions, communication preferences
+
+*(See `AI_Dev_Docs/15-profile-architecture.md` for full profile spec)*
 
 ### Row Level Security
 
@@ -565,6 +571,7 @@ logger.warn('Rate limit approaching') // ⚠️ [12:34:56] Rate limit approachin
 | Inbox | ✅ **Connected** | Full triage to any entity via modals (Task/Goal/Habit/Project/Someday) |
 | Today | ✅ **Connected** | Daily focus with habits, overdue, today's tasks |
 | Family | ✅ **Connected** | Family member list, pending invites |
+| **Profiles** | 📋 Planned | Rich family + member profiles for AI |
 | Settings | ✅ Stub | UI ready, needs preferences |
 | Meals | 🔨 Pending | Not started |
 | Calendar | 🔨 Pending | Not started |
