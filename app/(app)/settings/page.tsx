@@ -257,9 +257,11 @@ export default function SettingsPage() {
             <p className="font-medium text-neutral-900">{mockUser.name}</p>
             <p className="text-sm text-neutral-500">{mockUser.email}</p>
           </div>
-          <Button variant="outline" size="sm">
-            Edit Profile
-          </Button>
+          <Link href="/settings/my-profile">
+            <Button variant="outline" size="sm">
+              Edit Profile
+            </Button>
+          </Link>
         </div>
         <SettingsRow label="Email" description="Your login email">
           <span className="text-sm text-neutral-600">{mockUser.email}</span>
