@@ -6,9 +6,9 @@
  * ============================================================================
  *
  * A focused view of today's work, including:
- * - Habits to complete
- * - Overdue tasks
- * - Tasks due today
+ * - Habits to complete (with toggle and edit)
+ * - Overdue tasks (with urgency styling)
+ * - Tasks due today (with quick add and edit)
  *
  * Route: /today
  *
@@ -18,15 +18,25 @@
  * Features:
  * - Habits grid with toggle (click check to complete)
  * - Click habit card to edit in HabitModal
+ * - Add Habit button for quick creation
  * - Overdue tasks section with urgency styling
- * - Today's tasks section
+ * - Today's tasks section with Add button
  * - Click task to edit in TaskModal
  *
  * User Stories Addressed:
  * - US-1.2: See daily focus view
+ * - US-3.1: Quick add task from Today page
  * - US-3.2: Click task to open detail panel
+ * - US-4.1: Quick add habit from Today page
  * - US-4.2: Toggle habits
  * - US-4.4: Click habit to edit
+ *
+ * Data Flow:
+ * 1. Page loads → Fetches today's tasks, overdue tasks, habits
+ * 2. User clicks Add → Modal opens in create mode
+ * 3. User clicks entity → Modal opens in edit mode
+ * 4. User toggles habit → Logs completion/skip status
+ * 5. User completes task → Task marked as done, removed from view
  *
  * ============================================================================
  */
@@ -324,6 +334,16 @@ export default function TodayPage() {
     }
   };
 
+  /**
+   * Handle opening task modal for create (no task selected)
+   * Pre-fills today's date so the task appears in Today view
+   */
+  const handleOpenCreateTaskModal = () => {
+    logger.info('➕ Opening task modal for create from Today page');
+    setSelectedTask(null);
+    setIsTaskModalOpen(true);
+  };
+
   // ========================================================================
   // Habit Handlers
   // ========================================================================
@@ -469,13 +489,24 @@ export default function TodayPage() {
         </Card>
       )}
 
-      {/* Today's tasks section */}
+      {/* Today's tasks section - click task to edit, Add button for quick create */}
       <Card>
         <CardHeader className="pb-3">
-          <CardTitle className="flex items-center gap-2 text-lg">
-            <CheckSquare className="h-5 w-5 text-indigo-500" />
-            Today {!loadingToday && `(${todayTasks.length})`}
-          </CardTitle>
+          <div className="flex items-center justify-between">
+            <CardTitle className="flex items-center gap-2 text-lg">
+              <CheckSquare className="h-5 w-5 text-indigo-500" />
+              Today {!loadingToday && `(${todayTasks.length})`}
+            </CardTitle>
+            {/* Add Task button - always visible */}
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={handleOpenCreateTaskModal}
+              leftIcon={<Plus className="h-3 w-3" />}
+            >
+              Add
+            </Button>
+          </div>
         </CardHeader>
         <CardContent className="pt-0">
           {loadingToday ? (
@@ -485,6 +516,10 @@ export default function TodayPage() {
               icon={<Sun className="h-12 w-12 text-amber-400" />}
               title="Nothing scheduled for today"
               description="Enjoy the free time or add something new!"
+              action={{
+                label: 'Add Task',
+                onClick: handleOpenCreateTaskModal,
+              }}
             />
           ) : (
             <div className="space-y-2">

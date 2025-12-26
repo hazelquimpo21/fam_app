@@ -7,20 +7,37 @@
  *
  * The main dashboard showing a quick overview of:
  * - Today's tasks (with overdue count)
- * - Habit progress
- * - Active goals
- * - Quick actions
+ * - Habit progress with toggle and click-to-edit
+ * - Active goals with click-to-edit
+ * - Quick actions with in-place modal creation
  *
  * Route: /
  *
- * This page connects to the Supabase database via React Query hooks
- * to display real family data. All data is scoped to the current user's
- * family via Row Level Security (RLS).
+ * Features:
+ * - Stats cards navigate to respective pages on click
+ * - Task section with Add button → opens TaskModal
+ * - Habit section with Add button → opens HabitModal
+ * - Habit cards: click toggle to complete, click card to edit
+ * - Goal section with Add button → opens GoalModal
+ * - Goal cards: click to edit in GoalModal
+ *
+ * User Stories Addressed:
+ * - US-1.1: Dashboard overview of family productivity
+ * - US-3.2: Click task to open detail panel (via TaskModal)
+ * - US-4.2: Toggle habits from dashboard
+ * - US-4.4: Click habit to edit (via HabitModal)
+ * - US-5.2: Click goal to edit (via GoalModal)
+ *
+ * Data Flow:
+ * 1. Page loads → React Query fetches today's tasks, habits, goals
+ * 2. User clicks Add → Modal opens in create mode
+ * 3. User clicks entity → Modal opens in edit mode
+ * 4. Modal saves → Query invalidation refreshes data
  *
  * ============================================================================
  */
 
-import { useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   CheckSquare,
@@ -41,11 +58,16 @@ import { Avatar } from '@/components/shared/avatar';
 import { cn } from '@/lib/utils/cn';
 import { logger } from '@/lib/utils/logger';
 
+// Modals for in-place editing (improves UX - no page navigation needed)
+import { TaskModal } from '@/components/modals/task-modal';
+import { HabitModal } from '@/components/modals/habit-modal';
+import { GoalModal } from '@/components/modals/goal-modal';
+
 // Import hooks for real data
 import { useTodayTasks, useOverdueTasks, useCompleteTask } from '@/lib/hooks/use-tasks';
 import { useHabits, useLogHabit, type HabitWithTodayStatus } from '@/lib/hooks/use-habits';
 import { useActiveGoals } from '@/lib/hooks/use-goals';
-import type { Task, Goal } from '@/types/database';
+import type { Task, Goal, Habit } from '@/types/database';
 
 // ============================================================================
 // 📦 SUB-COMPONENTS
@@ -195,38 +217,70 @@ function TaskRow({ task, onComplete, isCompleting, isOverdue }: TaskRowProps) {
 }
 
 /**
- * Habit Toggle Button
- * Quick toggle for habits in the dashboard
+ * HabitToggle Component
+ *
+ * Displays a habit with toggle functionality and click-to-edit support.
+ *
+ * Interactions:
+ * - Click the circle/check button → toggles completion status
+ * - Click anywhere else on the card → opens HabitModal for editing
+ *
+ * This mirrors the pattern from the Today page's HabitCard component
+ * for consistent UX across the app.
  */
 interface HabitToggleProps {
   habit: HabitWithTodayStatus;
   onToggle: (habitId: string, completed: boolean) => void;
+  onEdit: (habit: HabitWithTodayStatus) => void;
   isUpdating: boolean;
 }
 
-function HabitToggle({ habit, onToggle, isUpdating }: HabitToggleProps) {
+function HabitToggle({ habit, onToggle, onEdit, isUpdating }: HabitToggleProps) {
   const isCompleted = habit.todayStatus === 'done';
   const owner = habit.owner as { name: string; color: string } | null;
 
+  /**
+   * Handle card click - open habit in edit modal
+   */
+  const handleCardClick = () => {
+    onEdit(habit);
+  };
+
+  /**
+   * Handle toggle button click - mark habit done/undone
+   * Uses stopPropagation to prevent opening the edit modal
+   */
+  const handleToggleClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!isUpdating) {
+      onToggle(habit.id, !isCompleted);
+    }
+  };
+
   return (
-    <button
-      onClick={() => onToggle(habit.id, !isCompleted)}
-      disabled={isUpdating}
+    <div
+      onClick={handleCardClick}
       className={cn(
-        'flex items-center gap-3 rounded-lg border p-3 w-full text-left transition-all',
+        'flex items-center gap-3 rounded-lg border p-3 w-full text-left transition-all cursor-pointer',
         isCompleted
           ? 'border-green-200 bg-green-50 hover:bg-green-100'
           : 'border-neutral-200 bg-white hover:bg-neutral-50'
       )}
     >
-      <div
+      {/* Toggle button - clicking this toggles habit status */}
+      <button
+        onClick={handleToggleClick}
+        disabled={isUpdating}
         className={cn(
-          'h-6 w-6 rounded-full flex items-center justify-center shrink-0 transition-colors',
-          isCompleted ? 'bg-green-500 text-white' : 'bg-neutral-200'
+          'h-7 w-7 rounded-full flex items-center justify-center shrink-0 transition-colors',
+          isCompleted
+            ? 'bg-green-500 text-white'
+            : 'bg-neutral-100 text-neutral-400 hover:bg-green-100 hover:text-green-600'
         )}
+        title={isCompleted ? 'Completed!' : 'Mark as done'}
       >
         {isCompleted && <Check className="h-3 w-3" />}
-      </div>
+      </button>
       <div className="flex-1 min-w-0">
         <p
           className={cn(
@@ -239,28 +293,37 @@ function HabitToggle({ habit, onToggle, isUpdating }: HabitToggleProps) {
       </div>
       {habit.current_streak > 0 && <StreakBadge count={habit.current_streak} size="sm" />}
       {owner && <Avatar name={owner.name} color={owner.color} size="sm" />}
-    </button>
+    </div>
   );
 }
 
 /**
- * Goal Progress Card
- * Displays goal with progress bar
+ * GoalCard Component
+ *
+ * Displays a goal with progress bar visualization and click-to-edit support.
+ *
+ * Interactions:
+ * - Click anywhere on the card → opens GoalModal for editing
+ *
+ * Progress visualization:
+ * - Quantitative goals show progress bar with percentage
+ * - Color changes based on progress (purple gradient at 75%+, green at 100%)
  */
 interface GoalCardProps {
   goal: Goal;
+  onEdit: (goal: Goal) => void;
 }
 
-function GoalCard({ goal }: GoalCardProps) {
+function GoalCard({ goal, onEdit }: GoalCardProps) {
   const owner = goal.owner as { name: string; color: string } | null;
 
-  // Calculate progress percentage
+  // Calculate progress percentage for quantitative goals
   const progress =
     goal.goal_type === 'quantitative' && goal.target_value
       ? Math.min(Math.round((goal.current_value / goal.target_value) * 100), 100)
       : 0;
 
-  // Format current/target values
+  // Format current/target values for display
   const progressText =
     goal.goal_type === 'quantitative' && goal.target_value
       ? `${goal.current_value.toLocaleString()} / ${goal.target_value.toLocaleString()}${
@@ -269,7 +332,10 @@ function GoalCard({ goal }: GoalCardProps) {
       : goal.definition_of_done || 'No target set';
 
   return (
-    <div className="rounded-lg border border-neutral-200 p-4">
+    <div
+      onClick={() => onEdit(goal)}
+      className="rounded-lg border border-neutral-200 p-4 cursor-pointer transition-all hover:shadow-md hover:border-purple-200"
+    >
       <div className="flex items-start justify-between mb-3">
         <div className="flex-1 min-w-0">
           <p className="font-medium text-neutral-900 truncate">{goal.title}</p>
@@ -367,6 +433,18 @@ export default function DashboardPage() {
   const completeTask = useCompleteTask();
   const logHabit = useLogHabit();
 
+  // ━━━━━ MODAL STATE ━━━━━
+  // Track which modal is open and which entity is being edited
+  // This enables in-place editing without navigating away from Dashboard
+  const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
+  const [selectedTask, setSelectedTask] = useState<Task | null>(null);
+
+  const [isHabitModalOpen, setIsHabitModalOpen] = useState(false);
+  const [selectedHabit, setSelectedHabit] = useState<Habit | null>(null);
+
+  const [isGoalModalOpen, setIsGoalModalOpen] = useState(false);
+  const [selectedGoal, setSelectedGoal] = useState<Goal | null>(null);
+
   // ━━━━━ COMPUTED VALUES ━━━━━
   const completedTodayCount = todayTasks.filter((t) => t.status === 'done').length;
   const habitsCompletedCount = habits.filter((h) => h.todayStatus === 'done').length;
@@ -429,10 +507,84 @@ export default function DashboardPage() {
     router.push('/today');
   }, [router]);
 
+  // ━━━━━ MODAL HANDLERS ━━━━━
+  // These handlers open modals for in-place editing (better UX than navigating)
+
+  /**
+   * Open TaskModal for creating a new task
+   * Pre-fills today's date so the task appears in Today view
+   */
   const handleAddTask = useCallback(() => {
-    logger.info('➕ Add task clicked - navigating to tasks');
-    router.push('/tasks');
-  }, [router]);
+    logger.info('➕ Opening TaskModal for new task');
+    setSelectedTask(null); // null = create mode
+    setIsTaskModalOpen(true);
+  }, []);
+
+  /**
+   * Handle TaskModal close - reset selection
+   */
+  const handleTaskModalClose = useCallback((open: boolean) => {
+    setIsTaskModalOpen(open);
+    if (!open) {
+      setSelectedTask(null);
+    }
+  }, []);
+
+  /**
+   * Open HabitModal for editing a habit
+   */
+  const handleEditHabit = useCallback((habit: HabitWithTodayStatus) => {
+    logger.info('🔄 Opening HabitModal for edit', { habitId: habit.id, title: habit.title });
+    setSelectedHabit(habit);
+    setIsHabitModalOpen(true);
+  }, []);
+
+  /**
+   * Open HabitModal for creating a new habit
+   */
+  const handleAddHabit = useCallback(() => {
+    logger.info('➕ Opening HabitModal for new habit');
+    setSelectedHabit(null); // null = create mode
+    setIsHabitModalOpen(true);
+  }, []);
+
+  /**
+   * Handle HabitModal close - reset selection
+   */
+  const handleHabitModalClose = useCallback((open: boolean) => {
+    setIsHabitModalOpen(open);
+    if (!open) {
+      setSelectedHabit(null);
+    }
+  }, []);
+
+  /**
+   * Open GoalModal for editing a goal
+   */
+  const handleEditGoal = useCallback((goal: Goal) => {
+    logger.info('🎯 Opening GoalModal for edit', { goalId: goal.id, title: goal.title });
+    setSelectedGoal(goal);
+    setIsGoalModalOpen(true);
+  }, []);
+
+  /**
+   * Open GoalModal for creating a new goal
+   */
+  const handleAddGoal = useCallback(() => {
+    logger.info('➕ Opening GoalModal for new goal');
+    setSelectedGoal(null); // null = create mode
+    setIsGoalModalOpen(true);
+  }, []);
+
+  /**
+   * Handle GoalModal close - reset selection
+   */
+  const handleGoalModalClose = useCallback((open: boolean) => {
+    setIsGoalModalOpen(open);
+    if (!open) {
+      setSelectedGoal(null);
+    }
+  }, []);
 
   // ━━━━━ ACTION HANDLERS ━━━━━
   const handleCompleteTask = useCallback(
@@ -580,20 +732,30 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
 
-        {/* Today's Habits */}
+        {/* Today's Habits - click habit to edit, click toggle to complete */}
         <Card>
           <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle className="flex items-center gap-2">
               <Repeat className="h-5 w-5 text-green-600" />
               Habits
             </CardTitle>
-            {!loadingHabits && habits.length > 0 && (
-              <Badge
-                variant={habitsCompletedCount === habits.length ? 'success' : 'default'}
+            <div className="flex items-center gap-2">
+              {!loadingHabits && habits.length > 0 && (
+                <Badge
+                  variant={habitsCompletedCount === habits.length ? 'success' : 'default'}
+                >
+                  {habitsCompletedCount}/{habits.length} done
+                </Badge>
+              )}
+              <Button
+                size="sm"
+                variant="ghost"
+                leftIcon={<Plus className="h-4 w-4" />}
+                onClick={handleAddHabit}
               >
-                {habitsCompletedCount}/{habits.length} done
-              </Badge>
-            )}
+                Add
+              </Button>
+            </div>
           </CardHeader>
           <CardContent className="space-y-2">
             {loadingHabits ? (
@@ -611,7 +773,7 @@ export default function DashboardPage() {
                 description="Create habits to build consistency!"
                 action={{
                   label: 'Add Habit',
-                  onClick: handleNavigateToHabits,
+                  onClick: handleAddHabit,
                 }}
               />
             ) : (
@@ -621,6 +783,7 @@ export default function DashboardPage() {
                     key={habit.id}
                     habit={habit}
                     onToggle={handleToggleHabit}
+                    onEdit={handleEditHabit}
                     isUpdating={logHabit.isPending}
                   />
                 ))}
@@ -637,21 +800,31 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
 
-        {/* Goals Progress - Full Width */}
+        {/* Goals Progress - click goal to edit, full width layout */}
         <Card className="lg:col-span-2">
           <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle className="flex items-center gap-2">
               <Target className="h-5 w-5 text-purple-600" />
               Goals Progress
             </CardTitle>
-            <Button
-              size="sm"
-              variant="ghost"
-              rightIcon={<ArrowRight className="h-4 w-4" />}
-              onClick={handleNavigateToGoals}
-            >
-              View all
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button
+                size="sm"
+                variant="ghost"
+                leftIcon={<Plus className="h-4 w-4" />}
+                onClick={handleAddGoal}
+              >
+                Add
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                rightIcon={<ArrowRight className="h-4 w-4" />}
+                onClick={handleNavigateToGoals}
+              >
+                View all
+              </Button>
+            </div>
           </CardHeader>
           <CardContent>
             {loadingGoals ? (
@@ -666,19 +839,47 @@ export default function DashboardPage() {
                 description="Set goals to track what matters most!"
                 action={{
                   label: 'Add Goal',
-                  onClick: handleNavigateToGoals,
+                  onClick: handleAddGoal,
                 }}
               />
             ) : (
               <div className="grid gap-4 sm:grid-cols-2">
                 {goals.slice(0, 4).map((goal) => (
-                  <GoalCard key={goal.id} goal={goal} />
+                  <GoalCard key={goal.id} goal={goal} onEdit={handleEditGoal} />
                 ))}
               </div>
             )}
           </CardContent>
         </Card>
       </div>
+
+      {/* ================================================================
+          MODALS - In-place editing for better UX
+          These modals allow users to create/edit entities without
+          navigating away from the Dashboard.
+          ================================================================ */}
+
+      {/* TaskModal - Create new task */}
+      <TaskModal
+        open={isTaskModalOpen}
+        onOpenChange={handleTaskModalClose}
+        task={selectedTask}
+        initialStatus="active"
+      />
+
+      {/* HabitModal - Create or edit habit */}
+      <HabitModal
+        open={isHabitModalOpen}
+        onOpenChange={handleHabitModalClose}
+        habit={selectedHabit}
+      />
+
+      {/* GoalModal - Create or edit goal */}
+      <GoalModal
+        open={isGoalModalOpen}
+        onOpenChange={handleGoalModalClose}
+        goal={selectedGoal}
+      />
     </div>
   );
 }

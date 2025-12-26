@@ -1,7 +1,7 @@
 # Fam - Implementation Status
 
 > **Last Updated:** December 2024
-> **Status:** MVP Phase 2.9 Complete - Habits/Today Modal Connections & Real Data
+> **Status:** MVP Phase 3.0 Complete - Dashboard & Inbox UI Connections
 
 ---
 
@@ -185,15 +185,15 @@ Tables: families, family_members, tasks, subtasks, habits, habit_logs,
 
 | Page | Route | Status | Notes |
 |------|-------|--------|-------|
-| Dashboard | `/` | ✅ **Connected** | Real-time stats, tasks, habits, goals from DB |
+| Dashboard | `/` | ✅ **Connected** | Stats, tasks, habits (click-to-edit), goals (click-to-edit), Add buttons |
 | Tasks | `/tasks` | ✅ **Connected** | List, filters, quick add, connected to DB |
 | Habits | `/habits` | ✅ **Connected** | Week progress, click-to-edit via HabitModal, streaks |
 | Login | `/login` | ✅ | Magic link (passwordless) |
 | Signup | `/signup` | ✅ | Magic link (passwordless) |
 | Check Email | `/check-email` | ✅ | Confirmation after magic link |
 | Onboarding | `/onboarding` | ✅ **NEW** | Family creation for new users |
-| Inbox | `/inbox` | ✅ **Connected** | Quick capture, processing actions, connected to DB |
-| Today | `/today` | ✅ **Connected** | Daily focus with habits, overdue, today's tasks |
+| Inbox | `/inbox` | ✅ **Connected** | Quick capture, ALL triage actions use modals (Task/Goal/Habit/Project/Someday) |
+| Today | `/today` | ✅ **Connected** | Daily focus, Add Task button, Add Habit button, click-to-edit |
 | Goals | `/goals` | ✅ **Connected** | Goal tracking with progress bars, grouped by owner |
 | Projects | `/projects` | ✅ **Connected** | Project cards with status filtering |
 | Someday | `/someday` | ✅ **Connected** | Wishlist with categories, promote to project |
@@ -395,5 +395,6 @@ Keep files under 400 lines. Extract components when they grow.
 | 1.9 | 2024-12-26 | Claude | Added GoalModal, HabitModal, full inbox triage (Goal/Habit), linked entity counts on Goals/Projects pages |
 | 2.0 | 2024-12-26 | Claude | Added ProjectModal, SomedayModal, inbox badge count, wired create/edit on Projects & Someday pages |
 | 2.1 | 2024-12-26 | Claude | Habits/Today modal connections: useUpdateHabit, useWeeklyHabitLogs, click-to-edit habits, create habit from Today |
+| 3.0 | 2024-12-26 | Claude | Dashboard & Inbox UI/UX: Dashboard habits/goals click-to-edit, Add buttons open modals; Inbox triage uses modals for Project/Someday; Today Add Task button |
 
 *This document is auto-generated. See individual docs for detailed specs.*
