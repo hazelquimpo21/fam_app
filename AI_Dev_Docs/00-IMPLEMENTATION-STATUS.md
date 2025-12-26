@@ -1,7 +1,7 @@
 # Fam - Implementation Status
 
 > **Last Updated:** December 2024
-> **Status:** MVP Phase 3.0 Complete - Dashboard & Inbox UI Connections
+> **Status:** MVP Phase 3.2 Complete - Calendar Integration (ICS + Google)
 
 ---
 
@@ -24,6 +24,7 @@
 | Family Feature | ✅ Complete | 75% |
 | **Profiles Feature** | 📋 Planned | 0% |
 | Settings Feature | ✅ Stub | 20% |
+| **Calendar Integration** | ✅ **Complete** | 100% |
 | Meals Feature | 🔨 Pending | 0% |
 
 ---
@@ -182,6 +183,42 @@ Tables: families, family_members, tasks, subtasks, habits, habit_logs,
 - ✅ `useResendInvite()` - Resend invite
 - ✅ `useCancelInvite()` - Cancel invite
 
+### 4.5 Calendar Integration (100% Complete)
+
+**Files:**
+- `supabase/migrations/003_calendar_integration.sql` - Database schema
+- `types/calendar.ts` - TypeScript types
+- `lib/hooks/use-calendar.ts` - React Query hooks
+- `lib/utils/ics-generator.ts` - ICS feed generation
+- `app/api/calendar/feed/[token]/route.ts` - ICS feed endpoint
+- `app/api/calendar/sync/route.ts` - Google Calendar sync endpoint
+- `app/api/auth/google/route.ts` - Google OAuth initiation
+- `app/api/auth/google/callback/route.ts` - Google OAuth callback
+- `app/(app)/settings/calendar/page.tsx` - Calendar settings UI
+
+**ICS Calendar Feeds:**
+- ✅ Create personal or family-wide calendar feeds
+- ✅ Subscribe in Google Calendar, Apple Calendar, Outlook, etc.
+- ✅ Include tasks, meals, and/or goal deadlines
+- ✅ Auto-updates every 15-30 minutes (calendar app refresh)
+- ✅ No RRULE complexity - recurring tasks generate individual instances
+- ✅ Secure token-based URLs (regeneratable)
+
+**Google Calendar Import:**
+- ✅ OAuth 2.0 connection flow
+- ✅ Import multiple calendars (selectable)
+- ✅ Visibility controls (owner-only, adults, or family)
+- ✅ Periodic sync with token refresh
+- ✅ View external events in Fam's Today page
+- ✅ Manual "Sync Now" button
+- ✅ Graceful error handling
+
+**Database Tables:**
+- `calendar_feeds` - ICS feed configurations
+- `google_calendar_connections` - OAuth tokens
+- `google_calendar_subscriptions` - Which calendars to import
+- `external_events` - Cached events from Google
+
 ### 5. Pages (All Core Pages Wired to Database)
 
 | Page | Route | Status | Notes |
@@ -200,6 +237,7 @@ Tables: families, family_members, tasks, subtasks, habits, habit_logs,
 | Someday | `/someday` | ✅ **Connected** | Wishlist with categories, promote to project |
 | Family | `/family` | ✅ **Connected** | Family member list, pending invites |
 | Settings | `/settings` | ✅ Stub | User and app preferences |
+| Calendar Settings | `/settings/calendar` | ✅ **Complete** | ICS feeds, Google Calendar connection |
 
 ---
 
@@ -415,5 +453,6 @@ Keep files under 400 lines. Extract components when they grow.
 | 2.1 | 2024-12-26 | Claude | Habits/Today modal connections: useUpdateHabit, useWeeklyHabitLogs, click-to-edit habits, create habit from Today |
 | 3.0 | 2024-12-26 | Claude | Dashboard & Inbox UI/UX: Dashboard habits/goals click-to-edit, Add buttons open modals; Inbox triage uses modals for Project/Someday; Today Add Task button |
 | 3.1 | 2024-12-26 | Claude | Added Profiles Feature to roadmap (Phase 3), AI Integration (Phase 5); references 15-profile-architecture.md |
+| 3.2 | 2024-12-26 | Claude | Added Calendar Integration: ICS feeds (export) + Google Calendar import. See 16-google-calendar-integration.md |
 
 *This document is auto-generated. See individual docs for detailed specs.*

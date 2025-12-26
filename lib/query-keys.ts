@@ -224,4 +224,37 @@ export const queryKeys = {
     /** Specific recipe */
     detail: (id: string) => [...queryKeys.recipes.all, 'detail', id] as const,
   },
+
+  // ━━━━━ Calendar Integration ━━━━━
+  calendar: {
+    /** Base key for all calendar queries */
+    all: ['calendar'] as const,
+
+    /** ICS calendar feeds */
+    feeds: () => [...queryKeys.calendar.all, 'feeds'] as const,
+
+    /** Specific feed */
+    feed: (id: string) => [...queryKeys.calendar.all, 'feed', id] as const,
+
+    /** Google Calendar connections */
+    connections: () => [...queryKeys.calendar.all, 'connections'] as const,
+
+    /** Current user's Google connection */
+    myConnection: () => [...queryKeys.calendar.all, 'my-connection'] as const,
+
+    /** Calendar subscriptions for a connection */
+    subscriptions: (connectionId: string) =>
+      [...queryKeys.calendar.all, 'subscriptions', connectionId] as const,
+
+    /** Available calendars from Google (during setup) */
+    availableCalendars: (connectionId: string) =>
+      [...queryKeys.calendar.all, 'available', connectionId] as const,
+
+    /** External events for a date range */
+    externalEvents: (start: string, end: string) =>
+      [...queryKeys.calendar.all, 'external-events', start, end] as const,
+
+    /** External events for today */
+    todayEvents: () => [...queryKeys.calendar.all, 'today-events'] as const,
+  },
 } as const;

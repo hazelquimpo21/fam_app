@@ -31,6 +31,7 @@ import {
   Sun,
   Home,
   Sparkles,
+  Calendar,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -240,6 +241,13 @@ export default function SettingsPage() {
             iconColor="text-green-600"
             label="Family Profile"
             description="Values, traditions, shared interests"
+          />
+          <SettingsLink
+            href="/settings/calendar"
+            icon={<Calendar className="h-5 w-5" />}
+            iconColor="text-blue-600"
+            label="Calendar Integration"
+            description="Sync with Google Calendar, export feeds"
           />
         </div>
       </SettingsSection>
