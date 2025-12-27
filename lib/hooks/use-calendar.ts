@@ -5,13 +5,27 @@
  * 📅 Calendar Integration Hooks
  * ============================================================================
  *
- * React Query hooks for calendar operations:
- * - ICS calendar feeds (create, list, delete)
+ * React Query hooks for calendar SETTINGS and SYNC operations:
+ * - ICS calendar feeds (create, list, delete) - for /settings/calendar
  * - Google Calendar connections (connect, disconnect, sync)
- * - External events (fetch for display)
+ * - External events (raw fetch for specific needs)
  *
  * These hooks provide type-safe, cached access to calendar data with
  * optimistic updates and proper cache invalidation.
+ *
+ * RELATED HOOKS:
+ * - use-calendar-items.ts: UNIFIED hook for Today page and Calendar views.
+ *   Combines family events + Google Calendar + birthdays into sorted timeline.
+ *   USE THAT for any UI displaying schedule/events.
+ *
+ * - use-family-events.ts: CRUD hooks for Fam-native events.
+ *   USE THAT for creating/editing/deleting family events.
+ *
+ * USE THIS HOOK FOR:
+ * - Calendar settings page (/settings/calendar)
+ * - Managing ICS feed URLs
+ * - Google Calendar OAuth connection/disconnection
+ * - Manual sync triggering
  *
  * ============================================================================
  */
