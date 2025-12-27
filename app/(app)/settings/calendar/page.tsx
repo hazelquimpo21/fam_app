@@ -211,9 +211,19 @@ function CalendarFeedItem({ feed }: { feed: CalendarFeed }) {
             Tasks
           </span>
         )}
+        {feed.include_events && (
+          <span className="text-xs bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full">
+            Events
+          </span>
+        )}
         {feed.include_meals && (
           <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">
             Meals
+          </span>
+        )}
+        {feed.include_birthdays && (
+          <span className="text-xs bg-pink-100 text-pink-700 px-2 py-0.5 rounded-full">
+            Birthdays
           </span>
         )}
         {feed.include_goals && (
@@ -245,6 +255,8 @@ function CreateFeedForm({ onClose }: { onClose: () => void }) {
   const [includeTasks, setIncludeTasks] = useState(true);
   const [includeMeals, setIncludeMeals] = useState(true);
   const [includeGoals, setIncludeGoals] = useState(false);
+  const [includeBirthdays, setIncludeBirthdays] = useState(true);
+  const [includeEvents, setIncludeEvents] = useState(true);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -255,6 +267,8 @@ function CreateFeedForm({ onClose }: { onClose: () => void }) {
         include_tasks: includeTasks,
         include_meals: includeMeals,
         include_goals: includeGoals,
+        include_birthdays: includeBirthdays,
+        include_events: includeEvents,
       },
       {
         onSuccess: () => {
@@ -322,9 +336,19 @@ function CreateFeedForm({ onClose }: { onClose: () => void }) {
             onChange={setIncludeTasks}
           />
           <ToggleChip
+            label="Events"
+            checked={includeEvents}
+            onChange={setIncludeEvents}
+          />
+          <ToggleChip
             label="Meals"
             checked={includeMeals}
             onChange={setIncludeMeals}
+          />
+          <ToggleChip
+            label="Birthdays"
+            checked={includeBirthdays}
+            onChange={setIncludeBirthdays}
           />
           <ToggleChip
             label="Goal Deadlines"

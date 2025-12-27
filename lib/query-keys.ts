@@ -257,4 +257,54 @@ export const queryKeys = {
     /** External events for today */
     todayEvents: () => [...queryKeys.calendar.all, 'today-events'] as const,
   },
+
+  // ━━━━━ Family Events ━━━━━
+  events: {
+    /** Base key for all family event queries */
+    all: ['events'] as const,
+
+    /** Event list for a date range */
+    list: (start: string, end: string) =>
+      [...queryKeys.events.all, 'list', start, end] as const,
+
+    /** Today's events */
+    today: () => [...queryKeys.events.all, 'today'] as const,
+
+    /** Specific event detail */
+    detail: (id: string) => [...queryKeys.events.all, 'detail', id] as const,
+
+    /** Events for a specific member */
+    forMember: (memberId: string, start: string, end: string) =>
+      [...queryKeys.events.all, 'member', memberId, start, end] as const,
+  },
+
+  // ━━━━━ Birthdays ━━━━━
+  birthdays: {
+    /** Base key for all birthday queries */
+    all: ['birthdays'] as const,
+
+    /** Birthdays in a date range */
+    range: (start: string, end: string) =>
+      [...queryKeys.birthdays.all, 'range', start, end] as const,
+
+    /** Today's birthdays */
+    today: () => [...queryKeys.birthdays.all, 'today'] as const,
+
+    /** Upcoming birthdays (next N days) */
+    upcoming: (days: number) =>
+      [...queryKeys.birthdays.all, 'upcoming', days] as const,
+  },
+
+  // ━━━━━ Unified Calendar ━━━━━
+  calendarItems: {
+    /** Base key for unified calendar item queries */
+    all: ['calendar-items'] as const,
+
+    /** Calendar items for a date range */
+    range: (start: string, end: string) =>
+      [...queryKeys.calendarItems.all, 'range', start, end] as const,
+
+    /** Today's calendar items */
+    today: () => [...queryKeys.calendarItems.all, 'today'] as const,
+  },
 } as const;

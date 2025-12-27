@@ -25,7 +25,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { generateICS, DEFAULT_DAYS_AHEAD } from '@/lib/utils/ics-generator';
 import { logger } from '@/lib/utils/logger';
 import type { Task, Meal, Goal, FamilyMember, Family } from '@/types/database';
-import type { CalendarFeed } from '@/types/calendar';
+import type { CalendarFeed, FamilyEvent, Birthday } from '@/types/calendar';
 
 // ============================================================================
 // 🛠️ HELPERS
@@ -94,6 +94,8 @@ export async function GET(
       includeTasks: feedData.include_tasks,
       includeMeals: feedData.include_meals,
       includeGoals: feedData.include_goals,
+      includeEvents: feedData.include_events,
+      includeBirthdays: feedData.include_birthdays,
     });
 
     // ========================================================================
@@ -213,7 +215,65 @@ export async function GET(
     }
 
     // ========================================================================
-    // 7. GENERATE ICS CONTENT
+    // 7. FETCH FAMILY EVENTS (if included)
+    // ========================================================================
+
+    let events: FamilyEvent[] = [];
+    if (feedData.include_events) {
+      const today = new Date().toISOString().split('T')[0];
+      const futureDate = new Date();
+      futureDate.setDate(futureDate.getDate() + DEFAULT_DAYS_AHEAD);
+
+      let eventQuery = supabase
+        .from('family_events')
+        .select('*')
+        .eq('family_id', feedData.family_id)
+        .gte('start_time', today)
+        .lte('start_time', futureDate.toISOString())
+        .order('start_time');
+
+      // If personal feed, filter by assigned_to
+      if (feedData.member_id) {
+        eventQuery = eventQuery.or(`assigned_to.eq.${feedData.member_id},assigned_to.is.null`);
+      }
+
+      const { data: eventData, error: eventError } = await eventQuery;
+
+      if (eventError) {
+        logger.error('Failed to fetch events', { error: eventError.message });
+      } else {
+        events = (eventData || []) as FamilyEvent[];
+      }
+    }
+
+    // ========================================================================
+    // 8. FETCH BIRTHDAYS (if included)
+    // ========================================================================
+
+    let birthdays: Birthday[] = [];
+    if (feedData.include_birthdays) {
+      const today = new Date().toISOString().split('T')[0];
+      const futureDate = new Date();
+      futureDate.setDate(futureDate.getDate() + DEFAULT_DAYS_AHEAD);
+      const futureDateStr = futureDate.toISOString().split('T')[0];
+
+      // Use the get_birthdays_in_range function
+      const { data: birthdayData, error: birthdayError } = await supabase
+        .rpc('get_birthdays_in_range', {
+          p_family_id: feedData.family_id,
+          p_start_date: today,
+          p_end_date: futureDateStr,
+        });
+
+      if (birthdayError) {
+        logger.error('Failed to fetch birthdays', { error: birthdayError.message });
+      } else {
+        birthdays = (birthdayData || []) as Birthday[];
+      }
+    }
+
+    // ========================================================================
+    // 9. GENERATE ICS CONTENT
     // ========================================================================
 
     const icsContent = generateICS(
@@ -222,6 +282,8 @@ export async function GET(
         tasks,
         meals,
         goals,
+        events,
+        birthdays,
         members: (members || []) as FamilyMember[],
       },
       {
@@ -230,11 +292,13 @@ export async function GET(
         includeTasks: feedData.include_tasks,
         includeMeals: feedData.include_meals,
         includeGoals: feedData.include_goals,
+        includeEvents: feedData.include_events ?? true,
+        includeBirthdays: feedData.include_birthdays ?? false,
       }
     );
 
     // ========================================================================
-    // 8. BUILD RESPONSE WITH PROPER HEADERS
+    // 10. BUILD RESPONSE WITH PROPER HEADERS
     // ========================================================================
 
     // Generate ETag for caching
@@ -253,6 +317,8 @@ export async function GET(
       tasks: tasks.length,
       meals: meals.length,
       goals: goals.length,
+      events: events.length,
+      birthdays: birthdays.length,
       bytes: icsContent.length,
       durationMs: duration,
     });
