@@ -13,6 +13,24 @@
  * - They don't have a "done" status
  * - They represent things you attend, not things you complete
  *
+ * RELATED HOOKS:
+ * - use-calendar-items.ts: UNIFIED hook for Today page and Calendar views
+ *   that combines family events + Google Calendar + birthdays into a single
+ *   sorted timeline. Use that for display purposes.
+ *
+ * - use-calendar.ts: Hooks for ICS feeds and Google Calendar connections
+ *   (settings and sync operations, not display).
+ *
+ * USE THIS HOOK FOR:
+ * - CRUD operations on family events (create, update, delete)
+ * - Fetching events for editing in EventModal
+ * - Fetching birthdays (special display like banners)
+ *
+ * USE use-calendar-items.ts FOR:
+ * - Displaying unified schedule on Today page
+ * - Displaying combined events on Calendar view
+ * - Any UI that shows multiple event sources together
+ *
  * See AI_Dev_Docs/17-family-events.md for full documentation.
  *
  * ============================================================================

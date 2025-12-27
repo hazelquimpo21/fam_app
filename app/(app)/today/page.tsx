@@ -7,7 +7,7 @@
  *
  * A focused view of today's work, including:
  * - Birthdays (celebration banner for today's birthdays)
- * - Today's schedule (events with times)
+ * - Unified schedule (Fam events + Google Calendar + birthdays, sorted by time)
  * - Habits to complete (with toggle and edit)
  * - Overdue tasks (with urgency styling)
  * - Tasks due today (with quick add and edit)
@@ -17,9 +17,15 @@
  * This page helps users focus on what needs to be done today without
  * the distraction of future tasks or completed items.
  *
+ * IMPORTANT: This page now uses the unified calendar items system!
+ * - useTodayCalendarItems: Fetches and merges all calendar sources
+ * - ScheduleCard: Displays items with source-specific styling
+ *
  * Features:
- * - Birthday celebration banner
- * - Today's events with times and locations
+ * - Birthday celebration banner (special treatment for celebrations)
+ * - Unified schedule timeline (Fam events + Google Calendar imports)
+ * - Source badges on events (Fam vs Google Calendar)
+ * - Click-to-edit for Fam events (Google events are read-only)
  * - Habits grid with toggle (click check to complete)
  * - Click habit card to edit in HabitModal
  * - Add Habit button for quick creation
@@ -29,6 +35,9 @@
  *
  * User Stories Addressed:
  * - US-1.2: See daily focus view
+ * - US-CAL-1: See Google Calendar events on Today page
+ * - US-CAL-2: Visually distinguish between Fam and Google events
+ * - US-CAL-3: Unified timeline sorted by time
  * - US-3.1: Quick add task from Today page
  * - US-3.2: Click task to open detail panel
  * - US-4.1: Quick add habit from Today page
@@ -36,11 +45,16 @@
  * - US-4.4: Click habit to edit
  *
  * Data Flow:
- * 1. Page loads → Fetches today's tasks, overdue tasks, habits, events, birthdays
- * 2. User clicks Add → Modal opens in create mode
- * 3. User clicks entity → Modal opens in edit mode
- * 4. User toggles habit → Logs completion/skip status
- * 5. User completes task → Task marked as done, removed from view
+ * 1. Page loads → Fetches unified calendar items, tasks, habits
+ * 2. Calendar items include: Fam events, Google Calendar, birthdays
+ * 3. User clicks Add Event → EventModal opens in create mode
+ * 4. User clicks Fam event → EventModal opens in edit mode
+ * 5. User clicks Google event → Nothing (read-only)
+ * 6. User toggles habit → Logs completion/skip status
+ * 7. User completes task → Task marked as done, removed from view
+ *
+ * See lib/hooks/use-calendar-items.ts for unified data fetching.
+ * See components/shared/schedule-card.tsx for event display.
  *
  * ============================================================================
  */
@@ -56,14 +70,16 @@ import {
   Plus,
   Calendar,
   MapPin,
-  Cake,
+  Settings,
 } from 'lucide-react';
+import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Button } from '@/components/ui/button';
 import { Badge, StreakBadge } from '@/components/shared/badge';
 import { Avatar } from '@/components/shared/avatar';
 import { EmptyState } from '@/components/shared/empty-state';
+import { ScheduleCard, ScheduleEmptyState } from '@/components/shared/schedule-card';
 import { TaskModal } from '@/components/modals/task-modal';
 import { HabitModal } from '@/components/modals/habit-modal';
 import { EventModal } from '@/components/modals/event-modal';
@@ -71,13 +87,10 @@ import { cn } from '@/lib/utils/cn';
 import { logger } from '@/lib/utils/logger';
 import { useTodayTasks, useOverdueTasks, useCompleteTask } from '@/lib/hooks/use-tasks';
 import { useHabits, useLogHabit, type HabitWithTodayStatus } from '@/lib/hooks/use-habits';
-import {
-  useTodayFamilyEvents,
-  useTodayBirthdays,
-  formatEventTime,
-} from '@/lib/hooks/use-family-events';
+import { useTodayCalendarItems, isEditableItem } from '@/lib/hooks/use-calendar-items';
+import { useTodayBirthdays } from '@/lib/hooks/use-family-events';
 import type { Task, Habit } from '@/types/database';
-import type { FamilyEvent, Birthday } from '@/types/calendar';
+import type { FamilyEvent, Birthday, CalendarItem } from '@/types/calendar';
 
 // ============================================================================
 // SectionSkeleton Component
@@ -221,70 +234,18 @@ function BirthdayBanner({ birthdays }: BirthdayBannerProps) {
 }
 
 // ============================================================================
-// EventRow Component
+// EventRow Component - REMOVED
 // ============================================================================
-
-interface EventRowProps {
-  event: FamilyEvent & { assignee?: { id: string; name: string; color: string | null } };
-  onClick: (event: FamilyEvent) => void;
-}
-
-/**
- * EventRow - Displays a single event with time and location
- */
-function EventRow({ event, onClick }: EventRowProps) {
-  const timeDisplay = formatEventTime(
-    event.start_time,
-    event.end_time,
-    event.is_all_day,
-    event.timezone
-  );
-
-  return (
-    <div
-      onClick={() => onClick(event)}
-      className={cn(
-        'flex items-center gap-3 rounded-lg border p-3 transition-colors cursor-pointer',
-        'border-indigo-200 bg-white hover:bg-indigo-50'
-      )}
-    >
-      {/* Icon */}
-      <div className="h-8 w-8 rounded-full bg-indigo-100 flex items-center justify-center shrink-0">
-        {event.icon ? (
-          <span className="text-sm">{event.icon}</span>
-        ) : (
-          <Calendar className="h-4 w-4 text-indigo-600" />
-        )}
-      </div>
-
-      {/* Content */}
-      <div className="flex-1 min-w-0">
-        <p className="font-medium text-neutral-900">{event.title}</p>
-        <div className="flex items-center gap-3 text-xs text-neutral-500">
-          <span className="flex items-center gap-1 text-indigo-600 font-medium">
-            <Clock className="h-3 w-3" />
-            {timeDisplay}
-          </span>
-          {event.location && (
-            <span className="flex items-center gap-1 truncate">
-              <MapPin className="h-3 w-3" />
-              {event.location}
-            </span>
-          )}
-        </div>
-      </div>
-
-      {/* Assignee */}
-      {event.assignee && (
-        <Avatar
-          name={event.assignee.name}
-          color={event.assignee.color}
-          size="sm"
-        />
-      )}
-    </div>
-  );
-}
+//
+// NOTE FOR AI DEVS: EventRow has been replaced by the ScheduleCard component
+// from components/shared/schedule-card.tsx. ScheduleCard handles:
+// - Family Events (Fam-native, editable)
+// - External Events (Google Calendar, read-only)
+// - Birthdays (special styling)
+//
+// The unified approach reduces code duplication and ensures consistent
+// styling across all calendar item types.
+// ============================================================================
 
 // ============================================================================
 // TaskRow Component
@@ -401,12 +362,31 @@ export default function TodayPage() {
   const [isEventModalOpen, setIsEventModalOpen] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<FamilyEvent | null>(null);
 
-  // Fetch data from database
+  // ========================================================================
+  // Data Fetching
+  // ========================================================================
+  //
+  // NOTE FOR AI DEVS: We use the unified calendar items hook for schedule
+  // data. This merges Fam events, Google Calendar events, and birthdays
+  // into a single sorted timeline. See lib/hooks/use-calendar-items.ts.
+  //
+  // Birthdays are ALSO fetched separately for the banner (they need
+  // special celebration treatment at the top of the page).
+  // ========================================================================
+
   const { data: todayTasks = [], isLoading: loadingToday } = useTodayTasks();
   const { data: overdueTasks = [], isLoading: loadingOverdue } = useOverdueTasks();
   const { data: habits = [], isLoading: loadingHabits } = useHabits();
-  const { data: events = [], isLoading: loadingEvents } = useTodayFamilyEvents();
+
+  // Unified calendar items (events + external events + birthdays)
+  const { data: calendarItems = [], isLoading: loadingCalendar } = useTodayCalendarItems();
+
+  // Birthdays loaded separately for the celebration banner
   const { data: birthdays = [], isLoading: loadingBirthdays } = useTodayBirthdays();
+
+  // Filter out birthdays from calendar items (they're shown in the banner)
+  // This avoids duplication - birthdays appear in banner AND would appear in schedule
+  const scheduleItems = calendarItems.filter(item => item.type !== 'birthday');
 
   // Mutations
   const completeTask = useCompleteTask();
@@ -416,17 +396,25 @@ export default function TodayPage() {
   const completedHabits = habits.filter((h) => h.todayStatus === 'done').length;
 
   // Log page load for debugging
+  // This helps AI devs and humans understand what data was loaded
   useEffect(() => {
+    const famEvents = scheduleItems.filter(i => i.type === 'event').length;
+    const googleEvents = scheduleItems.filter(i => i.type === 'external').length;
+
     logger.info('☀️ Today page loaded', {
       date: today.toISOString().split('T')[0],
-      overdue: overdueTasks.length,
+      schedule: {
+        total: scheduleItems.length,
+        famEvents,
+        googleEvents,
+      },
+      overdueTasks: overdueTasks.length,
       todayTasks: todayTasks.length,
       habits: habits.length,
-      events: events.length,
       birthdays: birthdays.length,
     });
     logger.divider("Today's Focus");
-  }, [overdueTasks.length, todayTasks.length, habits.length, events.length, birthdays.length]);
+  }, [scheduleItems.length, overdueTasks.length, todayTasks.length, habits.length, birthdays.length]);
 
   // ========================================================================
   // Task Handlers
@@ -513,15 +501,68 @@ export default function TodayPage() {
   };
 
   // ========================================================================
-  // Event Handlers
+  // Calendar Item Handlers
+  // ========================================================================
+  //
+  // NOTE FOR AI DEVS: Calendar items come in three types:
+  // - 'event': Fam-native, EDITABLE - opens EventModal
+  // - 'external': Google Calendar, READ-ONLY - no action on click
+  // - 'birthday': From family members, READ-ONLY on Today page
+  //
+  // The isEditableItem() helper from use-calendar-items.ts checks this.
   // ========================================================================
 
   /**
-   * Handle clicking on an event - open in modal for editing
+   * Handle clicking on a calendar item
+   *
+   * For Fam events: Opens EventModal for editing
+   * For Google Calendar events: No action (read-only)
+   * For birthdays: No action (displayed for info only)
    */
-  const handleEventClick = (event: FamilyEvent) => {
-    logger.info('Opening event for edit', { eventId: event.id, title: event.title });
-    setSelectedEvent(event);
+  const handleCalendarItemClick = (item: CalendarItem) => {
+    // Only Fam events are editable
+    if (!isEditableItem(item)) {
+      logger.debug('Calendar item is not editable', {
+        id: item.id,
+        type: item.type,
+        title: item.title,
+      });
+      return;
+    }
+
+    // For Fam events, we need to fetch the full event data
+    // The CalendarItem has the sourceId which is the event ID
+    logger.info('Opening event for edit', {
+      itemId: item.id,
+      sourceId: item.sourceId,
+      title: item.title,
+    });
+
+    // Create a minimal FamilyEvent object for the modal
+    // The modal will fetch full data if needed
+    const eventForModal: FamilyEvent = {
+      id: item.sourceId,
+      family_id: '', // Will be filled by the modal
+      title: item.title,
+      description: item.description || null,
+      location: item.location || null,
+      start_time: item.start.toISOString(),
+      end_time: item.end?.toISOString() || null,
+      is_all_day: item.isAllDay,
+      timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+      assigned_to: item.assignee?.id || null,
+      color: item.color || null,
+      icon: item.icon || null,
+      is_recurring: false,
+      recurrence_rule: null,
+      recurrence_end_date: null,
+      parent_event_id: null,
+      created_by: null,
+      created_at: '',
+      updated_at: '',
+    };
+
+    setSelectedEvent(eventForModal);
     setIsEventModalOpen(true);
   };
 
@@ -544,7 +585,7 @@ export default function TodayPage() {
     }
   };
 
-  const isLoading = loadingToday || loadingOverdue || loadingHabits || loadingEvents || loadingBirthdays;
+  const isLoading = loadingToday || loadingOverdue || loadingHabits || loadingCalendar || loadingBirthdays;
 
   return (
     <div className="space-y-6">
@@ -562,15 +603,40 @@ export default function TodayPage() {
         <BirthdayBanner birthdays={birthdays} />
       )}
 
-      {/* Today's Events section - only show if there are events or loading */}
-      {(loadingEvents || events.length > 0) && (
-        <Card>
-          <CardHeader className="pb-3">
-            <div className="flex items-center justify-between">
-              <CardTitle className="flex items-center gap-2 text-lg">
-                <Calendar className="h-5 w-5 text-indigo-500" />
-                Schedule {!loadingEvents && events.length > 0 && `(${events.length})`}
-              </CardTitle>
+      {/* ====================================================================
+          Schedule Section - Unified Calendar Items
+          ====================================================================
+          This section displays ALL calendar items from multiple sources:
+          - Fam events (native, editable)
+          - Google Calendar events (imported, read-only)
+
+          NOTE FOR AI DEVS:
+          - Items are sorted by time (all-day first, then by start time)
+          - Birthdays are filtered out (shown in banner above)
+          - Click handler checks isEditableItem() before opening modal
+          - ScheduleCard shows source badges for visual distinction
+          ==================================================================== */}
+      <Card>
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between">
+            <CardTitle className="flex items-center gap-2 text-lg">
+              <Calendar className="h-5 w-5 text-indigo-500" />
+              Schedule
+              {!loadingCalendar && scheduleItems.length > 0 && (
+                <span className="text-sm font-normal text-neutral-500">
+                  ({scheduleItems.length})
+                </span>
+              )}
+            </CardTitle>
+            <div className="flex items-center gap-2">
+              {/* Settings link to manage calendar connections */}
+              <Link
+                href="/settings/calendar"
+                className="p-1.5 rounded-lg text-neutral-400 hover:text-neutral-600 hover:bg-neutral-100 transition-colors"
+                title="Calendar settings"
+              >
+                <Settings className="h-4 w-4" />
+              </Link>
               <Button
                 size="sm"
                 variant="outline"
@@ -580,24 +646,26 @@ export default function TodayPage() {
                 Add Event
               </Button>
             </div>
-          </CardHeader>
-          <CardContent className="pt-0">
-            {loadingEvents ? (
-              <SectionSkeleton rows={2} />
-            ) : (
-              <div className="space-y-2">
-                {events.map((event) => (
-                  <EventRow
-                    key={event.id}
-                    event={event}
-                    onClick={handleEventClick}
-                  />
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      )}
+          </div>
+        </CardHeader>
+        <CardContent className="pt-0">
+          {loadingCalendar ? (
+            <SectionSkeleton rows={2} />
+          ) : scheduleItems.length === 0 ? (
+            <ScheduleEmptyState onAddEvent={handleOpenCreateEventModal} />
+          ) : (
+            <div className="space-y-2">
+              {scheduleItems.map((item) => (
+                <ScheduleCard
+                  key={item.id}
+                  item={item}
+                  onClick={isEditableItem(item) ? handleCalendarItemClick : undefined}
+                />
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Habits section */}
       <Card>
