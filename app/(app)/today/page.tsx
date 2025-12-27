@@ -6,6 +6,8 @@
  * ============================================================================
  *
  * A focused view of today's work, including:
+ * - Birthdays (celebration banner for today's birthdays)
+ * - Today's schedule (events with times)
  * - Habits to complete (with toggle and edit)
  * - Overdue tasks (with urgency styling)
  * - Tasks due today (with quick add and edit)
@@ -16,6 +18,8 @@
  * the distraction of future tasks or completed items.
  *
  * Features:
+ * - Birthday celebration banner
+ * - Today's events with times and locations
  * - Habits grid with toggle (click check to complete)
  * - Click habit card to edit in HabitModal
  * - Add Habit button for quick creation
@@ -32,7 +36,7 @@
  * - US-4.4: Click habit to edit
  *
  * Data Flow:
- * 1. Page loads → Fetches today's tasks, overdue tasks, habits
+ * 1. Page loads → Fetches today's tasks, overdue tasks, habits, events, birthdays
  * 2. User clicks Add → Modal opens in create mode
  * 3. User clicks entity → Modal opens in edit mode
  * 4. User toggles habit → Logs completion/skip status
@@ -50,6 +54,9 @@ import {
   CheckSquare,
   Check,
   Plus,
+  Calendar,
+  MapPin,
+  Cake,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -59,11 +66,18 @@ import { Avatar } from '@/components/shared/avatar';
 import { EmptyState } from '@/components/shared/empty-state';
 import { TaskModal } from '@/components/modals/task-modal';
 import { HabitModal } from '@/components/modals/habit-modal';
+import { EventModal } from '@/components/modals/event-modal';
 import { cn } from '@/lib/utils/cn';
 import { logger } from '@/lib/utils/logger';
 import { useTodayTasks, useOverdueTasks, useCompleteTask } from '@/lib/hooks/use-tasks';
 import { useHabits, useLogHabit, type HabitWithTodayStatus } from '@/lib/hooks/use-habits';
+import {
+  useTodayFamilyEvents,
+  useTodayBirthdays,
+  formatEventTime,
+} from '@/lib/hooks/use-family-events';
 import type { Task, Habit } from '@/types/database';
+import type { FamilyEvent, Birthday } from '@/types/calendar';
 
 // ============================================================================
 // SectionSkeleton Component
@@ -164,6 +178,109 @@ function HabitCard({ habit, onToggle, onClick, isUpdating }: HabitCardProps) {
       </div>
       {habit.current_streak > 0 && (
         <StreakBadge count={habit.current_streak} size="sm" />
+      )}
+    </div>
+  );
+}
+
+// ============================================================================
+// BirthdayBanner Component
+// ============================================================================
+
+interface BirthdayBannerProps {
+  birthdays: Birthday[];
+}
+
+/**
+ * BirthdayBanner - Celebratory banner for today's birthdays
+ */
+function BirthdayBanner({ birthdays }: BirthdayBannerProps) {
+  if (birthdays.length === 0) return null;
+
+  return (
+    <Card className="border-pink-200 bg-gradient-to-r from-pink-50 to-purple-50">
+      <CardContent className="py-4">
+        <div className="flex items-center gap-3">
+          <div className="text-3xl">🎂</div>
+          <div>
+            <h3 className="font-semibold text-pink-700">
+              {birthdays.length === 1
+                ? `Happy Birthday, ${birthdays[0].name}!`
+                : `Happy Birthday to ${birthdays.map((b) => b.name).join(' & ')}!`}
+            </h3>
+            <p className="text-sm text-pink-600">
+              {birthdays.length === 1
+                ? `Turning ${birthdays[0].age_turning} today`
+                : birthdays.map((b) => `${b.name} turns ${b.age_turning}`).join(', ')}
+            </p>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+// ============================================================================
+// EventRow Component
+// ============================================================================
+
+interface EventRowProps {
+  event: FamilyEvent & { assignee?: { id: string; name: string; color: string | null } };
+  onClick: (event: FamilyEvent) => void;
+}
+
+/**
+ * EventRow - Displays a single event with time and location
+ */
+function EventRow({ event, onClick }: EventRowProps) {
+  const timeDisplay = formatEventTime(
+    event.start_time,
+    event.end_time,
+    event.is_all_day,
+    event.timezone
+  );
+
+  return (
+    <div
+      onClick={() => onClick(event)}
+      className={cn(
+        'flex items-center gap-3 rounded-lg border p-3 transition-colors cursor-pointer',
+        'border-indigo-200 bg-white hover:bg-indigo-50'
+      )}
+    >
+      {/* Icon */}
+      <div className="h-8 w-8 rounded-full bg-indigo-100 flex items-center justify-center shrink-0">
+        {event.icon ? (
+          <span className="text-sm">{event.icon}</span>
+        ) : (
+          <Calendar className="h-4 w-4 text-indigo-600" />
+        )}
+      </div>
+
+      {/* Content */}
+      <div className="flex-1 min-w-0">
+        <p className="font-medium text-neutral-900">{event.title}</p>
+        <div className="flex items-center gap-3 text-xs text-neutral-500">
+          <span className="flex items-center gap-1 text-indigo-600 font-medium">
+            <Clock className="h-3 w-3" />
+            {timeDisplay}
+          </span>
+          {event.location && (
+            <span className="flex items-center gap-1 truncate">
+              <MapPin className="h-3 w-3" />
+              {event.location}
+            </span>
+          )}
+        </div>
+      </div>
+
+      {/* Assignee */}
+      {event.assignee && (
+        <Avatar
+          name={event.assignee.name}
+          color={event.assignee.color}
+          size="sm"
+        />
       )}
     </div>
   );
@@ -280,10 +397,16 @@ export default function TodayPage() {
   const [isHabitModalOpen, setIsHabitModalOpen] = useState(false);
   const [selectedHabit, setSelectedHabit] = useState<Habit | null>(null);
 
+  // Event modal state
+  const [isEventModalOpen, setIsEventModalOpen] = useState(false);
+  const [selectedEvent, setSelectedEvent] = useState<FamilyEvent | null>(null);
+
   // Fetch data from database
   const { data: todayTasks = [], isLoading: loadingToday } = useTodayTasks();
   const { data: overdueTasks = [], isLoading: loadingOverdue } = useOverdueTasks();
   const { data: habits = [], isLoading: loadingHabits } = useHabits();
+  const { data: events = [], isLoading: loadingEvents } = useTodayFamilyEvents();
+  const { data: birthdays = [], isLoading: loadingBirthdays } = useTodayBirthdays();
 
   // Mutations
   const completeTask = useCompleteTask();
@@ -299,9 +422,11 @@ export default function TodayPage() {
       overdue: overdueTasks.length,
       todayTasks: todayTasks.length,
       habits: habits.length,
+      events: events.length,
+      birthdays: birthdays.length,
     });
     logger.divider("Today's Focus");
-  }, [overdueTasks.length, todayTasks.length, habits.length]);
+  }, [overdueTasks.length, todayTasks.length, habits.length, events.length, birthdays.length]);
 
   // ========================================================================
   // Task Handlers
@@ -387,7 +512,39 @@ export default function TodayPage() {
     }
   };
 
-  const isLoading = loadingToday || loadingOverdue || loadingHabits;
+  // ========================================================================
+  // Event Handlers
+  // ========================================================================
+
+  /**
+   * Handle clicking on an event - open in modal for editing
+   */
+  const handleEventClick = (event: FamilyEvent) => {
+    logger.info('Opening event for edit', { eventId: event.id, title: event.title });
+    setSelectedEvent(event);
+    setIsEventModalOpen(true);
+  };
+
+  /**
+   * Handle opening event modal for create
+   */
+  const handleOpenCreateEventModal = () => {
+    logger.info('Opening event modal for create from Today page');
+    setSelectedEvent(null);
+    setIsEventModalOpen(true);
+  };
+
+  /**
+   * Handle event modal close
+   */
+  const handleEventModalClose = (open: boolean) => {
+    setIsEventModalOpen(open);
+    if (!open) {
+      setSelectedEvent(null);
+    }
+  };
+
+  const isLoading = loadingToday || loadingOverdue || loadingHabits || loadingEvents || loadingBirthdays;
 
   return (
     <div className="space-y-6">
@@ -399,6 +556,48 @@ export default function TodayPage() {
           <p className="text-neutral-500">{dateStr}</p>
         </div>
       </div>
+
+      {/* Birthday banner - show only if there are birthdays */}
+      {!loadingBirthdays && birthdays.length > 0 && (
+        <BirthdayBanner birthdays={birthdays} />
+      )}
+
+      {/* Today's Events section - only show if there are events or loading */}
+      {(loadingEvents || events.length > 0) && (
+        <Card>
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <Calendar className="h-5 w-5 text-indigo-500" />
+                Schedule {!loadingEvents && events.length > 0 && `(${events.length})`}
+              </CardTitle>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={handleOpenCreateEventModal}
+                leftIcon={<Plus className="h-3 w-3" />}
+              >
+                Add Event
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent className="pt-0">
+            {loadingEvents ? (
+              <SectionSkeleton rows={2} />
+            ) : (
+              <div className="space-y-2">
+                {events.map((event) => (
+                  <EventRow
+                    key={event.id}
+                    event={event}
+                    onClick={handleEventClick}
+                  />
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {/* Habits section */}
       <Card>
@@ -549,6 +748,14 @@ export default function TodayPage() {
         open={isHabitModalOpen}
         onOpenChange={handleHabitModalClose}
         habit={selectedHabit}
+      />
+
+      {/* Event Modal for editing/creating */}
+      <EventModal
+        open={isEventModalOpen}
+        onOpenChange={handleEventModalClose}
+        event={selectedEvent}
+        initialDate={today}
       />
     </div>
   );

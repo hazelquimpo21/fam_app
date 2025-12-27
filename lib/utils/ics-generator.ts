@@ -22,7 +22,7 @@
  */
 
 import type { Task, Meal, Goal, FamilyMember } from '@/types/database';
-import type { ICSEvent, ICSGenerationOptions } from '@/types/calendar';
+import type { ICSEvent, ICSGenerationOptions, FamilyEvent, Birthday } from '@/types/calendar';
 import { logger } from '@/lib/utils/logger';
 
 // ============================================================================
@@ -461,6 +461,97 @@ function goalToICSEvent(goal: Goal, members: FamilyMember[]): ICSEvent | null {
 
 
 // ============================================================================
+// 🎂 BIRTHDAY CONVERSION
+// ============================================================================
+
+/**
+ * Convert a birthday to an ICS event.
+ * Birthdays appear as all-day events with a celebratory title.
+ *
+ * @param birthday - The birthday data
+ * @returns ICS event
+ */
+function birthdayToICSEvent(birthday: Birthday): ICSEvent {
+  const title = `🎂 ${birthday.name}'s Birthday`;
+  const description = `${birthday.name} is turning ${birthday.age_turning}!`;
+
+  // The display_date is already the correct date for this year's birthday
+  const dateStr = birthday.display_date;
+
+  return {
+    uid: `fam-birthday-${birthday.source_type}-${birthday.source_id}-${dateStr}@fam.app`,
+    title,
+    description,
+    start: dateStr,
+    isAllDay: true,
+    categories: ['Birthday', birthday.source_type === 'family_member' ? 'Family' : 'Contact'],
+  };
+}
+
+
+// ============================================================================
+// 📅 FAMILY EVENT CONVERSION
+// ============================================================================
+
+/**
+ * Convert a family event to an ICS event.
+ *
+ * @param event - The Fam family event
+ * @param members - Family members (for assignee name)
+ * @returns ICS event
+ */
+function familyEventToICSEvent(event: FamilyEvent, members: FamilyMember[]): ICSEvent {
+  // Build description
+  const descriptionParts: string[] = [];
+  if (event.description) {
+    descriptionParts.push(event.description);
+  }
+  if (event.assigned_to) {
+    const assignee = members.find(m => m.id === event.assigned_to);
+    if (assignee) {
+      descriptionParts.push(`Who: ${assignee.name}`);
+    }
+  }
+
+  // Build title with optional icon
+  const title = event.icon
+    ? `${event.icon} ${event.title}`
+    : event.title;
+
+  if (event.is_all_day) {
+    // All-day event
+    const startDate = event.start_time.split('T')[0];
+    const endDate = event.end_time
+      ? event.end_time.split('T')[0]
+      : startDate;
+
+    return {
+      uid: `fam-event-${event.id}@fam.app`,
+      title,
+      description: descriptionParts.join('\\n'),
+      location: event.location || undefined,
+      start: startDate,
+      end: endDate,
+      isAllDay: true,
+      categories: ['Event'],
+    };
+  } else {
+    // Timed event
+    return {
+      uid: `fam-event-${event.id}@fam.app`,
+      title,
+      description: descriptionParts.join('\\n'),
+      location: event.location || undefined,
+      start: event.start_time,
+      end: event.end_time || undefined,
+      isAllDay: false,
+      categories: ['Event'],
+    };
+  }
+}
+
+
+// ============================================================================
 // 📦 MAIN GENERATOR FUNCTION
 // ============================================================================
 
@@ -474,6 +565,8 @@ export interface ICSGenerationData {
   meals: Meal[];
   goals: Goal[];
   members: FamilyMember[];
+  events: FamilyEvent[];
+  birthdays: Birthday[];
 }
 
 /**
@@ -503,10 +596,12 @@ export function generateICS(
     tasks: data.tasks.length,
     meals: data.meals.length,
     goals: data.goals.length,
+    events: data.events?.length || 0,
+    birthdays: data.birthdays?.length || 0,
     options,
   });
 
-  const events: ICSEvent[] = [];
+  const icsEvents: ICSEvent[] = [];
 
   // Convert tasks to events
   if (options.includeTasks) {
@@ -516,14 +611,14 @@ export function generateICS(
         data.members,
         options.recurringInstances ?? DEFAULT_RECURRING_INSTANCES
       );
-      events.push(...taskEvents);
+      icsEvents.push(...taskEvents);
     }
   }
 
   // Convert meals to events
   if (options.includeMeals) {
     for (const meal of data.meals) {
-      events.push(mealToICSEvent(meal, data.members));
+      icsEvents.push(mealToICSEvent(meal, data.members));
     }
   }
 
@@ -532,8 +627,22 @@ export function generateICS(
     for (const goal of data.goals) {
       const goalEvent = goalToICSEvent(goal, data.members);
       if (goalEvent) {
-        events.push(goalEvent);
+        icsEvents.push(goalEvent);
       }
+    }
+  }
+
+  // Convert family events
+  if (options.includeEvents && data.events) {
+    for (const event of data.events) {
+      icsEvents.push(familyEventToICSEvent(event, data.members));
+    }
+  }
+
+  // Convert birthdays
+  if (options.includeBirthdays && data.birthdays) {
+    for (const birthday of data.birthdays) {
+      icsEvents.push(birthdayToICSEvent(birthday));
     }
   }
 
@@ -550,7 +659,7 @@ export function generateICS(
   lines.push('X-WR-TIMEZONE:UTC');
 
   // Add all events
-  for (const event of events) {
+  for (const event of icsEvents) {
     lines.push(generateVEvent(event));
   }
 
@@ -561,7 +670,7 @@ export function generateICS(
 
   const duration = Date.now() - startTime;
   logger.success(`ICS feed generated`, {
-    events: events.length,
+    events: icsEvents.length,
     bytes: content.length,
     durationMs: duration,
   });

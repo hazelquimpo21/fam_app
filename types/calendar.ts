@@ -4,14 +4,277 @@
  * ============================================================================
  *
  * TypeScript types for the calendar integration features:
+ * - Family events (Fam-native appointments, meetings, activities)
  * - ICS calendar feeds (export Fam events to external calendars)
  * - Google Calendar connections and imports
+ * - Unified calendar display (combining all event sources)
+ * - Birthday support
  *
  * These types mirror the database schema in:
- * supabase/migrations/003_calendar_integration.sql
+ * - supabase/migrations/003_calendar_integration.sql
+ * - supabase/migrations/004_family_events.sql
+ *
+ * See AI_Dev_Docs/17-family-events.md for full documentation.
  *
  * ============================================================================
  */
+
+// ============================================================================
+// 📅 FAMILY EVENTS (Fam-Native)
+// ============================================================================
+
+/**
+ * A Fam-native event (appointment, meeting, activity).
+ * Unlike tasks, events have specific times and are not completable.
+ *
+ * @example
+ * // Dentist appointment
+ * {
+ *   title: "Dentist - Miles",
+ *   start_time: "2024-12-30T14:00:00Z",
+ *   end_time: "2024-12-30T15:00:00Z",
+ *   location: "Shorewood Family Dental",
+ *   assigned_to: "miles-member-id",
+ * }
+ *
+ * @example
+ * // All-day event
+ * {
+ *   title: "School Holiday",
+ *   start_time: "2024-12-23T00:00:00Z",
+ *   is_all_day: true,
+ * }
+ */
+export interface FamilyEvent {
+  id: string;
+  family_id: string;
+
+  /** Event title (e.g., "Dentist appointment", "Soccer practice") */
+  title: string;
+
+  /** Optional description or notes */
+  description: string | null;
+
+  /** Optional location (address or place name) */
+  location: string | null;
+
+  /** Event start time (ISO timestamp in UTC) */
+  start_time: string;
+
+  /** Event end time (ISO timestamp in UTC). Null if duration is unknown. */
+  end_time: string | null;
+
+  /** Whether this is an all-day event (no specific time) */
+  is_all_day: boolean;
+
+  /** Timezone for display purposes (e.g., "America/Chicago") */
+  timezone: string;
+
+  /** Family member who attends/is responsible. Null = family-wide event. */
+  assigned_to: string | null;
+
+  /** Display color override. If null, uses assigned member's color. */
+  color: string | null;
+
+  /** Optional emoji/icon (e.g., "🏥", "⚽", "🎉") */
+  icon: string | null;
+
+  /** Whether this is a recurring event */
+  is_recurring: boolean;
+
+  /** iCal RRULE format (e.g., "FREQ=WEEKLY;BYDAY=TU,TH") */
+  recurrence_rule: string | null;
+
+  /** When the recurrence ends */
+  recurrence_end_date: string | null;
+
+  /** For recurring instances, the parent event ID */
+  parent_event_id: string | null;
+
+  /** Who created this event */
+  created_by: string | null;
+
+  created_at: string;
+  updated_at: string;
+}
+
+/**
+ * Family event with joined assignee info for display.
+ */
+export interface FamilyEventWithAssignee extends FamilyEvent {
+  assignee?: {
+    id: string;
+    name: string;
+    color: string | null;
+  };
+}
+
+/**
+ * Input for creating a new family event.
+ */
+export interface CreateFamilyEventInput {
+  title: string;
+  description?: string | null;
+  location?: string | null;
+  start_time: string;
+  end_time?: string | null;
+  is_all_day?: boolean;
+  timezone?: string;
+  assigned_to?: string | null;
+  color?: string | null;
+  icon?: string | null;
+}
+
+/**
+ * Input for updating an existing family event.
+ */
+export interface UpdateFamilyEventInput {
+  id: string;
+  title?: string;
+  description?: string | null;
+  location?: string | null;
+  start_time?: string;
+  end_time?: string | null;
+  is_all_day?: boolean;
+  timezone?: string;
+  assigned_to?: string | null;
+  color?: string | null;
+  icon?: string | null;
+}
+
+
+// ============================================================================
+// 🎂 BIRTHDAYS
+// ============================================================================
+
+/**
+ * Birthday info returned from the get_birthdays_in_range function.
+ */
+export interface Birthday {
+  /** Source type: 'family_member' or 'contact' */
+  source_type: 'family_member' | 'contact';
+
+  /** ID of the family member or contact */
+  source_id: string;
+
+  /** Person's name */
+  name: string;
+
+  /** Original birthday date (YYYY-MM-DD) */
+  birthday_date: string;
+
+  /** The actual date this birthday occurs in the queried range */
+  display_date: string;
+
+  /** Age they're turning on this birthday */
+  age_turning: number;
+}
+
+
+// ============================================================================
+// 🗓️ UNIFIED CALENDAR ITEM
+// ============================================================================
+
+/**
+ * Calendar item type discriminator.
+ * Used to determine how to render and handle clicks.
+ */
+export type CalendarItemType = 'task' | 'meal' | 'event' | 'birthday' | 'external';
+
+/**
+ * Unified calendar item for display.
+ * This is the common format used by the Calendar and Today views.
+ *
+ * Created by merging:
+ * - Tasks with due_date or scheduled_date
+ * - Meals with date
+ * - Family events
+ * - Birthdays (from family members and contacts)
+ * - External events (from Google Calendar)
+ */
+export interface CalendarItem {
+  /** Unique identifier (prefixed by type, e.g., "task-123", "event-456") */
+  id: string;
+
+  /** Display title */
+  title: string;
+
+  /** Start time (for timed items) or date (for all-day items) */
+  start: Date;
+
+  /** End time (optional, for timed items) */
+  end?: Date;
+
+  /** Whether this spans the full day */
+  isAllDay: boolean;
+
+  /** Display color (from source or assignee) */
+  color?: string;
+
+  /** Item type for rendering and click handling */
+  type: CalendarItemType;
+
+  /** Original source ID (for navigation to source) */
+  sourceId: string;
+
+  /** Display hints */
+  icon?: string;
+  location?: string;
+  description?: string;
+
+  /** Assignee info (if applicable) */
+  assignee?: {
+    id: string;
+    name: string;
+    color: string | null;
+  };
+
+  /** For external events: calendar name */
+  calendarName?: string;
+
+  /** Additional metadata based on type */
+  meta?: {
+    /** For birthdays: age they're turning */
+    ageTurning?: number;
+    /** For tasks: status */
+    taskStatus?: string;
+    /** For meals: meal type */
+    mealType?: string;
+  };
+}
+
+/**
+ * Options for fetching unified calendar items.
+ */
+export interface CalendarItemsOptions {
+  /** Family ID */
+  familyId: string;
+
+  /** Start date of range */
+  startDate: Date;
+
+  /** End date of range */
+  endDate: Date;
+
+  /** Filter by specific member (null = all members) */
+  memberId?: string | null;
+
+  /** Include tasks */
+  includeTasks?: boolean;
+
+  /** Include meals */
+  includeMeals?: boolean;
+
+  /** Include family events */
+  includeEvents?: boolean;
+
+  /** Include birthdays */
+  includeBirthdays?: boolean;
+
+  /** Include external (Google Calendar) events */
+  includeExternal?: boolean;
+}
+
 
 // ============================================================================
 // 📤 ICS CALENDAR FEEDS
@@ -58,6 +321,12 @@ export interface CalendarFeed {
   /** Include goal target dates as all-day reminders */
   include_goals: boolean;
 
+  /** Include birthdays (from family members and contacts) */
+  include_birthdays: boolean;
+
+  /** Include family events (appointments, meetings, activities) */
+  include_events: boolean;
+
   /** When the feed was last fetched by a calendar app */
   last_accessed_at: string | null;
 
@@ -78,6 +347,8 @@ export interface CreateCalendarFeedInput {
   include_tasks?: boolean;
   include_meals?: boolean;
   include_goals?: boolean;
+  include_birthdays?: boolean;
+  include_events?: boolean;
 }
 
 /**
@@ -89,6 +360,8 @@ export interface UpdateCalendarFeedInput {
   include_tasks?: boolean;
   include_meals?: boolean;
   include_goals?: boolean;
+  include_birthdays?: boolean;
+  include_events?: boolean;
 }
 
 
@@ -337,6 +610,12 @@ export interface ICSGenerationOptions {
 
   /** Include goal target dates in the feed */
   includeGoals: boolean;
+
+  /** Include birthdays (from family members and contacts) */
+  includeBirthdays: boolean;
+
+  /** Include family events (appointments, meetings, activities) */
+  includeEvents: boolean;
 
   /** Number of days in the future to include (default: 60) */
   daysAhead?: number;
