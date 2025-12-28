@@ -65,9 +65,15 @@ import type {
   KanbanTimeScope,
   KanbanPriority,
   KanbanDropResult,
+} from '@/types/kanban';
+
+// Import column definitions (values, not types)
+import {
   TIME_COLUMNS,
   STATUS_COLUMNS,
   PRIORITY_COLUMNS,
+  UNTAGGED_COLUMN,
+  createTagColumn,
 } from '@/types/kanban';
 
 // Re-export column definitions for use in components
@@ -75,6 +81,9 @@ export {
   TIME_COLUMNS,
   STATUS_COLUMNS,
   PRIORITY_COLUMNS,
+  UNTAGGED_COLUMN,
+  TAG_COLUMN_COLORS,
+  createTagColumn,
 } from '@/types/kanban';
 
 // ============================================================================
@@ -227,6 +236,8 @@ export function transformTask(task: Task): KanbanItem {
           color: (task as any).project.color,
         }
       : undefined,
+    // Include tags for tag-based grouping
+    tags: task.tags || undefined,
     meta: {
       goalId: task.goal_id || undefined,
     },
@@ -345,7 +356,7 @@ export function transformBirthday(birthday: Birthday): KanbanItem {
  *
  * @param item - The kanban item
  * @param groupBy - How columns are organized
- * @returns The column ID this item belongs to
+ * @returns The column ID this item belongs to (or array of IDs for tag mode)
  */
 export function getColumnIdForItem(item: KanbanItem, groupBy: KanbanGroupBy): string {
   switch (groupBy) {
@@ -360,9 +371,38 @@ export function getColumnIdForItem(item: KanbanItem, groupBy: KanbanGroupBy): st
     case 'priority':
       return item.priority;
 
+    case 'tag':
+      // For tag mode, return first tag or 'untagged'
+      // Items with multiple tags will be handled specially in groupItemsIntoColumns
+      if (item.tags && item.tags.length > 0) {
+        return `tag-${item.tags[0]}`;
+      }
+      return 'untagged';
+
     default:
       return 'later';
   }
+}
+
+/**
+ * Get all unique tags from a list of items.
+ * Used to create dynamic columns for tag-based grouping.
+ *
+ * @param items - All kanban items
+ * @returns Array of unique tag names, sorted alphabetically
+ */
+export function getUniqueTags(items: KanbanItem[]): string[] {
+  const tagSet = new Set<string>();
+
+  for (const item of items) {
+    if (item.tags && item.tags.length > 0) {
+      for (const tag of item.tags) {
+        tagSet.add(tag);
+      }
+    }
+  }
+
+  return Array.from(tagSet).sort((a, b) => a.localeCompare(b));
 }
 
 /**
@@ -409,6 +449,11 @@ export function groupItemsIntoColumns(
   items: KanbanItem[],
   groupBy: KanbanGroupBy
 ): KanbanColumn[] {
+  // Handle tag-based grouping specially (dynamic columns)
+  if (groupBy === 'tag') {
+    return groupItemsByTag(items);
+  }
+
   // Get column definitions based on groupBy mode
   const columnDefs = groupBy === 'time'
     ? TIME_COLUMNS
@@ -442,6 +487,68 @@ export function groupItemsIntoColumns(
   }
 
   return columns;
+}
+
+/**
+ * Group items into columns by tag.
+ * Creates dynamic columns based on unique tags in the items.
+ * Items with multiple tags appear in ALL matching columns.
+ *
+ * @param items - All kanban items
+ * @returns Array of tag-based columns with their items
+ */
+export function groupItemsByTag(items: KanbanItem[]): KanbanColumn[] {
+  logger.debug('🏷️ Grouping items by tag', { itemCount: items.length });
+
+  // Get all unique tags
+  const uniqueTags = getUniqueTags(items);
+
+  // Create columns for each tag
+  const columns: KanbanColumn[] = uniqueTags.map((tag, index) => ({
+    ...createTagColumn(tag, index),
+    items: [],
+  }));
+
+  // Add "Untagged" column at the end
+  const untaggedColumn: KanbanColumn = {
+    ...UNTAGGED_COLUMN,
+    items: [],
+  };
+  columns.push(untaggedColumn);
+
+  // Place items in columns
+  // NOTE: Items with multiple tags appear in ALL matching tag columns
+  for (const item of items) {
+    if (!item.tags || item.tags.length === 0) {
+      // No tags → goes to Untagged column
+      untaggedColumn.items.push(item);
+    } else {
+      // Has tags → add to each matching tag column
+      for (const tag of item.tags) {
+        const column = columns.find((c) => c.id === `tag-${tag}`);
+        if (column) {
+          column.items.push(item);
+        }
+      }
+    }
+  }
+
+  // Sort items within each column
+  for (const column of columns) {
+    column.items = sortKanbanItems(column.items);
+  }
+
+  // Filter out empty tag columns (but keep Untagged even if empty)
+  const nonEmptyColumns = columns.filter(
+    (column) => column.items.length > 0 || column.id === 'untagged'
+  );
+
+  logger.debug('🏷️ Tag grouping complete', {
+    tagColumns: nonEmptyColumns.length - 1,
+    untaggedItems: untaggedColumn.items.length,
+  });
+
+  return nonEmptyColumns;
 }
 
 // ============================================================================

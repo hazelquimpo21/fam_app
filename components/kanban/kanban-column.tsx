@@ -6,30 +6,45 @@
  * ============================================================================
  *
  * A column in the Kanban board that displays a group of items.
- * Supports drag-and-drop for reordering and moving items between columns.
+ * Integrates with @dnd-kit for sortable drag-and-drop support.
  *
  * VISUAL DESIGN:
  * - Header with icon, title, and item count
- * - Scrollable list of KanbanCards
+ * - Scrollable list of sortable KanbanCards
  * - Drop indicator when dragging over
  * - Color accent matching column type
  *
  * INTERACTIONS:
  * - Accepts dropped items (if column.acceptsDrop is true)
  * - Shows visual feedback during drag-over
- * - Scrolls to reveal more items
+ * - Supports item reordering within column
+ * - Touch-friendly with long-press drag activation
+ *
+ * ARCHITECTURE:
+ * ```
+ * KanbanColumn
+ *   └── useDroppable (column drop target)
+ *       └── SortableContext (item ordering)
+ *           └── KanbanSortableCard[] (draggable items)
+ * ```
  *
  * FUTURE AI DEVELOPERS:
- * To add custom column types, add the definition in /types/kanban.ts
- * and handle the drop logic in useKanban.moveItemMutation.
+ * - To add custom column types, update COLUMN_COLORS and types/kanban.ts
+ * - useDroppable makes the column a drop target
+ * - SortableContext enables reordering within the column
  *
  * ============================================================================
  */
 
 import * as React from 'react';
+import { useDroppable } from '@dnd-kit/core';
+import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { Plus, MoreHorizontal } from 'lucide-react';
-import { KanbanCard, KanbanCardSkeleton } from './kanban-card';
+
+import { KanbanSortableCard } from './kanban-sortable-card';
+import { KanbanDropZone } from './kanban-drop-indicator';
 import { cn } from '@/lib/utils/cn';
+import { logger } from '@/lib/utils/logger';
 import type { KanbanColumn as KanbanColumnType, KanbanItem } from '@/types/kanban';
 
 // ============================================================================
@@ -49,14 +64,8 @@ interface KanbanColumnProps {
   /** Handler when "Add" button is clicked */
   onAddClick?: () => void;
 
-  /** Whether cards are draggable */
-  draggable?: boolean;
-
-  /** Handler when an item is dropped */
-  onDrop?: (item: KanbanItem, toColumnId: string, toIndex: number) => void;
-
-  /** Whether this column is a drop target */
-  isDropTarget?: boolean;
+  /** Whether this column is being dragged over (external override) */
+  isOver?: boolean;
 
   /** Loading state */
   isLoading?: boolean;
@@ -71,42 +80,50 @@ interface KanbanColumnProps {
 
 /**
  * Color classes for column headers.
+ * Maps color name to Tailwind classes.
  */
-const COLUMN_COLORS: Record<string, { bg: string; text: string; border: string }> = {
+const COLUMN_COLORS: Record<string, { bg: string; text: string; border: string; ring: string }> = {
   red: {
     bg: 'bg-red-100',
     text: 'text-red-700',
     border: 'border-red-200',
+    ring: 'ring-red-400',
   },
   blue: {
     bg: 'bg-blue-100',
     text: 'text-blue-700',
     border: 'border-blue-200',
+    ring: 'ring-blue-400',
   },
   indigo: {
     bg: 'bg-indigo-100',
     text: 'text-indigo-700',
     border: 'border-indigo-200',
+    ring: 'ring-indigo-400',
   },
   purple: {
     bg: 'bg-purple-100',
     text: 'text-purple-700',
     border: 'border-purple-200',
+    ring: 'ring-purple-400',
   },
   amber: {
     bg: 'bg-amber-100',
     text: 'text-amber-700',
     border: 'border-amber-200',
+    ring: 'ring-amber-400',
   },
   green: {
     bg: 'bg-green-100',
     text: 'text-green-700',
     border: 'border-green-200',
+    ring: 'ring-green-400',
   },
   neutral: {
     bg: 'bg-neutral-100',
     text: 'text-neutral-700',
     border: 'border-neutral-200',
+    ring: 'ring-neutral-400',
   },
 };
 
@@ -179,8 +196,15 @@ function ColumnHeader({
 
 /**
  * Empty state for columns with no items.
+ * Shows drop zone when being dragged over.
  */
-function ColumnEmptyState({ column }: { column: KanbanColumnType }) {
+function ColumnEmptyState({
+  column,
+  isOver,
+}: {
+  column: KanbanColumnType;
+  isOver: boolean;
+}) {
   const colors = COLUMN_COLORS[column.color || 'neutral'];
 
   // Custom messages per column type
@@ -199,7 +223,17 @@ function ColumnEmptyState({ column }: { column: KanbanColumnType }) {
     medium: 'No medium priority items',
     low: 'No low priority items',
     none: 'All items have priorities',
+    untagged: 'No untagged items',
   };
+
+  // If being dragged over, show drop zone
+  if (isOver) {
+    return (
+      <KanbanDropZone isActive={true}>
+        <span className="text-blue-600 font-medium">Drop here</span>
+      </KanbanDropZone>
+    );
+  }
 
   return (
     <div className="flex flex-col items-center justify-center py-8 px-4 text-center">
@@ -218,6 +252,36 @@ function ColumnEmptyState({ column }: { column: KanbanColumnType }) {
   );
 }
 
+/**
+ * Loading skeleton for cards.
+ */
+function CardSkeleton({ compact = false }: { compact?: boolean }) {
+  if (compact) {
+    return (
+      <div className="flex items-center gap-2 rounded-md border border-neutral-200 p-2 animate-pulse">
+        <div className="w-5 h-5 rounded bg-neutral-200" />
+        <div className="flex-1 h-4 rounded bg-neutral-200" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="rounded-lg border border-neutral-200 p-3 animate-pulse">
+      <div className="flex items-start gap-2">
+        <div className="w-5 h-5 rounded bg-neutral-200" />
+        <div className="flex-1">
+          <div className="h-4 w-3/4 rounded bg-neutral-200" />
+          <div className="h-3 w-1/2 rounded bg-neutral-200 mt-2" />
+        </div>
+      </div>
+      <div className="flex items-center gap-3 mt-2 pl-7">
+        <div className="h-3 w-16 rounded bg-neutral-200" />
+        <div className="h-3 w-12 rounded bg-neutral-200" />
+      </div>
+    </div>
+  );
+}
+
 // ============================================================================
 // MAIN COMPONENT
 // ============================================================================
@@ -226,59 +290,62 @@ function ColumnEmptyState({ column }: { column: KanbanColumnType }) {
  * KanbanColumn - A column in the Kanban board.
  *
  * Displays a header with title and count, followed by a scrollable
- * list of KanbanCards. Supports drag-and-drop.
+ * list of sortable KanbanCards. Uses @dnd-kit for drag-drop.
  */
 export function KanbanColumn({
   column,
   onCardClick,
   onTaskComplete,
   onAddClick,
-  draggable = false,
-  onDrop,
-  isDropTarget = false,
+  isOver: externalIsOver,
   isLoading = false,
   compact = false,
 }: KanbanColumnProps) {
-  const [isDragOver, setIsDragOver] = React.useState(false);
-
   // ============================================================================
-  // DRAG AND DROP HANDLERS
+  // DROPPABLE HOOK
   // ============================================================================
 
-  const handleDragOver = (e: React.DragEvent) => {
-    if (!column.acceptsDrop) return;
+  /**
+   * useDroppable makes this column a valid drop target.
+   * When items are dragged over, isOver becomes true.
+   */
+  const {
+    setNodeRef,
+    isOver: droppableIsOver,
+  } = useDroppable({
+    id: column.id,
+    disabled: !column.acceptsDrop,
+    data: {
+      type: 'column',
+      column,
+    },
+  });
 
-    e.preventDefault();
-    e.dataTransfer.dropEffect = 'move';
-    setIsDragOver(true);
-  };
+  // Use external or droppable isOver state
+  const isOver = externalIsOver ?? droppableIsOver;
 
-  const handleDragLeave = (e: React.DragEvent) => {
-    // Only set to false if we're leaving the column entirely
-    if (!e.currentTarget.contains(e.relatedTarget as Node)) {
-      setIsDragOver(false);
+  // ============================================================================
+  // SORTABLE ITEMS
+  // ============================================================================
+
+  /**
+   * Get list of item IDs for SortableContext.
+   * This enables reordering within the column.
+   */
+  const itemIds = React.useMemo(
+    () => column.items.map((item) => item.id),
+    [column.items]
+  );
+
+  // Debug logging for drag state changes
+  React.useEffect(() => {
+    if (isOver) {
+      logger.debug('🎯 Column: Drag over', {
+        columnId: column.id,
+        itemCount: column.items.length,
+      });
     }
-  };
-
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragOver(false);
-
-    if (!column.acceptsDrop || !onDrop) return;
-
-    try {
-      const data = e.dataTransfer.getData('application/json');
-      const item = JSON.parse(data) as KanbanItem;
-
-      // Calculate drop index based on mouse position
-      // For now, just add to end
-      const toIndex = column.items.length;
-
-      onDrop(item, column.id, toIndex);
-    } catch (err) {
-      console.error('Failed to handle drop:', err);
-    }
-  };
+  }, [isOver, column.id, column.items.length]);
 
   // ============================================================================
   // RENDER
@@ -288,77 +355,70 @@ export function KanbanColumn({
 
   return (
     <div
+      ref={setNodeRef}
       className={cn(
         'group flex flex-col bg-neutral-50 rounded-lg border min-w-[280px] max-w-[320px] shrink-0',
         'transition-all duration-200',
         colors.border,
-        isDragOver && 'ring-2 ring-blue-400 bg-blue-50/50',
-        isDropTarget && !isDragOver && 'ring-1 ring-dashed ring-neutral-300'
+        isOver && 'ring-2 bg-blue-50/50 ring-blue-400'
       )}
-      onDragOver={handleDragOver}
-      onDragLeave={handleDragLeave}
-      onDrop={handleDrop}
     >
       {/* Header */}
       <ColumnHeader column={column} onAddClick={onAddClick} />
 
-      {/* Cards container */}
-      <div
-        className={cn(
-          'flex-1 overflow-y-auto px-2 py-2 space-y-2',
-          'max-h-[calc(100vh-220px)]' // Leave room for header and controls
-        )}
-      >
-        {/* Loading state */}
-        {isLoading && (
-          <>
-            <KanbanCardSkeleton compact={compact} />
-            <KanbanCardSkeleton compact={compact} />
-            <KanbanCardSkeleton compact={compact} />
-          </>
-        )}
+      {/* Cards container with SortableContext */}
+      <SortableContext items={itemIds} strategy={verticalListSortingStrategy}>
+        <div
+          className={cn(
+            'flex-1 overflow-y-auto px-2 py-2 space-y-2',
+            'max-h-[calc(100vh-220px)]' // Leave room for header and controls
+          )}
+        >
+          {/* Loading state */}
+          {isLoading && (
+            <>
+              <CardSkeleton compact={compact} />
+              <CardSkeleton compact={compact} />
+              <CardSkeleton compact={compact} />
+            </>
+          )}
 
-        {/* Empty state */}
-        {!isLoading && column.items.length === 0 && (
-          <ColumnEmptyState column={column} />
-        )}
+          {/* Empty state */}
+          {!isLoading && column.items.length === 0 && (
+            <ColumnEmptyState column={column} isOver={isOver} />
+          )}
 
-        {/* Cards */}
-        {!isLoading &&
-          column.items.map((item) => (
-            <KanbanCard
-              key={item.id}
-              item={item}
-              onClick={
-                item.isEditable && onCardClick
-                  ? () => onCardClick(item)
-                  : undefined
-              }
-              onComplete={
-                item.isCompletable && onTaskComplete
-                  ? () => {
-                      // Toggle completion
-                      if (item.isCompleted) {
-                        // Would call uncomplete here, but for now just complete
-                      }
-                      onTaskComplete(item.sourceId);
-                    }
-                  : undefined
-              }
-              draggable={draggable && item.isEditable}
-              compact={compact}
-            />
-          ))}
+          {/* Cards */}
+          {!isLoading &&
+            column.items.map((item) => (
+              <KanbanSortableCard
+                key={item.id}
+                item={item}
+                onClick={
+                  item.isEditable && onCardClick
+                    ? () => onCardClick(item)
+                    : undefined
+                }
+                onComplete={
+                  item.isCompletable && onTaskComplete
+                    ? () => onTaskComplete(item.sourceId)
+                    : undefined
+                }
+                disabled={!item.isEditable}
+                compact={compact}
+              />
+            ))}
 
-        {/* Drop zone indicator */}
-        {isDragOver && column.items.length > 0 && (
-          <div className="h-12 border-2 border-dashed border-blue-300 rounded-lg bg-blue-50/50 flex items-center justify-center">
-            <span className="text-xs text-blue-500 font-medium">
-              Drop here
-            </span>
-          </div>
-        )}
-      </div>
+          {/* Drop zone at bottom when dragging over non-empty column */}
+          {isOver && column.items.length > 0 && (
+            <div className="h-12 border-2 border-dashed border-blue-300 rounded-lg bg-blue-50/50 flex items-center justify-center mt-2">
+              <span className="text-xs text-blue-500 font-medium">
+                Drop here
+              </span>
+            </div>
+          )}
+        </div>
+      </SortableContext>
     </div>
   );
 }
