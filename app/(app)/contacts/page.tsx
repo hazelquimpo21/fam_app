@@ -58,6 +58,7 @@ import {
   ChevronDown,
   ChevronUp,
   ArrowUpDown,
+  Upload,
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -75,6 +76,7 @@ import {
 } from '@/lib/hooks/use-contacts';
 import { getAvatarColor } from '@/lib/constants/contact-styles';
 import { ContactModal } from '@/components/modals/contact-modal';
+import { ImportContactsModal } from '@/components/modals/import-contacts-modal';
 import { ContactCard } from '@/components/contacts';
 import type { Contact, ContactType } from '@/types/database';
 
@@ -605,6 +607,14 @@ export default function ContactsPage() {
     setSearch('');
   };
 
+  /**
+   * Open import modal for CSV import
+   */
+  const handleOpenImport = () => {
+    logger.info('📥 Opening import modal');
+    setIsImportModalOpen(true);
+  };
+
   // ━━━━━ ERROR STATE ━━━━━
   if (error) {
     logger.error('❌ Failed to load contacts', { error });
@@ -778,6 +788,12 @@ export default function ContactsPage() {
         confirmLabel="Delete"
         variant="destructive"
         loading={deleteContact.isPending}
+      />
+
+      {/* Import Contacts Modal */}
+      <ImportContactsModal
+        open={isImportModalOpen}
+        onOpenChange={setIsImportModalOpen}
       />
     </div>
   );
