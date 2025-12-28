@@ -173,7 +173,11 @@ fam/
 │   │   ├── middleware.ts         # Auth middleware helper
 │   │   └── types.ts              # Generated types (supabase gen types)
 │   │
+│   ├── contexts/                 # React Context providers
+│   │   └── auth-context.tsx      # AuthProvider (centralized auth state)
+│   │
 │   ├── hooks/                    # Custom hooks
+│   │   ├── use-auth.ts           # Auth hook (re-exports from context)
 │   │   ├── use-tasks.ts
 │   │   ├── use-habits.ts
 │   │   ├── use-goals.ts
@@ -759,8 +763,10 @@ fam_app/                       # ✅ Implemented
 │   │   ├── client.ts         # ✅ Browser client
 │   │   ├── server.ts         # ✅ Server client
 │   │   └── middleware.ts     # ✅
+│   ├── contexts/             # ✅ Context providers
+│   │   └── auth-context.tsx  # ✅ AuthProvider (centralized auth state)
 │   ├── hooks/                # ✅ 7 hooks
-│   │   ├── use-auth.ts       # ✅ Auth state
+│   │   ├── use-auth.ts       # ✅ Auth hook (re-exports from context)
 │   │   ├── use-tasks.ts      # ✅ Full CRUD + inbox/today/overdue
 │   │   ├── use-habits.ts     # ✅ Full CRUD
 │   │   ├── use-goals.ts      # ✅ Full CRUD
@@ -807,3 +813,4 @@ fam_app/                       # ✅ Implemented
 | 1.3 | 2024-12-25 | Claude | Added 7 stub pages, updated project structure |
 | 1.4 | 2024-12-25 | Claude | All pages now connected to database (7 hooks total) |
 | 1.5 | 2024-12-26 | Claude | Added onboarding page for new user family creation |
+| 1.6 | 2024-12-28 | Claude | Added lib/contexts/ with AuthProvider context pattern |

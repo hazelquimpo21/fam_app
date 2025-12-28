@@ -340,9 +340,11 @@ Fam uses **passwordless magic link authentication** for better UX and security.
 
 ### Key Files
 
+- `lib/contexts/auth-context.tsx` - **AuthProvider** (centralized auth state management)
+- `lib/hooks/use-auth.ts` - Auth hook (re-exports from AuthProvider)
+- `components/providers.tsx` - Wraps app with AuthProvider
 - `middleware.ts` - Protects routes, handles session refresh, enforces onboarding
 - `lib/supabase/middleware.ts` - Session management, family membership check
-- `lib/hooks/use-auth.ts` - Auth state with `sendMagicLink` method
 - `app/(auth)/login/page.tsx` - Magic link login
 - `app/(auth)/signup/page.tsx` - Magic link signup
 - `app/(auth)/check-email/page.tsx` - Email confirmation screen
@@ -457,6 +459,25 @@ export default function NewFeaturePage() {
 ---
 
 ## 🎨 Common Patterns
+
+### AuthProvider Context
+
+Auth state is managed centrally via the AuthProvider context:
+
+```typescript
+// Access auth state anywhere in the app
+import { useAuth } from '@/lib/hooks/use-auth'
+
+function MyComponent() {
+  const { user, familyMember, familyId, authState, signOut } = useAuth()
+
+  if (authState === 'loading') return <Spinner />
+  if (authState !== 'authenticated') return null
+
+  // familyId is available without extra queries
+  return <div>Family: {familyId}</div>
+}
+```
 
 ### Optimistic Updates
 
