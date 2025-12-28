@@ -302,8 +302,8 @@ BEGIN
 
     INSERT INTO tasks (family_id, title, status, due_date, assigned_to_id, priority, tags, created_by) VALUES
     (v_family_id, 'Schedule Buddy''s annual checkup', 'active', '2026-01-03', v_sarah_id, 2, ARRAY['pet'], v_sarah_id),
-    (v_family_id, 'Buy school supplies for spring semester', 'active', '2026-01-04', v_sarah_id, 2, v_sarah_id),
-    (v_family_id, 'Order new backpack for Jake', 'active', '2026-01-01', v_sarah_id, 1, v_sarah_id),
+    (v_family_id, 'Buy school supplies for spring semester', 'active', '2026-01-04', v_sarah_id, 2, NULL, v_sarah_id),
+    (v_family_id, 'Order new backpack for Jake', 'active', '2026-01-01', v_sarah_id, 1, NULL, v_sarah_id),
     (v_family_id, 'Get car washed', 'active', '2025-12-28', v_mike_id, 1, ARRAY['errands'], v_mike_id),
     (v_family_id, 'Schedule kids dental checkups', 'active', '2026-01-06', v_sarah_id, 2, ARRAY['health', 'kids'], v_sarah_id);
 
