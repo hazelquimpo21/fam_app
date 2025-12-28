@@ -145,6 +145,7 @@ fam_app/
 │   │   ├── 📁 goals/           # Goal tracking ✅ Connected
 │   │   ├── 📁 projects/        # Project management ✅ Connected
 │   │   ├── 📁 someday/         # Wishlist ideas ✅ Connected
+│   │   ├── 📁 kanban/          # Unified Kanban board ✅ NEW
 │   │   ├── 📁 family/          # Family members ✅ Connected
 │   │   └── 📁 settings/        # User preferences (stub)
 │   │
@@ -166,7 +167,12 @@ fam_app/
 │   │   ├── goal-modal.tsx      # Goal create/edit modal
 │   │   ├── habit-modal.tsx     # Habit create/edit modal
 │   │   ├── project-modal.tsx   # Project create/edit modal
-│   │   └── someday-modal.tsx   # Someday create/edit modal
+│   │   ├── someday-modal.tsx   # Someday create/edit modal
+│   │   └── event-modal.tsx     # Event create/edit modal ✅ NEW
+│   ├── 📁 kanban/              # Kanban board components ✅ NEW
+│   │   ├── kanban-board.tsx    # Main board with controls
+│   │   ├── kanban-column.tsx   # Column with header and drop zone
+│   │   └── kanban-card.tsx     # Unified card for tasks/events
 │   ├── 📁 features/            # Feature-specific components
 │   ├── 📁 layout/              # Layout components (Sidebar, TopBar)
 │   └── providers.tsx           # App providers wrapper
@@ -183,7 +189,10 @@ fam_app/
 │   │   ├── use-goals.ts        # Goals CRUD hooks
 │   │   ├── use-projects.ts     # Projects CRUD hooks
 │   │   ├── use-someday.ts      # Someday items CRUD hooks
-│   │   └── use-family.ts       # Family members & invites hooks
+│   │   ├── use-family.ts       # Family members & invites hooks
+│   │   ├── use-calendar.ts     # Calendar feed & Google sync hooks
+│   │   ├── use-family-events.ts # Family events CRUD hooks
+│   │   └── use-kanban.ts       # Kanban board data & mutations ✅ NEW
 │   ├── 📁 utils/               # Utility functions
 │   │   ├── cn.ts               # Class name utility
 │   │   └── logger.ts           # Logging utility
@@ -191,7 +200,9 @@ fam_app/
 │   └── query-keys.ts           # Query key factory
 │
 ├── 📁 types/                    # TypeScript types
-│   └── database.ts             # Database entity types
+│   ├── database.ts             # Database entity types
+│   ├── calendar.ts             # Calendar/event types
+│   └── kanban.ts               # Kanban board types ✅ NEW
 │
 ├── 📁 supabase/                 # Supabase configuration
 │   └── 📁 migrations/          # SQL migrations
@@ -570,11 +581,12 @@ logger.warn('Rate limit approaching') // ⚠️ [12:34:56] Rate limit approachin
 | Someday | ✅ **Connected** | SomedayModal with categories and estimated cost |
 | Inbox | ✅ **Connected** | Full triage to any entity via modals (Task/Goal/Habit/Project/Someday) |
 | Today | ✅ **Connected** | Daily focus with habits, overdue, today's tasks |
+| **Kanban** | ✅ **NEW** | Unified board with tasks + events, groupBy (time/status/priority), drag-drop |
+| Calendar Integration | ✅ **Complete** | ICS feeds, Google Calendar import |
 | Family | ✅ **Connected** | Family member list, pending invites |
 | **Profiles** | 📋 Planned | Rich family + member profiles for AI |
 | Settings | ✅ Stub | UI ready, needs preferences |
 | Meals | 🔨 Pending | Not started |
-| Calendar | 🔨 Pending | Not started |
 
 ### Modals (Entity CRUD)
 
@@ -585,8 +597,17 @@ logger.warn('Rate limit approaching') // ⚠️ [12:34:56] Rate limit approachin
 | HabitModal | `components/modals/habit-modal.tsx` | ✅ Complete |
 | ProjectModal | `components/modals/project-modal.tsx` | ✅ Complete |
 | SomedayModal | `components/modals/someday-modal.tsx` | ✅ Complete |
+| EventModal | `components/modals/event-modal.tsx` | ✅ Complete |
 
-> **All core pages are now connected to the Supabase database** with React Query hooks for caching and real-time updates. Full create/edit modals are available for all productivity entities.
+### Kanban Components
+
+| Component | File | Purpose |
+|-----------|------|---------|
+| KanbanBoard | `components/kanban/kanban-board.tsx` | Main board with controls, groupBy, timeScope |
+| KanbanColumn | `components/kanban/kanban-column.tsx` | Column with header, items, drop zone |
+| KanbanCard | `components/kanban/kanban-card.tsx` | Unified card for tasks, events, birthdays |
+
+> **All core pages are now connected to the Supabase database** with React Query hooks for caching and real-time updates. Full create/edit modals are available for all productivity entities. The unified Kanban board shows tasks and events together with drag-drop support.
 
 See `AI_Dev_Docs/00-IMPLEMENTATION-STATUS.md` for detailed status.
 

@@ -1,7 +1,7 @@
 # Fam - Implementation Status
 
 > **Last Updated:** December 2024
-> **Status:** MVP Phase 3.3 Complete - Family Events & Birthdays
+> **Status:** MVP Phase 3.3 Complete - Unified Kanban Board
 
 ---
 
@@ -22,7 +22,7 @@
 | Today Feature | ✅ Complete | 100% |
 | Someday Feature | ✅ Complete | 95% |
 | Family Feature | ✅ Complete | 75% |
-| **Family Events Feature** | ✅ **Complete** | 100% |
+| **Kanban Board** | ✅ **Complete** | 100% |
 | **Profiles Feature** | 📋 Planned | 0% |
 | Settings Feature | ✅ Stub | 25% |
 | **Calendar Integration** | ✅ **Complete** | 100% |
@@ -233,38 +233,34 @@ Tables: families, family_members, tasks, subtasks, habits, habit_logs,
 - `google_calendar_subscriptions` - Which calendars to import
 - `external_events` - Cached events from Google
 
-### 4.6 Family Events Feature (100% Complete)
+### 4.6 Unified Kanban Board (100% Complete)
 
 **Files:**
-- `supabase/migrations/004_family_events.sql` - Database schema
-- `types/calendar.ts` - TypeScript types (FamilyEvent, Birthday, CalendarItem)
-- `lib/hooks/use-family-events.ts` - React Query hooks
-- `components/modals/event-modal.tsx` - Event create/edit modal
-- `app/(app)/today/page.tsx` - Today page with events/birthdays
+- `types/kanban.ts` - TypeScript types (KanbanItem, KanbanColumn, configs)
+- `lib/hooks/use-kanban.ts` - React Query hook for data fetching/transformation
+- `components/kanban/kanban-card.tsx` - Unified card for tasks, events, birthdays
+- `components/kanban/kanban-column.tsx` - Column with header and drop zone
+- `components/kanban/kanban-board.tsx` - Main board with controls
+- `app/(app)/kanban/page.tsx` - Kanban page with modal integration
 
-**Family Events (Fam is Source of Truth):**
-- ✅ Native family events (appointments, activities, etc.)
-- ✅ Full CRUD operations with EventModal
-- ✅ All-day and timed events support
-- ✅ Timezone-aware timestamps
-- ✅ Assign events to family members
-- ✅ Location field for addresses/places
-- ✅ Today page shows upcoming events
+**Unified Kanban Features:**
+- ✅ **GroupBy Modes**: Time (Overdue/Today/Tomorrow/This Week/Later), Status (Inbox/Active/Waiting/Done), Priority (High/Medium/Low/None)
+- ✅ **Time Scope Filters**: Week, Month, Quarter, Year
+- ✅ **Item Types**: Tasks, Family Events, Google Calendar (read-only), Birthdays (read-only)
+- ✅ **Drag & Drop**: Drag tasks/events between columns to reschedule or change status
+- ✅ **Visual Distinction**: Each item type has unique colors and badges
+- ✅ **Edit Integration**: Click cards to open TaskModal or EventModal
+- ✅ **Unified Data**: Uses CalendarItem transformation for consistent display
 
-**Birthday Integration:**
-- ✅ Birthdays from family_members and contacts tables
-- ✅ Birthday banner on Today page for celebrations
-- ✅ `get_birthdays_in_range()` SQL function handles year boundaries
-- ✅ Calculates ages dynamically
-
-**ICS Feed Integration:**
-- ✅ Events and birthdays included in ICS feeds
-- ✅ `include_events` and `include_birthdays` toggles
-- ✅ Calendar Settings page has toggle controls
-
-**Database Tables:**
-- `family_events` - Native family events
-- `calendar_feeds` extended with `include_events`, `include_birthdays` columns
+**Architecture:**
+```
+KanbanBoard
+├── KanbanControls (groupBy, timeScope, filters)
+└── Columns container (horizontal scroll)
+    ├── KanbanColumn (Overdue) → KanbanCard[]
+    ├── KanbanColumn (Today) → KanbanCard[]
+    └── ... more columns based on groupBy mode
+```
 
 ### 5. Pages (All Core Pages Wired to Database)
 
@@ -272,6 +268,7 @@ Tables: families, family_members, tasks, subtasks, habits, habit_logs,
 |------|-------|--------|-------|
 | Dashboard | `/` | ✅ **Connected** | Stats, tasks, habits (click-to-edit), goals (click-to-edit), Add buttons |
 | Tasks | `/tasks` | ✅ **Connected** | List, filters, quick add, connected to DB |
+| **Kanban** | `/kanban` | ✅ **NEW** | Unified board with tasks + events, groupBy modes, drag-drop |
 | Habits | `/habits` | ✅ **Connected** | Week progress, click-to-edit via HabitModal, streaks |
 | Login | `/login` | ✅ | Magic link (passwordless) |
 | Signup | `/signup` | ✅ | Magic link (passwordless) |
@@ -431,6 +428,7 @@ fam_app/
 │   │   ├── layout.tsx          # App shell with sidebar
 │   │   ├── page.tsx            # Dashboard
 │   │   ├── tasks/page.tsx      # Tasks list
+│   │   ├── kanban/page.tsx     # Unified Kanban board (tasks + events)
 │   │   ├── habits/page.tsx     # Habits with streaks
 │   │   ├── inbox/page.tsx      # Quick capture (connected to DB)
 │   │   ├── today/page.tsx      # Daily focus view (connected to DB)
@@ -451,21 +449,20 @@ fam_app/
 │   ├── ui/                     # 7 components (button, input, card, checkbox, spinner, dialog, select)
 │   ├── shared/                 # 7 components (avatar, badge, empty-state, progress-bar, family-member-picker, project-picker, goal-picker)
 │   ├── modals/                 # 6 components (task-modal, goal-modal, habit-modal, project-modal, someday-modal, event-modal)
+│   ├── kanban/                 # 3 components (kanban-board, kanban-column, kanban-card)
 │   ├── layout/                 # 3 components
 │   └── providers.tsx
 ├── lib/
 │   ├── supabase/               # 4 files (client, server, middleware, admin)
-│   ├── hooks/                  # 9 hooks (auth, tasks, habits, goals, projects, someday, family, family-events, calendar)
+│   ├── hooks/                  # 10 hooks (auth, tasks, habits, goals, projects, someday, family, calendar, family-events, kanban)
 │   ├── utils/                  # 3 utilities (cn, logger, ics-generator)
 │   ├── query-client.ts
 │   └── query-keys.ts
 ├── types/
-│   ├── database.ts             # Core database types
-│   └── calendar.ts             # Calendar, events, birthdays types
-├── supabase/migrations/
-│   ├── 001_initial_schema.sql
-│   ├── 003_calendar_integration.sql
-│   └── 004_family_events.sql   # Family events table
+│   ├── database.ts
+│   ├── calendar.ts
+│   └── kanban.ts
+├── supabase/migrations/001_initial_schema.sql
 ├── middleware.ts
 ├── .env.example
 └── README.md
@@ -506,6 +503,6 @@ Keep files under 400 lines. Extract components when they grow.
 | 3.0 | 2024-12-26 | Claude | Dashboard & Inbox UI/UX: Dashboard habits/goals click-to-edit, Add buttons open modals; Inbox triage uses modals for Project/Someday; Today Add Task button |
 | 3.1 | 2024-12-26 | Claude | Added Profiles Feature to roadmap (Phase 3), AI Integration (Phase 5); references 15-profile-architecture.md |
 | 3.2 | 2024-12-26 | Claude | Added Calendar Integration: ICS feeds (export) + Google Calendar import. See 16-google-calendar-integration.md |
-| 3.3 | 2024-12-27 | Claude | Added Family Events feature: native events, birthdays, EventModal, Today page integration. See 17-family-events.md |
+| 3.3 | 2024-12-28 | Claude | Added Unified Kanban Board: tasks + events in configurable columns (time/status/priority), drag-drop, time scope filters |
 
 *This document is auto-generated. See individual docs for detailed specs.*
