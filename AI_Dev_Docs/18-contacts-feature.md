@@ -1,7 +1,7 @@
 # Fam — Contacts Feature
 
-> **Last Updated:** December 28, 2024
-> **Status:** Phase 1.2 Complete (CSV Import), Phase 2 Planned (Google Import)
+> **Last Updated:** December 28, 2025
+> **Status:** Phase 1.2 Complete (Improved Interactions), Phase 2 Planned (Google Import)
 
 ---
 
@@ -61,7 +61,7 @@ The Contacts feature allows families to manage extended family, friends, and oth
 - Hover effects indicate clickability
 - Click stops propagation to prevent card edit opening
 
-### US-CONTACTS-4: Expandable Upcoming Birthdays ✅ NEW
+### US-CONTACTS-4: Expandable Upcoming Birthdays ✅
 
 > **As a** user, **I want** to see all upcoming birthdays with a "show more" option, **so that** I don't miss any.
 
@@ -71,6 +71,45 @@ The Contacts feature allows families to manage extended family, friends, and oth
 - Expands to show all with "Show less" toggle
 - Birthday count badge in section header
 
+### US-CONTACTS-5: Sort Contacts ✅ NEW
+
+> **As a** user, **I want** to sort my contacts by different criteria (name, birthday, recently added), **so that** I can find who I need faster.
+
+**Implementation:**
+- Sort dropdown next to filter pills
+- Sort options: Name A→Z, Name Z→A, Upcoming Birthday, Recently Added
+- Birthday sort puts contacts without birthdays at the end
+- Sort is applied client-side on the filtered results
+
+### US-CONTACTS-6: Delete Confirmation ✅ NEW
+
+> **As a** user, **I want** to confirm before deleting a contact, **so that** I don't accidentally lose important data.
+
+**Implementation:**
+- ConfirmDialog component (reusable across app)
+- Shows contact name in confirmation title
+- Destructive variant with red styling
+- Loading state during delete operation
+- Cancel via button, backdrop click, or ESC key
+
+### US-CONTACTS-7: Enhanced Search ✅ NEW
+
+> **As a** user, **I want** to search contacts by relationship description or phone number, **so that** I can find contacts using different criteria.
+
+**Implementation:**
+- Search now includes: name, email, relationship, phone
+- Updated placeholder text to indicate searchable fields
+- Case-insensitive matching on all fields
+
+### US-CONTACTS-8: Quick Action Buttons ✅ NEW
+
+> **As a** user, **I want** to see email/call buttons without hovering, **so that** I can contact people faster.
+
+**Implementation:**
+- Always-visible email and phone action buttons on cards
+- Circular button design with hover states
+- Separate from card click (opens mailto:/tel: directly)
+- Menu button visible on mobile, hover-only on desktop
 ### US-IMPORT-1: CSV Import ✅ NEW (Phase 1.2)
 
 > **As a** user, **I want** to import contacts from a CSV file, **so that** I can quickly add birthdays from exports (iPhone, Google, Outlook).
@@ -289,21 +328,24 @@ Contacts are enhanced with computed metadata:
 **Features:**
 - Header with contact count and "X with birthdays" stat
 - Upcoming birthdays section (next 30 days, expandable)
-- Search input (searches name and email)
+- Search input (searches name, email, relationship, phone)
 - Filter pills (All, Family, Friends, Other) with counts
+- **Sort dropdown** (Name A→Z/Z→A, Birthday, Recently Added)
 - **Clickable contact cards** in responsive 2-column grid
-- **Unique avatar colors** based on contact name
-- **Clickable email/phone** with mailto:/tel: links
+- **Delete confirmation dialog** before removing contacts
 - Empty state with helpful guidance
 - Add Contact button → opens ContactModal
 - Loading skeleton during data fetch
 
 **Sub-components (inline):**
-- `ContactCard` - Individual contact with avatar, badges, actions
 - `UpcomingBirthdayCard` - Compact birthday card with countdown
 - `UpcomingBirthdaysSection` - Expandable section with "show more"
 - `FilterPills` - Type filter buttons with counts
+- `SortDropdown` - Sort option selector
 - `ContactsSkeleton` - Loading placeholder
+
+**Imported components:**
+- `ContactCard` - From `components/contacts/` (extracted for modularity)
 
 ### ContactModal
 
@@ -397,13 +439,15 @@ lib/
 ├── constants/
 │   └── contact-styles.ts       # Shared styling constants (avatar colors, type config)
 ├── hooks/
-│   └── use-contacts.ts         # CRUD hooks with birthday calculations
-├── utils/
-│   ├── csv-parser.ts           # NEW: CSV parsing with column auto-detection
-│   └── contact-import.ts       # NEW: Import logic with duplicate detection
+│   └── use-contacts.ts         # CRUD hooks with birthday calculations, enhanced search
 ├── query-keys.ts               # ContactFilters type, contacts query keys
 
 components/
+├── contacts/
+│   ├── index.ts               # NEW: Barrel export for contacts components
+│   └── contact-card.tsx       # NEW: Extracted ContactCard with quick actions
+├── shared/
+│   └── confirm-dialog.tsx     # NEW: Reusable confirmation dialog
 ├── modals/
 │   ├── contact-modal.tsx       # Create/edit modal with ContactTypeSelector, AddressSection
 │   └── import-contacts-modal.tsx # NEW: 4-step CSV import wizard
@@ -412,7 +456,7 @@ components/
 
 app/(app)/
 ├── contacts/
-│   └── page.tsx               # Contacts list with Import button, delete confirmation
+│   └── page.tsx               # Contacts list with sorting, filtering, delete confirmation
 
 types/
 └── database.ts                # Contact, ContactType, ContactImportSource
@@ -443,6 +487,14 @@ supabase/migrations/
 - [x] Shared constants file (contact-styles.ts)
 - [x] Comprehensive AI-dev comments throughout
 
+### Phase 1.2: Improved Interactions ✅ Complete (NEW)
+
+- [x] Delete confirmation dialog (ConfirmDialog component)
+- [x] Sorting options (Name A→Z/Z→A, Upcoming Birthday, Recently Added)
+- [x] Enhanced search (name, email, relationship, phone)
+- [x] Quick action buttons for email/phone (always visible)
+- [x] ContactCard extracted to dedicated component file
+- [x] Reusable ConfirmDialog component for app-wide use
 ### Phase 1.2: CSV Import & UX Improvements ✅ Complete (NEW)
 
 - [x] CSV Import modal with 4-step wizard flow
@@ -472,4 +524,4 @@ supabase/migrations/
 |---------|------|--------|---------|
 | 1.0 | 2024-12-28 | Claude | Initial documentation for Contacts feature Phase 1 |
 | 1.1 | 2024-12-28 | Claude | Phase 1.1: Enhanced UI/UX - clickable cards, unique avatars, mailto/tel links, expandable birthdays, shared constants |
-| 1.2 | 2024-12-28 | Claude | Phase 1.2: CSV Import with 4-step wizard, duplicate detection, delete confirmation dialog, reusable ConfirmDialog component |
+| 1.2 | 2025-12-28 | Claude | Phase 1.2: Improved Interactions - delete confirmation, sorting, enhanced search, quick action buttons, component extraction |

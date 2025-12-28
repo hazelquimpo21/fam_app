@@ -13,6 +13,8 @@
  *
  * KEY FEATURES:
  * - Contact list with search and type filtering
+ * - Sorting options (name A-Z/Z-A, birthday, recently added)
+ * - Delete confirmation dialog to prevent accidental data loss
  * - Clickable cards that open edit modal directly
  * - Unique avatar colors based on contact name (deterministic)
  * - Clickable email/phone links (opens mail client/phone app)
@@ -25,18 +27,23 @@
  * - US-CONTACTS-2: Unique avatar colors per contact
  * - US-CONTACTS-3: Tap email/phone to initiate contact
  * - US-CONTACTS-4: Expandable upcoming birthdays
+ * - US-CONTACTS-5: Sort contacts by different criteria
+ * - US-CONTACTS-6: Confirm before deleting a contact
+ * - US-CONTACTS-7: Search by relationship or phone number
  *
  * DATA FLOW:
  * 1. useContacts() fetches contacts from Supabase with filtering
  * 2. useUpcomingBirthdays() fetches contacts with birthdays in next N days
  * 3. ContactCard displays each contact with computed metadata
  * 4. ContactModal handles create/edit with form validation
- * 5. useDeleteContact() handles soft delete with optimistic update
+ * 5. ConfirmDialog confirms before delete
+ * 6. useDeleteContact() handles soft delete with optimistic update
  *
  * RELATED FILES:
  * - lib/hooks/use-contacts.ts - Data fetching and mutations
  * - lib/constants/contact-styles.ts - Shared styling constants
  * - components/modals/contact-modal.tsx - Create/edit form
+ * - components/shared/confirm-dialog.tsx - Delete confirmation
  *
  * ============================================================================
  */
@@ -47,21 +54,16 @@ import {
   Plus,
   Search,
   Cake,
-  Mail,
-  Phone,
-  MoreHorizontal,
-  Trash2,
-  Edit,
   X,
   ChevronDown,
   ChevronUp,
-  Upload,
+  ArrowUpDown,
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { EmptyState } from '@/components/shared/empty-state';
-import { ConfirmDialog, useConfirmDialog } from '@/components/ui/confirm-dialog';
+import { ConfirmDialog } from '@/components/shared/confirm-dialog';
 import { cn } from '@/lib/utils/cn';
 import { logger } from '@/lib/utils/logger';
 import {
@@ -71,16 +73,9 @@ import {
   useContactStats,
   type ContactWithMeta,
 } from '@/lib/hooks/use-contacts';
-import {
-  getContactTypeConfig,
-  getAvatarColor,
-  formatBirthdayCountdown,
-  isBirthdaySoon,
-  getEmailLink,
-  getPhoneLink,
-} from '@/lib/constants/contact-styles';
+import { getAvatarColor } from '@/lib/constants/contact-styles';
 import { ContactModal } from '@/components/modals/contact-modal';
-import { ImportContactsModal } from '@/components/modals/import-contacts-modal';
+import { ContactCard } from '@/components/contacts';
 import type { Contact, ContactType } from '@/types/database';
 
 // ============================================================================
@@ -92,6 +87,17 @@ import type { Contact, ContactType } from '@/types/database';
  * Used for the filter pill selection.
  */
 type FilterType = 'all' | ContactType;
+
+/**
+ * Sort options for the contact list.
+ *
+ * WHY THESE OPTIONS:
+ * - name_asc: Default alphabetical (most familiar to users)
+ * - name_desc: Reverse alphabetical
+ * - birthday: Sort by upcoming birthday (most useful for planning)
+ * - recent: Recently added first (useful for finding new contacts)
+ */
+type SortOption = 'name_asc' | 'name_desc' | 'birthday' | 'recent';
 
 // ============================================================================
 // 🔧 CONSTANTS
@@ -109,274 +115,26 @@ const INITIAL_BIRTHDAYS_SHOWN = 4;
  */
 const UPCOMING_BIRTHDAYS_DAYS = 30;
 
+/**
+ * Sort option configuration for the dropdown.
+ *
+ * Each option has:
+ * - label: Display text in dropdown
+ * - icon: Visual indicator of sort direction/type
+ */
+const SORT_OPTIONS: { value: SortOption; label: string }[] = [
+  { value: 'name_asc', label: 'Name A→Z' },
+  { value: 'name_desc', label: 'Name Z→A' },
+  { value: 'birthday', label: 'Upcoming Birthday' },
+  { value: 'recent', label: 'Recently Added' },
+];
+
 // ============================================================================
 // 🧩 SUB-COMPONENTS
 // ============================================================================
 
-/**
- * ContactCard Component
- *
- * Displays a single contact with their key information.
- *
- * INTERACTION DESIGN:
- * - Clicking the card opens the edit modal (primary action)
- * - Dropdown menu provides Edit/Delete as secondary actions
- * - Email/phone are clickable links (opens mail client/phone app)
- * - Menu button only shows on hover to keep UI clean
- *
- * ACCESSIBILITY:
- * - Card is a button for keyboard navigation
- * - Menu items have proper labels
- * - Color contrast meets WCAG AA
- *
- * @param contact - The contact data with computed metadata
- * @param onEdit - Callback when edit is triggered
- * @param onDelete - Callback when delete is triggered
- * @param isDeleting - Whether a delete is in progress (disables button)
- */
-interface ContactCardProps {
-  contact: ContactWithMeta;
-  onEdit: (contact: Contact) => void;
-  /** Callback when delete is requested. Confirmation handled by parent. */
-  onDelete: () => void;
-  isDeleting: boolean;
-}
-
-function ContactCard({
-  contact,
-  onEdit,
-  onDelete,
-  isDeleting,
-}: ContactCardProps) {
-  // Track whether the dropdown menu is open
-  const [showMenu, setShowMenu] = React.useState(false);
-  const menuRef = React.useRef<HTMLDivElement>(null);
-
-  // Get styling config for this contact's type
-  const typeConfig = getContactTypeConfig(contact.contact_type);
-  const TypeIcon = typeConfig.icon;
-
-  // Generate unique avatar color based on contact name
-  const avatarColor = getAvatarColor(contact.name);
-
-  // Format birthday display with countdown if soon
-  const birthdayDisplay = React.useMemo(() => {
-    if (!contact.birthday) return null;
-
-    const date = new Date(contact.birthday);
-    const formatted = date.toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-    });
-
-    const countdown = formatBirthdayCountdown(contact.daysUntilBirthday ?? null);
-    if (countdown) {
-      return `${formatted} (${countdown})`;
-    }
-
-    return formatted;
-  }, [contact.birthday, contact.daysUntilBirthday]);
-
-  // Close menu when clicking outside
-  React.useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
-        setShowMenu(false);
-      }
-    }
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
-
-  /**
-   * Handle click on the card body.
-   * Opens the edit modal unless clicking on interactive elements.
-   */
-  const handleCardClick = (e: React.MouseEvent) => {
-    // Don't trigger if clicking on the menu or interactive elements
-    const target = e.target as HTMLElement;
-    if (
-      target.closest('[data-menu]') ||
-      target.closest('a') ||
-      target.closest('button')
-    ) {
-      return;
-    }
-    onEdit(contact);
-  };
-
-  /**
-   * Handle click on email - stops propagation to prevent card click
-   */
-  const handleEmailClick = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    // Let the <a> tag handle the navigation
-  };
-
-  /**
-   * Handle click on phone - stops propagation to prevent card click
-   */
-  const handlePhoneClick = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    // Let the <a> tag handle the navigation
-  };
-
-  // Pre-compute contact links
-  const emailLink = getEmailLink(contact.email);
-  const phoneLink = getPhoneLink(contact.phone);
-
-  return (
-    <Card
-      className={cn(
-        'transition-all hover:shadow-md group cursor-pointer',
-        'hover:border-indigo-200'
-      )}
-      onClick={handleCardClick}
-    >
-      <CardContent className="p-4">
-        <div className="flex items-start gap-4">
-          {/* Avatar with unique color based on name */}
-          <div
-            className="h-12 w-12 rounded-full flex items-center justify-center text-white font-medium text-lg shrink-0 transition-transform group-hover:scale-105"
-            style={{ backgroundColor: avatarColor }}
-            aria-hidden="true"
-          >
-            {contact.name.charAt(0).toUpperCase()}
-          </div>
-
-          {/* Contact info */}
-          <div className="flex-1 min-w-0">
-            {/* Name and type badge */}
-            <div className="flex items-center gap-2 mb-1">
-              <h3 className="font-medium text-neutral-900 truncate">
-                {contact.name}
-              </h3>
-              <div
-                className={cn(
-                  'flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium shrink-0',
-                  typeConfig.badgeClassName
-                )}
-              >
-                <TypeIcon className="h-3 w-3" />
-                {typeConfig.label}
-              </div>
-            </div>
-
-            {/* Relationship description */}
-            {contact.relationship && (
-              <p className="text-sm text-neutral-600 mb-1 truncate">
-                {contact.relationship}
-              </p>
-            )}
-
-            {/* Contact details - birthday, email, phone */}
-            <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-neutral-500">
-              {/* Birthday with countdown */}
-              {birthdayDisplay && (
-                <span
-                  className={cn(
-                    'flex items-center gap-1',
-                    isBirthdaySoon(contact.daysUntilBirthday ?? null) &&
-                      'text-amber-600 font-medium'
-                  )}
-                >
-                  <Cake className="h-3 w-3" />
-                  {birthdayDisplay}
-                </span>
-              )}
-
-              {/* Clickable email link */}
-              {emailLink && (
-                <a
-                  href={emailLink}
-                  onClick={handleEmailClick}
-                  className="flex items-center gap-1 hover:text-indigo-600 hover:underline transition-colors"
-                  title={`Email ${contact.name}`}
-                >
-                  <Mail className="h-3 w-3" />
-                  <span className="truncate max-w-[150px]">{contact.email}</span>
-                </a>
-              )}
-
-              {/* Clickable phone link */}
-              {phoneLink && (
-                <a
-                  href={phoneLink}
-                  onClick={handlePhoneClick}
-                  className="flex items-center gap-1 hover:text-indigo-600 hover:underline transition-colors"
-                  title={`Call ${contact.name}`}
-                >
-                  <Phone className="h-3 w-3" />
-                  {contact.phone}
-                </a>
-              )}
-            </div>
-          </div>
-
-          {/* Actions menu - only visible on hover */}
-          <div className="relative" ref={menuRef} data-menu>
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                setShowMenu(!showMenu);
-              }}
-              className={cn(
-                'p-2 rounded-lg text-neutral-400 hover:bg-neutral-100 hover:text-neutral-600 transition-all',
-                'opacity-0 group-hover:opacity-100',
-                showMenu && 'opacity-100 bg-neutral-100'
-              )}
-              aria-label="Contact actions"
-              aria-expanded={showMenu}
-            >
-              <MoreHorizontal className="h-5 w-5" />
-            </button>
-
-            {/* Dropdown menu */}
-            {showMenu && (
-              <div
-                className="absolute right-0 top-full mt-1 w-36 bg-white rounded-lg shadow-lg border border-neutral-200 py-1 z-10"
-                role="menu"
-              >
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onEdit(contact);
-                    setShowMenu(false);
-                  }}
-                  className="w-full flex items-center gap-2 px-3 py-2 text-sm text-neutral-700 hover:bg-neutral-50"
-                  role="menuitem"
-                >
-                  <Edit className="h-4 w-4" />
-                  Edit
-                </button>
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onDelete();
-                    setShowMenu(false);
-                  }}
-                  disabled={isDeleting}
-                  className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-600 hover:bg-red-50 disabled:opacity-50"
-                  role="menuitem"
-                >
-                  <Trash2 className="h-4 w-4" />
-                  Delete
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Notes preview (if present) */}
-        {contact.notes && (
-          <p className="mt-3 text-sm text-neutral-500 line-clamp-2 border-t border-neutral-100 pt-3">
-            {contact.notes}
-          </p>
-        )}
-      </CardContent>
-    </Card>
-  );
-}
+// NOTE: ContactCard has been extracted to components/contacts/contact-card.tsx
+// This keeps the page file focused on page-level logic and layout.
 
 /**
  * UpcomingBirthdayCard
@@ -562,6 +320,90 @@ function FilterPills({ selected, onChange, stats }: FilterPillsProps) {
 }
 
 /**
+ * SortDropdown
+ *
+ * Dropdown for selecting how contacts are sorted.
+ * Compact design that fits alongside filter pills.
+ *
+ * ACCESSIBILITY:
+ * - Uses native button for keyboard support
+ * - Dropdown closes on click outside and ESC
+ * - Current sort is visually indicated
+ */
+interface SortDropdownProps {
+  value: SortOption;
+  onChange: (sort: SortOption) => void;
+}
+
+function SortDropdown({ value, onChange }: SortDropdownProps) {
+  const [isOpen, setIsOpen] = React.useState(false);
+  const dropdownRef = React.useRef<HTMLDivElement>(null);
+
+  // Find current sort label
+  const currentLabel = SORT_OPTIONS.find((opt) => opt.value === value)?.label || 'Sort';
+
+  // Close dropdown when clicking outside
+  React.useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  return (
+    <div className="relative" ref={dropdownRef}>
+      <button
+        onClick={() => setIsOpen(!isOpen)}
+        className={cn(
+          'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors',
+          'border border-neutral-200 hover:border-neutral-300 bg-white',
+          isOpen && 'border-indigo-300 ring-1 ring-indigo-100'
+        )}
+        aria-haspopup="listbox"
+        aria-expanded={isOpen}
+      >
+        <ArrowUpDown className="h-3.5 w-3.5 text-neutral-500" />
+        <span className="text-neutral-700">{currentLabel}</span>
+      </button>
+
+      {/* Dropdown menu */}
+      {isOpen && (
+        <div
+          className="absolute right-0 top-full mt-1 w-44 bg-white rounded-lg shadow-lg border border-neutral-200 py-1 z-10"
+          role="listbox"
+        >
+          {SORT_OPTIONS.map((option) => (
+            <button
+              key={option.value}
+              onClick={() => {
+                onChange(option.value);
+                setIsOpen(false);
+              }}
+              className={cn(
+                'w-full flex items-center justify-between px-3 py-2 text-sm transition-colors',
+                value === option.value
+                  ? 'bg-indigo-50 text-indigo-700 font-medium'
+                  : 'text-neutral-700 hover:bg-neutral-50'
+              )}
+              role="option"
+              aria-selected={value === option.value}
+            >
+              {option.label}
+              {value === option.value && (
+                <span className="text-indigo-500">✓</span>
+              )}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/**
  * ContactsSkeleton
  *
  * Loading placeholder that matches the layout of the actual content.
@@ -614,12 +456,14 @@ export default function ContactsPage() {
   // ━━━━━ UI STATE ━━━━━
   const [search, setSearch] = React.useState('');
   const [typeFilter, setTypeFilter] = React.useState<FilterType>('all');
+  const [sortOption, setSortOption] = React.useState<SortOption>('name_asc');
   const [isModalOpen, setIsModalOpen] = React.useState(false);
   const [isImportModalOpen, setIsImportModalOpen] = React.useState(false);
   const [editingContact, setEditingContact] = React.useState<Contact | null>(null);
 
-  // Delete confirmation dialog state
-  const deleteConfirm = useConfirmDialog<Contact>();
+  // Delete confirmation state
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = React.useState(false);
+  const [contactToDelete, setContactToDelete] = React.useState<ContactWithMeta | null>(null);
 
   // ━━━━━ DATA HOOKS ━━━━━
   const {
@@ -635,6 +479,50 @@ export default function ContactsPage() {
   const deleteContact = useDeleteContact();
   const stats = useContactStats();
 
+  // ━━━━━ DERIVED STATE: SORTED CONTACTS ━━━━━
+  /**
+   * Sort contacts based on current sort option.
+   *
+   * SORTING LOGIC:
+   * - name_asc: Alphabetical by name
+   * - name_desc: Reverse alphabetical by name
+   * - birthday: By days until next birthday (soonest first, null last)
+   * - recent: By created_at descending (newest first)
+   */
+  const sortedContacts = React.useMemo(() => {
+    const sorted = [...contacts];
+
+    switch (sortOption) {
+      case 'name_asc':
+        return sorted.sort((a, b) => a.name.localeCompare(b.name));
+
+      case 'name_desc':
+        return sorted.sort((a, b) => b.name.localeCompare(a.name));
+
+      case 'birthday':
+        return sorted.sort((a, b) => {
+          // Contacts without birthdays go to the end
+          if (a.daysUntilBirthday === null && b.daysUntilBirthday === null) {
+            return a.name.localeCompare(b.name);
+          }
+          if (a.daysUntilBirthday === null) return 1;
+          if (b.daysUntilBirthday === null) return -1;
+          // Sort by soonest birthday
+          return (a.daysUntilBirthday ?? 999) - (b.daysUntilBirthday ?? 999);
+        });
+
+      case 'recent':
+        return sorted.sort((a, b) => {
+          const dateA = new Date(a.created_at).getTime();
+          const dateB = new Date(b.created_at).getTime();
+          return dateB - dateA; // Newest first
+        });
+
+      default:
+        return sorted;
+    }
+  }, [contacts, sortOption]);
+
   // ━━━━━ LOGGING ━━━━━
   // Log page load for debugging (only on contact count change)
   React.useEffect(() => {
@@ -642,8 +530,9 @@ export default function ContactsPage() {
       contactCount: contacts.length,
       upcomingBirthdays: upcomingBirthdays.length,
       filter: typeFilter,
+      sort: sortOption,
     });
-  }, [contacts.length, upcomingBirthdays.length, typeFilter]);
+  }, [contacts.length, upcomingBirthdays.length, typeFilter, sortOption]);
 
   // ━━━━━ EVENT HANDLERS ━━━━━
 
@@ -669,40 +558,34 @@ export default function ContactsPage() {
   };
 
   /**
-   * Request delete confirmation for a contact.
-   * Shows the confirmation dialog with contact details.
+   * Initiate delete - opens confirmation dialog
+   *
+   * WHY CONFIRM:
+   * Deleting a contact is destructive and cannot be undone from the UI.
+   * Confirmation prevents accidental data loss.
    */
-  const handleDeleteRequest = (contact: Contact) => {
-    logger.info('🗑️ Requesting delete confirmation', {
+  const handleDeleteRequest = (contact: ContactWithMeta) => {
+    logger.info('🗑️ Delete requested for contact', {
       contactId: contact.id,
       name: contact.name,
     });
-    deleteConfirm.open(contact);
+    setContactToDelete(contact);
+    setDeleteConfirmOpen(true);
   };
 
   /**
-   * Execute the delete after confirmation.
-   * Called from the ConfirmDialog onConfirm.
+   * Confirm delete - actually performs the deletion
    */
   const handleDeleteConfirm = () => {
-    if (!deleteConfirm.data) return;
-    logger.info('🗑️ Deleting contact', { contactId: deleteConfirm.data.id });
-    deleteContact.mutate(deleteConfirm.data.id);
-  };
-
-  /**
-   * Open the import modal.
-   */
-  const handleOpenImport = () => {
-    logger.info('📥 Opening import modal');
-    setIsImportModalOpen(true);
-  };
-
-  /**
-   * Handle successful import.
-   */
-  const handleImportSuccess = (count: number) => {
-    logger.success('✅ Import completed', { count });
+    if (contactToDelete) {
+      logger.info('🗑️ Deleting contact confirmed', {
+        contactId: contactToDelete.id,
+        name: contactToDelete.name,
+      });
+      deleteContact.mutate(contactToDelete.id);
+      setDeleteConfirmOpen(false);
+      setContactToDelete(null);
+    }
   };
 
   /**
@@ -799,7 +682,7 @@ export default function ContactsPage() {
               <Input
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search by name or email..."
+                placeholder="Search name, email, relationship, phone..."
                 className="pl-10 pr-8"
               />
               {search && (
@@ -813,12 +696,15 @@ export default function ContactsPage() {
               )}
             </div>
 
-            {/* Filter pills */}
-            <FilterPills
-              selected={typeFilter}
-              onChange={setTypeFilter}
-              stats={stats}
-            />
+            {/* Filter pills and sort */}
+            <div className="flex items-center gap-3 flex-wrap">
+              <FilterPills
+                selected={typeFilter}
+                onChange={setTypeFilter}
+                stats={stats}
+              />
+              <SortDropdown value={sortOption} onChange={setSortOption} />
+            </div>
           </div>
 
           {/* Empty state */}
@@ -857,14 +743,14 @@ export default function ContactsPage() {
           )}
 
           {/* Contact list */}
-          {contacts.length > 0 && (
+          {sortedContacts.length > 0 && (
             <div className="grid gap-3 sm:grid-cols-2">
-              {contacts.map((contact) => (
+              {sortedContacts.map((contact) => (
                 <ContactCard
                   key={contact.id}
                   contact={contact}
                   onEdit={handleEdit}
-                  onDelete={() => handleDeleteRequest(contact)}
+                  onDelete={handleDeleteRequest}
                   isDeleting={deleteContact.isPending}
                 />
               ))}
@@ -882,27 +768,16 @@ export default function ContactsPage() {
         contact={editingContact}
       />
 
-      {/* Import Contacts Modal */}
-      <ImportContactsModal
-        open={isImportModalOpen}
-        onOpenChange={setIsImportModalOpen}
-        onSuccess={handleImportSuccess}
-      />
-
       {/* Delete Confirmation Dialog */}
       <ConfirmDialog
-        open={deleteConfirm.isOpen}
-        onOpenChange={deleteConfirm.setOpen}
-        title="Delete Contact"
-        description={
-          deleteConfirm.data
-            ? `Are you sure you want to delete "${deleteConfirm.data.name}"? This action cannot be undone.`
-            : 'Are you sure you want to delete this contact?'
-        }
+        open={deleteConfirmOpen}
+        onOpenChange={setDeleteConfirmOpen}
+        onConfirm={handleDeleteConfirm}
+        title={`Delete ${contactToDelete?.name || 'contact'}?`}
+        description="This will permanently remove this contact. This action cannot be undone."
         confirmLabel="Delete"
         variant="destructive"
-        onConfirm={handleDeleteConfirm}
-        isLoading={deleteContact.isPending}
+        loading={deleteContact.isPending}
       />
     </div>
   );

@@ -1,7 +1,7 @@
 # Fam - Implementation Status
 
-> **Last Updated:** December 28, 2024
-> **Status:** MVP Phase 3.5 Complete - Contacts Feature
+> **Last Updated:** December 28, 2025
+> **Status:** MVP Phase 3.8 Complete - Contacts Improved Interactions
 
 ---
 
@@ -558,5 +558,6 @@ Keep files under 400 lines. Extract components when they grow.
 | 3.5 | 2024-12-28 | Claude | AuthProvider Refactor: Converted useAuth to context pattern, centralized auth state in lib/contexts/auth-context.tsx, eliminated redundant family_members queries |
 | 3.6 | 2024-12-28 | Claude | Contacts Feature: Added /contacts page, ContactModal, useContacts hooks, contacts query keys, import tracking migration (005_contacts_import.sql). Supports extended family, friends, birthday tracking. |
 | 3.7 | 2024-12-28 | Claude | Contacts UI/UX Enhancement: Clickable contact cards, unique avatar colors (name hash), mailto/tel links, expandable upcoming birthdays, shared constants file (contact-styles.ts), comprehensive AI-dev comments. |
+| 3.8 | 2025-12-28 | Claude | Contacts Improved Interactions: ConfirmDialog component (reusable), delete confirmation, sorting options (name/birthday/recent), enhanced search (relationship/phone), ContactCard extracted to components/contacts/, quick action buttons (always visible email/phone). |
 
 *This document is auto-generated. See individual docs for detailed specs.*
