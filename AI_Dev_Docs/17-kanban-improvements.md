@@ -99,17 +99,31 @@ components/kanban/
 ├── index.ts                    # Public exports
 ├── kanban-board.tsx            # Main board with DndContext
 ├── kanban-column.tsx           # Column with useDroppable
-├── kanban-sortable-card.tsx    # Card with useSortable
-├── kanban-drag-overlay.tsx     # Visual ghost during drag
-├── kanban-drop-indicator.tsx   # Position indicators
-└── kanban-card.tsx             # Legacy card (deprecated)
+├── kanban-card-content.tsx     # SHARED rendering logic (single source of truth)
+├── kanban-card.tsx             # Static wrapper (uses KanbanCardContent)
+├── kanban-sortable-card.tsx    # Draggable wrapper (uses KanbanCardContent)
+├── kanban-drag-overlay.tsx     # Visual ghost (uses KanbanCardContent)
+└── kanban-drop-indicator.tsx   # Position indicators
 
 lib/hooks/
 ├── use-kanban.ts               # Data fetching & mutations
 └── use-kanban-dnd.ts           # Drag-drop state & handlers
 
+lib/constants/
+└── kanban-styles.ts            # Shared style constants (TYPE_STYLES, PRIORITY_COLORS, etc.)
+
 types/
 └── kanban.ts                   # Types & column definitions
+```
+
+**DRY Architecture (Phase 3.4):**
+The card rendering logic is centralized in `kanban-card-content.tsx`. All three card variants
+(static, sortable, overlay) use this shared component, eliminating code duplication.
+
+```
+KanbanCard         → KanbanCardContent (static)
+KanbanSortableCard → KanbanCardContent (with drag handlers)
+KanbanDragOverlay  → KanbanCardContent (isOverlay=true)
 ```
 
 ### Data Flow

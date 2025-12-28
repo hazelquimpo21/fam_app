@@ -45,6 +45,7 @@ import { KanbanSortableCard } from './kanban-sortable-card';
 import { KanbanDropZone } from './kanban-drop-indicator';
 import { cn } from '@/lib/utils/cn';
 import { logger } from '@/lib/utils/logger';
+import { COLUMN_COLORS, getEmptyStateContent } from '@/lib/constants/kanban-styles';
 import type { KanbanColumn as KanbanColumnType, KanbanItem } from '@/types/kanban';
 
 // ============================================================================
@@ -73,59 +74,6 @@ interface KanbanColumnProps {
   /** Compact mode for dense layouts */
   compact?: boolean;
 }
-
-// ============================================================================
-// STYLING
-// ============================================================================
-
-/**
- * Color classes for column headers.
- * Maps color name to Tailwind classes.
- */
-const COLUMN_COLORS: Record<string, { bg: string; text: string; border: string; ring: string }> = {
-  red: {
-    bg: 'bg-red-100',
-    text: 'text-red-700',
-    border: 'border-red-200',
-    ring: 'ring-red-400',
-  },
-  blue: {
-    bg: 'bg-blue-100',
-    text: 'text-blue-700',
-    border: 'border-blue-200',
-    ring: 'ring-blue-400',
-  },
-  indigo: {
-    bg: 'bg-indigo-100',
-    text: 'text-indigo-700',
-    border: 'border-indigo-200',
-    ring: 'ring-indigo-400',
-  },
-  purple: {
-    bg: 'bg-purple-100',
-    text: 'text-purple-700',
-    border: 'border-purple-200',
-    ring: 'ring-purple-400',
-  },
-  amber: {
-    bg: 'bg-amber-100',
-    text: 'text-amber-700',
-    border: 'border-amber-200',
-    ring: 'ring-amber-400',
-  },
-  green: {
-    bg: 'bg-green-100',
-    text: 'text-green-700',
-    border: 'border-green-200',
-    ring: 'ring-green-400',
-  },
-  neutral: {
-    bg: 'bg-neutral-100',
-    text: 'text-neutral-700',
-    border: 'border-neutral-200',
-    ring: 'ring-neutral-400',
-  },
-};
 
 // ============================================================================
 // SUB-COMPONENTS
@@ -197,6 +145,7 @@ function ColumnHeader({
 /**
  * Empty state for columns with no items.
  * Shows drop zone when being dragged over.
+ * Includes action hints to guide users on what to do.
  */
 function ColumnEmptyState({
   column,
@@ -207,24 +156,8 @@ function ColumnEmptyState({
 }) {
   const colors = COLUMN_COLORS[column.color || 'neutral'];
 
-  // Custom messages per column type
-  const messages: Record<string, string> = {
-    overdue: 'No overdue items!',
-    today: 'Nothing scheduled today',
-    tomorrow: 'Nothing for tomorrow yet',
-    'this-week': 'Week is looking clear',
-    later: 'Nothing planned for later',
-    done: 'No completed items',
-    inbox: 'Inbox is empty',
-    active: 'No active items',
-    waiting_for: 'Not waiting on anything',
-    someday: 'No someday items',
-    high: 'No high priority items',
-    medium: 'No medium priority items',
-    low: 'No low priority items',
-    none: 'All items have priorities',
-    untagged: 'No untagged items',
-  };
+  // Get empty state content from shared constants
+  const emptyState = getEmptyStateContent(column.id);
 
   // If being dragged over, show drop zone
   if (isOver) {
@@ -245,8 +178,11 @@ function ColumnEmptyState({
       >
         <span className="text-lg">{column.icon || '📋'}</span>
       </div>
-      <p className="text-sm text-neutral-500">
-        {messages[column.id] || 'No items'}
+      <p className="text-sm text-neutral-500 font-medium">
+        {emptyState.message}
+      </p>
+      <p className="text-xs text-neutral-400 mt-1">
+        {emptyState.hint}
       </p>
     </div>
   );
