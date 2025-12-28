@@ -525,16 +525,21 @@ Priority uses MoSCoW: **M**ust have, **S**hould have, **C**ould have, **W**on't 
 - [ ] Kids can edit their own (limited fields)
 - [ ] Color picker with curated palette
 
-### US-10.2: Manage Contacts
+### US-10.2: Manage Contacts ✅ COMPLETE
 **Priority:** Should
 
 > **As a** user, **I want** to save contacts, **so that** I remember birthdays and details.
 
 **Acceptance Criteria:**
-- [ ] Can add contact with: name, type, birthday, relationship, notes
-- [ ] List view with search
-- [ ] Upcoming birthdays highlighted
-- [ ] Click to view/edit detail
+- [x] Can add contact with: name, type (family/friend/other), birthday, relationship, notes
+- [x] Can add email, phone, anniversary, full address
+- [x] List view with search by name or email
+- [x] Filter by contact type (All, Family, Friends, Other)
+- [x] Upcoming birthdays section (next 14 days) with countdown
+- [x] Contact cards show days until birthday, age calculation
+- [x] Click to view/edit via ContactModal
+- [x] Delete contacts with optimistic update
+- [x] Import tracking fields ready for Google Contacts import (Phase 2)
 
 ### US-10.3: Manage Vendors
 **Priority:** Should
@@ -863,3 +868,4 @@ Priority uses MoSCoW: **M**ust have, **S**hould have, **C**ould have, **W**on't 
 | 1.1 | 2024-12-23 | Claude | Updated auth stories for magic link (passwordless) |
 | 1.2 | 2024-12-26 | Claude | Added Epic 15: Family & Member Profiles (US-15.1 through US-15.5) |
 | 1.3 | 2024-12-28 | Claude | Marked US-3.3 (View Tasks Kanban) as COMPLETE with expanded acceptance criteria for unified board |
+| 1.4 | 2024-12-28 | Claude | Marked US-10.2 (Manage Contacts) as COMPLETE with full feature list including import tracking |
