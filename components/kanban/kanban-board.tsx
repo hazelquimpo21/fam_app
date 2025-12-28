@@ -9,21 +9,23 @@
  * drag-drop interactions. This is the primary entry point for the Kanban UI.
  *
  * FEATURES:
- * - Multiple groupBy modes (time, status, priority)
+ * - Multiple groupBy modes (time, status, priority, tag)
  * - Multiple timeScope options (week, month, quarter, year)
- * - Drag and drop between columns
+ * - Touch-friendly drag and drop with @dnd-kit
+ * - Visual feedback with drag overlay and position indicators
  * - Filter controls
  * - Responsive horizontal scroll
  *
  * ARCHITECTURE:
  * ```
  * KanbanBoard
- *   ├── KanbanControls (groupBy, timeScope, filters)
- *   └── Columns container (horizontal scroll)
- *       ├── KanbanColumn (Overdue)
- *       ├── KanbanColumn (Today)
- *       ├── KanbanColumn (Tomorrow)
- *       └── ... more columns
+ *   └── DndContext (drag-drop provider)
+ *       ├── KanbanControls (groupBy, timeScope, filters)
+ *       ├── Columns container (horizontal scroll)
+ *       │   ├── KanbanColumn (with SortableContext)
+ *       │   │   └── KanbanSortableCard[]
+ *       │   └── ... more columns
+ *       └── DragOverlay (visual feedback during drag)
  * ```
  *
  * USAGE:
@@ -35,24 +37,45 @@
  * />
  * ```
  *
+ * FUTURE AI DEVELOPERS:
+ * - DndContext wraps everything and provides drag-drop state
+ * - useKanbanDnd hook configures sensors and handles events
+ * - DragOverlay renders the visual "ghost" during drag
+ * - To add new groupBy modes, update types/kanban.ts and use-kanban.ts
+ *
  * ============================================================================
  */
 
 import * as React from 'react';
 import { useState, useCallback } from 'react';
 import {
+  DndContext,
+  DragOverlay,
+  closestCenter,
+  closestCorners,
+  pointerWithin,
+  rectIntersection,
+  MeasuringStrategy,
+} from '@dnd-kit/core';
+import {
   CalendarDays,
   ListTodo,
   Flag,
+  Tag,
   ChevronDown,
   RefreshCw,
   Filter,
   Eye,
   EyeOff,
+  Smartphone,
 } from 'lucide-react';
+
 import { KanbanColumn } from './kanban-column';
+import { KanbanDragOverlay } from './kanban-drag-overlay';
 import { useKanban } from '@/lib/hooks/use-kanban';
+import { useKanbanDnd } from '@/lib/hooks/use-kanban-dnd';
 import { cn } from '@/lib/utils/cn';
+import { logger } from '@/lib/utils/logger';
 import { format } from 'date-fns';
 import type {
   KanbanConfig,
@@ -96,6 +119,7 @@ interface KanbanBoardProps {
 
 /**
  * GroupBy mode options with icons and labels.
+ * Each mode creates different column groupings.
  */
 const GROUP_BY_OPTIONS: {
   value: KanbanGroupBy;
@@ -120,6 +144,12 @@ const GROUP_BY_OPTIONS: {
     label: 'By Priority',
     icon: <Flag className="w-4 h-4" />,
     description: 'High, Medium, Low, None',
+  },
+  {
+    value: 'tag',
+    label: 'By Tag',
+    icon: <Tag className="w-4 h-4" />,
+    description: 'Group by custom tags',
   },
 ];
 
@@ -150,6 +180,22 @@ const ITEM_TYPE_OPTIONS: {
   { value: 'external', label: 'Google Calendar', emoji: '🔗' },
   { value: 'birthday', label: 'Birthdays', emoji: '🎂' },
 ];
+
+/**
+ * Collision detection strategy for @dnd-kit.
+ * Uses a combination of pointer within and closest corners
+ * for accurate drop detection.
+ */
+const collisionDetectionStrategy = closestCorners;
+
+/**
+ * Measuring configuration for accurate drop zone detection.
+ */
+const measuringConfig = {
+  droppable: {
+    strategy: MeasuringStrategy.Always,
+  },
+};
 
 // ============================================================================
 // SUB-COMPONENTS
@@ -331,6 +377,21 @@ function CompletedToggle({
   );
 }
 
+/**
+ * Touch mode indicator.
+ * Shows when touch/mobile support is active.
+ */
+function TouchModeIndicator({ isDragging }: { isDragging: boolean }) {
+  if (!isDragging) return null;
+
+  return (
+    <div className="flex items-center gap-1 px-2 py-1 bg-blue-100 text-blue-700 rounded-md text-xs font-medium">
+      <Smartphone className="w-3 h-3" />
+      <span>Touch mode</span>
+    </div>
+  );
+}
+
 // ============================================================================
 // MAIN COMPONENT
 // ============================================================================
@@ -339,7 +400,7 @@ function CompletedToggle({
  * KanbanBoard - Main Kanban board component.
  *
  * Orchestrates the board layout, controls, and data fetching.
- * Uses the useKanban hook for all data operations.
+ * Uses the useKanban hook for data and useKanbanDnd for drag-drop.
  */
 export function KanbanBoard({
   defaultGroupBy = 'time',
@@ -386,23 +447,39 @@ export function KanbanBoard({
     moveItem,
     isMoving,
     completeTask,
-    isCompleting,
     dateRange,
   } = useKanban(config);
+
+  // ============================================================================
+  // DRAG AND DROP
+  // ============================================================================
+
+  /**
+   * useKanbanDnd hook provides:
+   * - sensors: Multi-input sensors (mouse, touch, keyboard)
+   * - activeItem: Currently dragged item for DragOverlay
+   * - handlers: DragStart, DragOver, DragEnd, DragCancel
+   */
+  const {
+    sensors,
+    activeItem,
+    overColumnId,
+    handleDragStart,
+    handleDragOver,
+    handleDragEnd,
+    handleDragCancel,
+  } = useKanbanDnd({
+    columns,
+    onMoveItem: moveItem,
+  });
 
   // ============================================================================
   // HANDLERS
   // ============================================================================
 
-  const handleDrop = useCallback(
-    (item: KanbanItem, toColumnId: string, toIndex: number) => {
-      moveItem({ item, toColumnId, toIndex });
-    },
-    [moveItem]
-  );
-
   const handleTaskComplete = useCallback(
     (taskId: string) => {
+      logger.info('✅ Board: Completing task', { taskId });
       completeTask(taskId);
     },
     [completeTask]
@@ -413,77 +490,102 @@ export function KanbanBoard({
   // ============================================================================
 
   return (
-    <div className={cn('flex flex-col h-full', className)}>
-      {/* Controls */}
-      <div className="flex flex-wrap items-center justify-between gap-4 px-4 py-3 bg-white border-b">
-        {/* Left: GroupBy and TimeScope */}
-        <div className="flex items-center gap-3">
-          <GroupBySelector value={groupBy} onChange={setGroupBy} />
-          <TimeScopeSelector value={timeScope} onChange={setTimeScope} />
+    <DndContext
+      sensors={sensors}
+      collisionDetection={collisionDetectionStrategy}
+      measuring={measuringConfig}
+      onDragStart={handleDragStart}
+      onDragOver={handleDragOver}
+      onDragEnd={handleDragEnd}
+      onDragCancel={handleDragCancel}
+    >
+      <div className={cn('flex flex-col h-full', className)}>
+        {/* Controls */}
+        <div className="flex flex-wrap items-center justify-between gap-4 px-4 py-3 bg-white border-b">
+          {/* Left: GroupBy and TimeScope */}
+          <div className="flex items-center gap-3">
+            <GroupBySelector value={groupBy} onChange={setGroupBy} />
+            <TimeScopeSelector value={timeScope} onChange={setTimeScope} />
+            <TouchModeIndicator isDragging={!!activeItem} />
+          </div>
+
+          {/* Right: Filters and Actions */}
+          <div className="flex items-center gap-3">
+            <ItemTypeFilters value={includeTypes} onChange={setIncludeTypes} />
+            <CompletedToggle value={showCompleted} onChange={setShowCompleted} />
+
+            {/* Refresh button */}
+            <button
+              onClick={() => refetch()}
+              disabled={isLoading}
+              className={cn(
+                'p-2 rounded-md text-neutral-500 hover:bg-neutral-100 transition-colors',
+                isLoading && 'animate-spin'
+              )}
+              aria-label="Refresh"
+            >
+              <RefreshCw className="w-4 h-4" />
+            </button>
+          </div>
         </div>
 
-        {/* Right: Filters and Actions */}
-        <div className="flex items-center gap-3">
-          <ItemTypeFilters value={includeTypes} onChange={setIncludeTypes} />
-          <CompletedToggle value={showCompleted} onChange={setShowCompleted} />
-
-          {/* Refresh button */}
-          <button
-            onClick={() => refetch()}
-            disabled={isLoading}
-            className={cn(
-              'p-2 rounded-md text-neutral-500 hover:bg-neutral-100 transition-colors',
-              isLoading && 'animate-spin'
-            )}
-            aria-label="Refresh"
-          >
-            <RefreshCw className="w-4 h-4" />
-          </button>
+        {/* Date range indicator */}
+        <div className="px-4 py-2 bg-neutral-50 border-b text-sm text-neutral-500">
+          Showing:{' '}
+          <span className="font-medium text-neutral-700">
+            {format(dateRange.start, 'MMM d')} – {format(dateRange.end, 'MMM d, yyyy')}
+          </span>
+          {isLoading && (
+            <span className="ml-2 text-blue-500">Loading...</span>
+          )}
+          {isMoving && (
+            <span className="ml-2 text-amber-500">Moving...</span>
+          )}
+          {activeItem && (
+            <span className="ml-2 text-blue-500">
+              Dragging: {activeItem.title.slice(0, 20)}...
+            </span>
+          )}
         </div>
-      </div>
 
-      {/* Date range indicator */}
-      <div className="px-4 py-2 bg-neutral-50 border-b text-sm text-neutral-500">
-        Showing:{' '}
-        <span className="font-medium text-neutral-700">
-          {format(dateRange.start, 'MMM d')} – {format(dateRange.end, 'MMM d, yyyy')}
-        </span>
-        {isLoading && (
-          <span className="ml-2 text-blue-500">Loading...</span>
+        {/* Error state */}
+        {error && (
+          <div className="px-4 py-3 bg-red-50 border-b border-red-200 text-red-700 text-sm">
+            Failed to load board data. Please try refreshing.
+          </div>
         )}
-        {isMoving && (
-          <span className="ml-2 text-amber-500">Moving...</span>
+
+        {/* Columns container */}
+        <div className="flex-1 overflow-x-auto overflow-y-hidden">
+          <div className="flex gap-4 p-4 h-full min-w-max">
+            {columns.map((column) => (
+              <KanbanColumn
+                key={column.id}
+                column={column}
+                onCardClick={onCardClick}
+                onTaskComplete={handleTaskComplete}
+                onAddClick={
+                  onAddClick ? () => onAddClick(column.id) : undefined
+                }
+                isOver={overColumnId === column.id}
+                isLoading={isLoading}
+                compact={compact}
+              />
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Drag Overlay - Visual feedback during drag */}
+      <DragOverlay dropAnimation={{
+        duration: 200,
+        easing: 'cubic-bezier(0.18, 0.67, 0.6, 1.22)',
+      }}>
+        {activeItem && (
+          <KanbanDragOverlay item={activeItem} compact={compact} />
         )}
-      </div>
-
-      {/* Error state */}
-      {error && (
-        <div className="px-4 py-3 bg-red-50 border-b border-red-200 text-red-700 text-sm">
-          Failed to load board data. Please try refreshing.
-        </div>
-      )}
-
-      {/* Columns container */}
-      <div className="flex-1 overflow-x-auto overflow-y-hidden">
-        <div className="flex gap-4 p-4 h-full min-w-max">
-          {columns.map((column) => (
-            <KanbanColumn
-              key={column.id}
-              column={column}
-              onCardClick={onCardClick}
-              onTaskComplete={handleTaskComplete}
-              onAddClick={
-                onAddClick ? () => onAddClick(column.id) : undefined
-              }
-              draggable={true}
-              onDrop={handleDrop}
-              isLoading={isLoading}
-              compact={compact}
-            />
-          ))}
-        </div>
-      </div>
-    </div>
+      </DragOverlay>
+    </DndContext>
   );
 }
 

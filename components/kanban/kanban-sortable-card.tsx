@@ -2,58 +2,59 @@
 
 /**
  * ============================================================================
- * 📋 KanbanCard Component
+ * 🔀 KanbanSortableCard Component
  * ============================================================================
  *
- * A unified card component for displaying items on the Kanban board.
- * Renders tasks, events, external events, and birthdays with consistent
- * styling but clear visual distinction.
+ * Wrapper component that makes KanbanCard sortable using @dnd-kit.
+ * Handles the drag-and-drop mechanics while delegating rendering to KanbanCard.
  *
- * VISUAL DESIGN:
- * - Tasks: Blue accent, checkbox, drag handle
- * - Fam Events: Indigo accent, calendar icon, drag handle
- * - Google Events: Red accent, Google badge, no drag (read-only)
- * - Birthdays: Pink gradient, cake emoji, no drag (read-only)
+ * ARCHITECTURE:
+ * ```
+ * KanbanSortableCard (drag mechanics)
+ *   └── KanbanCard (visual rendering)
+ * ```
  *
- * INTERACTIONS:
- * - Click: Opens edit modal (for editable items)
- * - Checkbox: Completes task (for tasks only)
- * - Drag: Moves to different column (for editable items)
+ * FEATURES:
+ * - Sortable within columns (reordering)
+ * - Draggable between columns (moving)
+ * - Touch-friendly with long-press activation
+ * - Keyboard accessible (Tab + Space/Enter)
+ * - Visual state feedback (opacity, scale)
  *
  * USAGE:
  * ```tsx
- * <KanbanCard
- *   item={kanbanItem}
- *   onClick={() => openEditModal(item)}
- *   onComplete={() => completeTask(item.sourceId)}
- *   isDragging={isDragging}
- * />
+ * <SortableContext items={items.map(i => i.id)}>
+ *   {items.map(item => (
+ *     <KanbanSortableCard
+ *       key={item.id}
+ *       item={item}
+ *       onClick={handleClick}
+ *     />
+ *   ))}
+ * </SortableContext>
  * ```
+ *
+ * FUTURE AI DEVELOPERS:
+ * - useSortable provides: attributes, listeners, setNodeRef, transform, transition
+ * - Transform is applied via style to move the element
+ * - isDragging flag is used to reduce opacity of the original
  *
  * ============================================================================
  */
 
 import * as React from 'react';
-import {
-  Calendar,
-  Clock,
-  MapPin,
-  GripVertical,
-  Check,
-  ExternalLink,
-  Folder,
-} from 'lucide-react';
-import { Avatar } from '@/components/shared/avatar';
+import { useSortable } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+
 import { cn } from '@/lib/utils/cn';
-import { format } from 'date-fns';
-import type { KanbanItem, KanbanItemType } from '@/types/kanban';
+import type { KanbanItem } from '@/types/kanban';
 
 // ============================================================================
 // TYPES
 // ============================================================================
 
-interface KanbanCardProps {
-  /** The kanban item to display */
+interface KanbanSortableCardProps {
+  /** The kanban item to render */
   item: KanbanItem;
 
   /** Click handler (opens edit modal) */
@@ -62,14 +63,14 @@ interface KanbanCardProps {
   /** Complete/uncomplete handler (for tasks) */
   onComplete?: () => void;
 
-  /** Whether this card is being dragged */
-  isDragging?: boolean;
-
-  /** Whether dragging is enabled */
-  draggable?: boolean;
+  /** Whether dragging is disabled */
+  disabled?: boolean;
 
   /** Compact mode for dense layouts */
   compact?: boolean;
+
+  /** Custom class name */
+  className?: string;
 }
 
 // ============================================================================
@@ -78,18 +79,15 @@ interface KanbanCardProps {
 
 /**
  * Visual styling per item type.
- * Each type has distinct colors for quick identification.
  */
 const TYPE_STYLES: Record<
-  KanbanItemType,
+  string,
   {
     border: string;
     bg: string;
     hoverBg: string;
     iconBg: string;
     iconColor: string;
-    badgeBg: string;
-    badgeText: string;
     checkboxBorder: string;
     checkboxChecked: string;
   }
@@ -100,8 +98,6 @@ const TYPE_STYLES: Record<
     hoverBg: 'hover:bg-blue-50',
     iconBg: 'bg-blue-100',
     iconColor: 'text-blue-600',
-    badgeBg: 'bg-blue-100',
-    badgeText: 'text-blue-700',
     checkboxBorder: 'border-blue-300',
     checkboxChecked: 'bg-blue-500 border-blue-500',
   },
@@ -111,8 +107,6 @@ const TYPE_STYLES: Record<
     hoverBg: 'hover:bg-indigo-50',
     iconBg: 'bg-indigo-100',
     iconColor: 'text-indigo-600',
-    badgeBg: 'bg-indigo-100',
-    badgeText: 'text-indigo-700',
     checkboxBorder: 'border-indigo-300',
     checkboxChecked: 'bg-indigo-500 border-indigo-500',
   },
@@ -122,8 +116,6 @@ const TYPE_STYLES: Record<
     hoverBg: 'hover:bg-neutral-100',
     iconBg: 'bg-red-100',
     iconColor: 'text-red-600',
-    badgeBg: 'bg-red-100',
-    badgeText: 'text-red-700',
     checkboxBorder: 'border-neutral-300',
     checkboxChecked: 'bg-neutral-500 border-neutral-500',
   },
@@ -133,8 +125,6 @@ const TYPE_STYLES: Record<
     hoverBg: 'hover:from-pink-100 hover:to-purple-100',
     iconBg: 'bg-pink-100',
     iconColor: 'text-pink-600',
-    badgeBg: 'bg-pink-100',
-    badgeText: 'text-pink-700',
     checkboxBorder: 'border-pink-300',
     checkboxChecked: 'bg-pink-500 border-pink-500',
   },
@@ -143,7 +133,7 @@ const TYPE_STYLES: Record<
 /**
  * Priority indicator colors.
  */
-const PRIORITY_COLORS = {
+const PRIORITY_COLORS: Record<string, string> = {
   high: 'bg-red-500',
   medium: 'bg-amber-500',
   low: 'bg-blue-500',
@@ -154,9 +144,20 @@ const PRIORITY_COLORS = {
 // SUB-COMPONENTS
 // ============================================================================
 
+import {
+  Calendar,
+  Clock,
+  MapPin,
+  GripVertical,
+  Check,
+  ExternalLink,
+  Folder,
+} from 'lucide-react';
+import { Avatar } from '@/components/shared/avatar';
+import { format } from 'date-fns';
+
 /**
- * Checkbox for completing tasks.
- * Includes click handler that stops propagation.
+ * Task checkbox with click handling.
  */
 function TaskCheckbox({
   isCompleted,
@@ -168,7 +169,7 @@ function TaskCheckbox({
   styles: typeof TYPE_STYLES['task'];
 }) {
   const handleClick = (e: React.MouseEvent) => {
-    e.stopPropagation(); // Don't trigger card click
+    e.stopPropagation();
     onComplete?.();
   };
 
@@ -189,54 +190,29 @@ function TaskCheckbox({
 
 /**
  * Drag handle indicator.
- * Only shown for draggable items.
  */
-function DragHandle({ styles }: { styles: typeof TYPE_STYLES['task'] }) {
+function DragHandle({
+  styles,
+  listeners,
+  attributes,
+}: {
+  styles: typeof TYPE_STYLES['task'];
+  listeners: any;
+  attributes: any;
+}) {
   return (
-    <div
+    <button
       className={cn(
-        'opacity-0 group-hover:opacity-100 transition-opacity cursor-grab active:cursor-grabbing',
+        'p-0.5 rounded cursor-grab active:cursor-grabbing transition-colors',
+        'hover:bg-neutral-200/50 touch-none',
         styles.iconColor
       )}
+      {...listeners}
+      {...attributes}
+      aria-label="Drag to reorder"
     >
       <GripVertical className="w-4 h-4" />
-    </div>
-  );
-}
-
-/**
- * Type badge showing item source.
- */
-function TypeBadge({ item, styles }: { item: KanbanItem; styles: typeof TYPE_STYLES['task'] }) {
-  // Don't show badge for tasks (they're the default)
-  if (item.type === 'task') return null;
-
-  return (
-    <span
-      className={cn(
-        'text-xs px-1.5 py-0.5 rounded-full font-medium inline-flex items-center gap-1',
-        styles.badgeBg,
-        styles.badgeText
-      )}
-    >
-      {item.type === 'external' && (
-        <>
-          <svg className="h-2.5 w-2.5" viewBox="0 0 24 24">
-            <path
-              fill="#DB4437"
-              d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
-            />
-            <path
-              fill="#4285F4"
-              d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
-            />
-          </svg>
-          {item.meta?.calendarName || 'Google'}
-        </>
-      )}
-      {item.type === 'event' && 'Event'}
-      {item.type === 'birthday' && `Turning ${item.meta?.ageTurning}`}
-    </span>
+    </button>
   );
 }
 
@@ -261,25 +237,79 @@ function TimeDisplay({ item, styles }: { item: KanbanItem; styles: typeof TYPE_S
   return null;
 }
 
+/**
+ * Type badge for non-task items.
+ */
+function TypeBadge({ item }: { item: KanbanItem }) {
+  if (item.type === 'task') return null;
+
+  const badgeStyles: Record<string, string> = {
+    event: 'bg-indigo-100 text-indigo-700',
+    external: 'bg-red-100 text-red-700',
+    birthday: 'bg-pink-100 text-pink-700',
+  };
+
+  return (
+    <span
+      className={cn(
+        'text-xs px-1.5 py-0.5 rounded-full font-medium',
+        badgeStyles[item.type]
+      )}
+    >
+      {item.type === 'external' && 'Google'}
+      {item.type === 'event' && 'Event'}
+      {item.type === 'birthday' && `🎂 ${item.meta?.ageTurning}`}
+    </span>
+  );
+}
+
 // ============================================================================
 // MAIN COMPONENT
 // ============================================================================
 
 /**
- * KanbanCard - Unified card for Kanban board items.
+ * KanbanSortableCard - Sortable wrapper for Kanban cards.
  *
- * Renders tasks, events, external events, and birthdays with
- * appropriate styling and interactions.
+ * Uses @dnd-kit's useSortable hook for drag-and-drop functionality.
+ * Renders the complete card content inline for better performance.
  */
-export function KanbanCard({
+export function KanbanSortableCard({
   item,
   onClick,
   onComplete,
-  isDragging = false,
-  draggable = false,
+  disabled = false,
   compact = false,
-}: KanbanCardProps) {
-  const styles = TYPE_STYLES[item.type];
+  className,
+}: KanbanSortableCardProps) {
+  // ============================================================================
+  // SORTABLE HOOK
+  // ============================================================================
+
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+    isOver,
+  } = useSortable({
+    id: item.id,
+    disabled: disabled || !item.isEditable,
+    data: {
+      type: 'card',
+      item,
+    },
+  });
+
+  // Compute transform style
+  const style: React.CSSProperties = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+  };
+
+  // Get styles for this item type
+  const styles = TYPE_STYLES[item.type] || TYPE_STYLES.task;
 
   // ============================================================================
   // RENDER - Compact Mode
@@ -288,6 +318,8 @@ export function KanbanCard({
   if (compact) {
     return (
       <div
+        ref={setNodeRef}
+        style={style}
         onClick={onClick}
         className={cn(
           'group flex items-center gap-2 rounded-md border p-2 transition-all',
@@ -295,10 +327,17 @@ export function KanbanCard({
           styles.bg,
           onClick && 'cursor-pointer',
           onClick && styles.hoverBg,
-          isDragging && 'opacity-50 shadow-lg ring-2 ring-blue-400',
-          item.isOverdue && 'border-red-300 bg-red-50'
+          isDragging && 'opacity-50 shadow-lg ring-2 ring-blue-400 z-50',
+          isOver && 'ring-2 ring-blue-300',
+          item.isOverdue && 'border-red-300 bg-red-50',
+          className
         )}
       >
+        {/* Drag handle (editable items only) */}
+        {item.isEditable && (
+          <DragHandle styles={styles} listeners={listeners} attributes={attributes} />
+        )}
+
         {/* Checkbox (tasks only) */}
         {item.isCompletable && (
           <TaskCheckbox
@@ -333,6 +372,8 @@ export function KanbanCard({
 
   return (
     <div
+      ref={setNodeRef}
+      style={style}
       onClick={onClick}
       className={cn(
         'group relative flex flex-col gap-2 rounded-lg border p-3 transition-all',
@@ -340,8 +381,10 @@ export function KanbanCard({
         styles.bg,
         onClick && 'cursor-pointer',
         onClick && styles.hoverBg,
-        isDragging && 'opacity-50 shadow-lg ring-2 ring-blue-400 rotate-2',
-        item.isOverdue && 'border-red-300 bg-red-50'
+        isDragging && 'opacity-50 shadow-lg ring-2 ring-blue-400 z-50',
+        isOver && 'ring-2 ring-blue-300',
+        item.isOverdue && 'border-red-300 bg-red-50',
+        className
       )}
     >
       {/* Priority indicator stripe */}
@@ -354,10 +397,12 @@ export function KanbanCard({
         />
       )}
 
-      {/* Top row: Drag handle + Checkbox + Title + Badge */}
+      {/* Top row: Drag handle + Checkbox/Icon + Title + Badge */}
       <div className="flex items-start gap-2">
         {/* Drag handle (editable items only) */}
-        {item.isEditable && draggable && <DragHandle styles={styles} />}
+        {item.isEditable && (
+          <DragHandle styles={styles} listeners={listeners} attributes={attributes} />
+        )}
 
         {/* Checkbox (tasks only) */}
         {item.isCompletable && (
@@ -391,10 +436,10 @@ export function KanbanCard({
             >
               {item.title}
             </span>
-            <TypeBadge item={item} styles={styles} />
+            <TypeBadge item={item} />
           </div>
 
-          {/* Description (if present and not compact) */}
+          {/* Description */}
           {item.description && (
             <p className="text-xs text-neutral-500 truncate mt-0.5">
               {item.description}
@@ -404,11 +449,11 @@ export function KanbanCard({
       </div>
 
       {/* Bottom row: Meta info */}
-      <div className="flex items-center gap-3 text-xs text-neutral-500 pl-7">
+      <div className="flex items-center gap-3 text-xs text-neutral-500 pl-6">
         {/* Time */}
         <TimeDisplay item={item} styles={styles} />
 
-        {/* Date (if showing across days) */}
+        {/* Date */}
         {item.date && (
           <span className="flex items-center gap-1">
             <Calendar className="w-3 h-3" />
@@ -459,41 +504,7 @@ export function KanbanCard({
 }
 
 // ============================================================================
-// SKELETON
-// ============================================================================
-
-/**
- * Loading skeleton for KanbanCard.
- */
-export function KanbanCardSkeleton({ compact = false }: { compact?: boolean }) {
-  if (compact) {
-    return (
-      <div className="flex items-center gap-2 rounded-md border border-neutral-200 p-2 animate-pulse">
-        <div className="w-5 h-5 rounded bg-neutral-200" />
-        <div className="flex-1 h-4 rounded bg-neutral-200" />
-      </div>
-    );
-  }
-
-  return (
-    <div className="rounded-lg border border-neutral-200 p-3 animate-pulse">
-      <div className="flex items-start gap-2">
-        <div className="w-5 h-5 rounded bg-neutral-200" />
-        <div className="flex-1">
-          <div className="h-4 w-3/4 rounded bg-neutral-200" />
-          <div className="h-3 w-1/2 rounded bg-neutral-200 mt-2" />
-        </div>
-      </div>
-      <div className="flex items-center gap-3 mt-2 pl-7">
-        <div className="h-3 w-16 rounded bg-neutral-200" />
-        <div className="h-3 w-12 rounded bg-neutral-200" />
-      </div>
-    </div>
-  );
-}
-
-// ============================================================================
 // EXPORTS
 // ============================================================================
 
-export type { KanbanCardProps };
+export type { KanbanSortableCardProps };

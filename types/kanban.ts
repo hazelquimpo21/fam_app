@@ -45,8 +45,13 @@ import type { CalendarItem, FamilyEvent, ExternalEvent, Birthday } from './calen
 /**
  * How to group items into columns.
  * Each mode creates different column sets.
+ *
+ * - 'time': Columns by date (Overdue, Today, Tomorrow, This Week, etc.)
+ * - 'status': Columns by task status (Inbox, Active, Waiting, Done)
+ * - 'priority': Columns by priority level (High, Medium, Low, None)
+ * - 'tag': Dynamic columns based on task tags (@home, @work, etc.)
  */
-export type KanbanGroupBy = 'time' | 'status' | 'priority';
+export type KanbanGroupBy = 'time' | 'status' | 'priority' | 'tag';
 
 /**
  * Time range filter for which items to display.
@@ -236,6 +241,13 @@ export interface KanbanItem {
     title: string;
     color?: string;
   };
+
+  /**
+   * Tags for the item (mainly for tasks).
+   * Used for tag-based column grouping.
+   * Example: ['@home', '@work', 'urgent']
+   */
+  tags?: string[];
 
   /**
    * Source-specific metadata.
@@ -440,6 +452,52 @@ export const PRIORITY_COLUMNS: Omit<KanbanColumn, 'items'>[] = [
     acceptsDrop: true,
   },
 ];
+
+/**
+ * Column definition for untagged items.
+ * Used in tag-based grouping for items without tags.
+ */
+export const UNTAGGED_COLUMN: Omit<KanbanColumn, 'items'> = {
+  id: 'untagged',
+  title: 'Untagged',
+  color: 'neutral',
+  icon: '📋',
+  acceptsDrop: true,
+};
+
+/**
+ * Predefined tag colors for dynamic tag columns.
+ * Colors cycle through this array based on tag index.
+ */
+export const TAG_COLUMN_COLORS = [
+  'blue',
+  'green',
+  'purple',
+  'amber',
+  'red',
+  'indigo',
+  'neutral',
+] as const;
+
+/**
+ * Create a column definition for a specific tag.
+ * Used to generate dynamic columns in tag-based grouping.
+ *
+ * @param tag - The tag name
+ * @param colorIndex - Index into TAG_COLUMN_COLORS
+ * @returns Column definition for this tag
+ */
+export function createTagColumn(tag: string, colorIndex: number): Omit<KanbanColumn, 'items'> {
+  const color = TAG_COLUMN_COLORS[colorIndex % TAG_COLUMN_COLORS.length];
+
+  return {
+    id: `tag-${tag}`,
+    title: tag,
+    color,
+    icon: '🏷️',
+    acceptsDrop: true,
+  };
+}
 
 // ============================================================================
 // 🎯 DRAG AND DROP
