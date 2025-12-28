@@ -1,11 +1,14 @@
 # Fam — Google Calendar Integration
 
+> **Status:** ✅ FULLY IMPLEMENTED
+
 ## Overview
 
-This document outlines the implementation plan for Google Calendar integration with two features:
+This document outlines the implementation plan for Google Calendar integration with three features:
 
-1. **ICS Calendar Feeds** — Subscribe to Fam events in any calendar app
-2. **Google Calendar Import** — See external appointments inside Fam (read-only)
+1. **ICS Calendar Feeds** — Subscribe to Fam events in any calendar app ✅
+2. **Google Calendar Import** — See external appointments inside Fam (read-only) ✅
+3. **Family Events** — Native Fam events (appointments, activities) — See `17-family-events.md` ✅
 
 > **Design Philosophy:** Start simple, avoid over-engineering. Fam is the source of truth for Fam things. Google is the source of truth for external appointments. No two-way sync complexity.
 
@@ -58,6 +61,8 @@ Returns: text/calendar (ICS format)
 | Tasks with `scheduled_date` | ✅ Yes | All-day event | "Scheduled to work on" |
 | Meals | ✅ Yes | Timed event | Breakfast 8am, Lunch 12pm, Dinner 6pm |
 | Goals with `target_date` | ✅ Optional | All-day event | As a reminder/deadline |
+| **Family Events** | ✅ Yes | Timed or all-day | Native Fam events with location |
+| **Birthdays** | ✅ Optional | All-day event | From family_members and contacts |
 | Habits | ❌ No | — | Too noisy, not calendar events |
 | Milestones | ❌ No | — | Past events, not scheduling |
 
@@ -134,7 +139,7 @@ function getRecurringTaskEvents(task: RecurringTask): ICSEvent[] {
 ### Calendar Feed Tokens
 
 ```sql
--- Add to schema
+-- Add to schema (see supabase/migrations/003_calendar_integration.sql)
 CREATE TABLE calendar_feeds (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   family_id UUID NOT NULL REFERENCES families(id) ON DELETE CASCADE,
@@ -147,9 +152,12 @@ CREATE TABLE calendar_feeds (
   include_tasks BOOLEAN DEFAULT true,
   include_meals BOOLEAN DEFAULT true,
   include_goals BOOLEAN DEFAULT false,
+  include_events BOOLEAN DEFAULT true,      -- NEW: Family events
+  include_birthdays BOOLEAN DEFAULT false,  -- NEW: Birthdays
 
   -- Metadata
   last_accessed_at TIMESTAMPTZ,
+  access_count INTEGER DEFAULT 0,
   created_at TIMESTAMPTZ DEFAULT now(),
 
   CONSTRAINT unique_feed UNIQUE (family_id, member_id)
@@ -369,13 +377,15 @@ Each calendar subscription has a `visibility` setting:
 │  Add Fam events to your favorite calendar app.                          │
 │                                                                          │
 │  ┌────────────────────────────────────────────────────────────────────┐ │
-│  │ 📅 My Tasks & Meals                                                 │ │
+│  │ 📅 My Tasks & Events                      [Tasks] [Events] [Meals] │ │
+│  │                                           [Goals] [Birthdays]      │ │
 │  │    https://fam.app/api/calendar/feed/abc123.ics                    │ │
 │  │    [Copy Link]  [Open in Google Calendar]                          │ │
 │  └────────────────────────────────────────────────────────────────────┘ │
 │                                                                          │
 │  ┌────────────────────────────────────────────────────────────────────┐ │
-│  │ 👨‍👩‍👧‍👦 Family Calendar (all members)                                  │ │
+│  │ 👨‍👩‍👧‍👦 Family Calendar (all members)         [Tasks] [Events] [Meals] │ │
+│  │                                           [Goals] [Birthdays]      │ │
 │  │    https://fam.app/api/calendar/feed/xyz789.ics                    │ │
 │  │    [Copy Link]  [Open in Google Calendar]                          │ │
 │  └────────────────────────────────────────────────────────────────────┘ │
@@ -411,25 +421,27 @@ Each calendar subscription has a `visibility` setting:
 │  TODAY                                          Friday, Dec 27, 2024     │
 ├─────────────────────────────────────────────────────────────────────────┤
 │                                                                          │
-│  📅 SCHEDULE                                                             │
+│  🎂 BIRTHDAY BANNER (when applicable)                                    │
 │  ┌─────────────────────────────────────────────────────────────────────┐│
-│  │  9:00 AM   Team standup                    🔵 Work Calendar         ││
-│  │ 10:00 AM   —                                                        ││
-│  │ 11:00 AM   —                                                        ││
-│  │ 12:00 PM   Lunch with Sarah                🟢 Personal              ││
-│  │  1:00 PM   —                                                        ││
-│  │  2:00 PM   Dentist - Miles                 🟣 Kids Activities       ││
-│  │  3:00 PM   —                                                        ││
-│  │  5:30 PM   🍽️ Dinner: Tacos               (Fam)                    ││
+│  │ 🎉 Happy Birthday, Miles! 🎂  Turning 8 today                       ││
 │  └─────────────────────────────────────────────────────────────────────┘│
 │                                                                          │
-│  ✓ TODAY'S TASKS                                                        │
+│  📅 EVENTS (Fam Events + Google)                              [+ Event] │
+│  ┌─────────────────────────────────────────────────────────────────────┐│
+│  │  9:00 AM   Team standup                    🔵 Work Calendar (Google)││
+│  │ 10:00 AM   Dentist appointment             📅 (Fam Event)           ││
+│  │ 12:00 PM   Lunch with Sarah                🟢 Personal (Google)     ││
+│  │  2:00 PM   Soccer practice                 📅 (Fam Event)           ││
+│  │  5:30 PM   🍽️ Dinner: Tacos               (Fam Meal)               ││
+│  └─────────────────────────────────────────────────────────────────────┘│
+│                                                                          │
+│  ✓ TODAY'S TASKS                                              [+ Task]  │
 │  ┌─────────────────────────────────────────────────────────────────────┐│
 │  │ □ Review camp options                      Due today    📁 Camps    ││
 │  │ □ Grocery run                              Due today                 ││
 │  └─────────────────────────────────────────────────────────────────────┘│
 │                                                                          │
-│  🔄 TODAY'S HABITS                                                       │
+│  🔄 TODAY'S HABITS                                            [+ Habit] │
 │  ┌─────────────────────────────────────────────────────────────────────┐│
 │  │ [✓] Read 20 min   🔥 12   [ ] Exercise   🔥 3   [ ] Vitamins        ││
 │  └─────────────────────────────────────────────────────────────────────┘│
@@ -441,67 +453,72 @@ Each calendar subscription has a `visibility` setting:
 
 ## Implementation Order
 
-### Phase 1: ICS Feeds (2-3 days)
+### Phase 1: ICS Feeds ✅ COMPLETE
 
-1. **Database**
-   - Add `calendar_feeds` table
-   - Migration script
+1. **Database** ✅
+   - `calendar_feeds` table in `003_calendar_integration.sql`
 
-2. **API**
+2. **API** ✅
    - `GET /api/calendar/feed/[token].ics` - generate ICS
    - `POST /api/calendar/feeds` - create feed
    - `GET /api/calendar/feeds` - list feeds
    - `DELETE /api/calendar/feeds/[id]` - delete feed
 
-3. **ICS Generation**
-   - Build ICS string from tasks + meals
-   - Handle timezones properly
-   - Include 4 instances of recurring tasks (no RRULE)
+3. **ICS Generation** ✅
+   - `lib/utils/ics-generator.ts` - Full implementation
+   - Tasks, meals, goals, events, birthdays supported
+   - Timezone handling included
 
-4. **UI**
-   - Settings → Calendar page
-   - Copy link button
-   - "Open in Google Calendar" link (uses webcal:// protocol)
+4. **UI** ✅
+   - `app/(app)/settings/calendar/page.tsx` - Full settings page
+   - Copy link, toggle controls for what to include
 
-### Phase 2: Google Calendar Import (4-5 days)
+### Phase 2: Google Calendar Import ✅ COMPLETE
 
-1. **Database**
-   - Add `google_calendar_connections` table
-   - Add `google_calendar_subscriptions` table
-   - Add `external_events` table
-   - Migration script
+1. **Database** ✅
+   - `google_calendar_connections`, `google_calendar_subscriptions`, `external_events` tables
 
-2. **OAuth Flow**
-   - Set up Google Cloud project
-   - Configure OAuth consent screen
-   - Implement auth routes: `/api/auth/google/connect`, `/api/auth/google/callback`
-   - Token storage (encrypt in production)
+2. **OAuth Flow** ✅
+   - `/api/auth/google/route.ts` - initiate OAuth
+   - `/api/auth/google/callback/route.ts` - handle callback
+   - Token storage with refresh
 
-3. **Sync Logic**
+3. **Sync Logic** ✅
+   - `/api/calendar/sync/route.ts` - fetch and sync events
    - Fetch calendar list from Google
    - Fetch events with `singleEvents: true`
-   - Upsert to `external_events` table
-   - Periodic sync (Supabase Edge Function cron)
 
-4. **Hooks**
-   - `useGoogleCalendarConnection()` - connection state
-   - `useGoogleCalendarSubscriptions()` - manage subscriptions
-   - `useExternalEvents(dateRange)` - fetch cached events
+4. **Hooks** ✅
+   - `lib/hooks/use-calendar.ts` - all calendar hooks
 
-5. **UI**
-   - Settings → Calendar: connect Google account
-   - Calendar picker modal
-   - Visibility settings per calendar
-   - Today page: show external events
-   - Calendar view: show external events (when built)
+5. **UI** ✅
+   - Settings → Calendar: full Google Calendar connection UI
+   - Calendar picker, visibility settings, sync status
 
-### Phase 3: Polish (1-2 days)
+### Phase 3: Family Events ✅ COMPLETE
 
-- Loading states and error handling
-- "Last synced" indicator
-- Manual "Sync Now" button
-- Disconnect confirmation
-- Token refresh handling
+> See `17-family-events.md` for full documentation
+
+1. **Database** ✅
+   - `family_events` table in `004_family_events.sql`
+   - `get_birthdays_in_range()` function
+   - Extended `calendar_feeds` with `include_events`, `include_birthdays`
+
+2. **Hooks** ✅
+   - `lib/hooks/use-family-events.ts` - CRUD + birthday queries
+
+3. **UI** ✅
+   - `components/modals/event-modal.tsx` - create/edit events
+   - Today page: birthday banner, events section, add event button
+   - ICS feeds include events and birthdays
+
+### Phase 4: Polish ✅ COMPLETE
+
+- Loading states and error handling ✅
+- "Last synced" indicator ✅
+- Manual "Sync Now" button ✅
+- Disconnect confirmation ✅
+- Token refresh handling ✅
 
 ---
 
@@ -590,3 +607,4 @@ ORDER BY start_time;
 | Version | Date | Author | Changes |
 |---------|------|--------|---------|
 | 1.0 | 2024-12-26 | Hazel + Claude | Initial calendar integration plan |
+| 1.1 | 2024-12-27 | Claude | Marked all phases complete; added Family Events (Phase 3); updated wireframes with events/birthdays; updated calendar_feeds schema with new columns |

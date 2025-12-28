@@ -67,6 +67,11 @@ meals
   ├── recipe (optional)
   └── assigned_to: family_member
 
+family_events
+  ├── belongs to: family
+  ├── assigned_to: family_member (optional)
+  └── shows in: Today page, ICS feeds
+
 recipes, vendors, contacts, places
   └── all scoped to family
 ```
@@ -839,6 +844,109 @@ CREATE INDEX idx_meeting_notes_date ON meeting_notes(family_id, meeting_date);
 
 ---
 
+## Family Events Tables
+
+### family_events
+
+Native family events (appointments, activities, celebrations). Fam is the source of truth for these events.
+
+```sql
+CREATE TABLE family_events (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  family_id UUID NOT NULL REFERENCES families(id) ON DELETE CASCADE,
+
+  -- Content
+  title TEXT NOT NULL,
+  description TEXT,
+  location TEXT,
+
+  -- Timing
+  start_time TIMESTAMPTZ NOT NULL,
+  end_time TIMESTAMPTZ,
+  is_all_day BOOLEAN DEFAULT false,
+  timezone TEXT DEFAULT 'UTC',
+
+  -- Assignment
+  assigned_to UUID REFERENCES family_members(id) ON DELETE SET NULL,
+
+  -- Metadata
+  color TEXT,  -- For calendar display
+
+  -- Timestamps
+  created_at TIMESTAMPTZ DEFAULT now(),
+  updated_at TIMESTAMPTZ DEFAULT now(),
+  created_by UUID REFERENCES family_members(id)
+);
+
+CREATE INDEX idx_family_events_family ON family_events(family_id);
+CREATE INDEX idx_family_events_time ON family_events(family_id, start_time);
+CREATE INDEX idx_family_events_assigned ON family_events(assigned_to);
+```
+
+### Birthday Query Function
+
+Birthdays are stored in `family_members.birthday` and `contacts.birthday` columns (already exist). This function queries them with year-boundary handling:
+
+```sql
+CREATE OR REPLACE FUNCTION get_birthdays_in_range(
+  p_family_id UUID,
+  p_start_date DATE,
+  p_end_date DATE
+)
+RETURNS TABLE (
+  id UUID,
+  name TEXT,
+  birthday DATE,
+  source TEXT,  -- 'family_member' or 'contact'
+  color TEXT
+) AS $$
+BEGIN
+  RETURN QUERY
+  -- Family members with birthdays
+  SELECT
+    fm.id,
+    fm.name,
+    fm.birthday,
+    'family_member'::TEXT as source,
+    fm.color
+  FROM family_members fm
+  WHERE fm.family_id = p_family_id
+    AND fm.birthday IS NOT NULL
+    AND (
+      -- Birthday falls in range this year
+      (DATE_PART('month', fm.birthday) * 100 + DATE_PART('day', fm.birthday))
+      BETWEEN
+        (DATE_PART('month', p_start_date) * 100 + DATE_PART('day', p_start_date))
+      AND
+        (DATE_PART('month', p_end_date) * 100 + DATE_PART('day', p_end_date))
+    )
+
+  UNION ALL
+
+  -- Contacts with birthdays
+  SELECT
+    c.id,
+    c.name,
+    c.birthday,
+    'contact'::TEXT as source,
+    NULL::TEXT as color
+  FROM contacts c
+  WHERE c.family_id = p_family_id
+    AND c.birthday IS NOT NULL
+    AND c.deleted_at IS NULL
+    AND (
+      (DATE_PART('month', c.birthday) * 100 + DATE_PART('day', c.birthday))
+      BETWEEN
+        (DATE_PART('month', p_start_date) * 100 + DATE_PART('day', p_start_date))
+      AND
+        (DATE_PART('month', p_end_date) * 100 + DATE_PART('day', p_end_date))
+    );
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+```
+
+---
+
 ## Flexible Tagging (Future)
 
 ### tags
@@ -1074,9 +1182,18 @@ When creating tables, use this order to respect foreign key dependencies:
 - `attachments` table with polymorphic relationship
 - Supabase Storage integration
 
-### Calendar Sync (v1.5)
+### Calendar Sync (v1.5) ✅ IMPLEMENTED
+- `calendar_feeds` table for ICS feed configurations
+- `google_calendar_connections` table for OAuth tokens
+- `google_calendar_subscriptions` table for calendar selection
 - `external_events` table for Google Calendar items
-- `sync_tokens` table for incremental sync
+- See `supabase/migrations/003_calendar_integration.sql`
+
+### Family Events ✅ IMPLEMENTED
+- `family_events` table for native Fam events (see below)
+- `include_events` and `include_birthdays` columns on `calendar_feeds`
+- `get_birthdays_in_range()` SQL function
+- See `supabase/migrations/004_family_events.sql`
 
 ---
 
@@ -1086,7 +1203,10 @@ When creating tables, use this order to respect foreign key dependencies:
 
 > **Status: ✅ FULLY IMPLEMENTED**
 
-The complete database schema has been implemented in `supabase/migrations/001_initial_schema.sql`.
+The complete database schema has been implemented across multiple migration files:
+- `supabase/migrations/001_initial_schema.sql` - Core tables
+- `supabase/migrations/003_calendar_integration.sql` - Calendar/Google sync tables
+- `supabase/migrations/004_family_events.sql` - Family events table
 
 ### Tables Implemented
 
@@ -1109,6 +1229,11 @@ The complete database schema has been implemented in `supabase/migrations/001_in
 | `meals` | ✅ | ✅ | Meal planning |
 | `meeting_notes` | ✅ | ✅ | Family meetings |
 | `family_invites` | ✅ | ✅ | Invite system |
+| `calendar_feeds` | ✅ | ✅ | ICS feed configurations |
+| `google_calendar_connections` | ✅ | ✅ | OAuth tokens |
+| `google_calendar_subscriptions` | ✅ | ✅ | Calendar selection |
+| `external_events` | ✅ | ✅ | Cached Google events |
+| `family_events` | ✅ | ✅ | Native family events |
 
 ### Helper Functions Implemented
 
@@ -1119,6 +1244,8 @@ The complete database schema has been implemented in `supabase/migrations/001_in
 | `get_my_role()` | ✅ | Get current user's role |
 | `is_adult_or_owner()` | ✅ | Check permissions |
 | `update_habit_streak()` | ✅ | Trigger for streak updates |
+| `update_calendar_feed_access()` | ✅ | Track ICS feed access |
+| `get_birthdays_in_range()` | ✅ | Query birthdays with year handling |
 
 ### Enums Implemented
 
@@ -1147,3 +1274,4 @@ All 14 enums from the spec are implemented:
 | 1.1 | 2024-12-23 | Claude | Added implementation status |
 | 1.2 | 2024-12-23 | Claude | Auth updated to magic link (no password storage needed) |
 | 1.3 | 2024-12-26 | Claude | Added `profile` JSONB columns to families and family_members; added Profile Extensions to Future Considerations |
+| 1.4 | 2024-12-27 | Claude | Added Calendar tables (calendar_feeds, google_calendar_*, external_events); added family_events table; added get_birthdays_in_range() function |

@@ -60,6 +60,7 @@ Families juggle tasks, meals, appointments, goals, vendor contacts, and dreams a
 - Milestones (celebratory moments, tied to person + date)
 - Projects (containers for tasks, notes, links)
 - Someday items (categorized wishlists)
+- Family Events (appointments, activities, all-day or timed, with location)
 
 **Profiles** *(See `AI_Dev_Docs/15-profile-architecture.md`)*
 - Family Profile (identity, values, traditions, household info, AI preferences)
@@ -251,12 +252,19 @@ Families juggle tasks, meals, appointments, goals, vendor contacts, and dreams a
 
 | Feature | Status | Notes |
 |---------|--------|-------|
-| **Database Schema** | ✅ Complete | Full SQL with 17 tables, enums, RLS, triggers |
+| **Database Schema** | ✅ Complete | Full SQL with 18+ tables, enums, RLS, triggers |
 | **Authentication** | ✅ Complete | Magic link (passwordless) login/signup via Supabase Auth |
 | **Tasks** | ✅ Complete | CRUD, filtering, status workflow, optimistic updates |
 | **Habits** | ✅ Complete | Tracking, streaks, logging (done/skip) |
+| **Goals** | ✅ Complete | Qualitative/quantitative goals, progress tracking |
+| **Projects** | ✅ Complete | Task containers with status workflow |
+| **Someday** | ✅ Complete | Wishlist items with categories |
+| **Family Events** | ✅ Complete | Native events, birthdays, ICS integration |
 | **Dashboard** | ✅ Complete | Stats cards, today's overview |
-| **UI Components** | ✅ Complete | Button, Input, Card, Checkbox, Spinner, Badge, Avatar |
+| **Today Page** | ✅ Complete | Daily focus with events, birthdays, tasks, habits |
+| **Calendar Integration** | ✅ Complete | ICS feeds + Google Calendar import |
+| **UI Components** | ✅ Complete | Button, Input, Card, Checkbox, Spinner, Badge, Avatar, Dialog, Select |
+| **Modals** | ✅ Complete | Task, Goal, Habit, Project, Someday, Event modals |
 | **Layout** | ✅ Complete | AppShell, Sidebar, TopBar |
 | **TanStack Query** | ✅ Complete | Query key factory, hooks, caching |
 
@@ -264,11 +272,14 @@ Families juggle tasks, meals, appointments, goals, vendor contacts, and dreams a
 
 | Feature | Status | Priority |
 |---------|--------|----------|
-| Goals Page | 🔨 Pending | High |
-| Projects Page | 🔨 Pending | High |
-| Onboarding Flow | 🔨 Pending | High |
-| Family Member Management | 🔨 Pending | High |
-| Task Detail Panel | 🔨 Pending | Medium |
+| ~~Goals Page~~ | ✅ Complete | — |
+| ~~Projects Page~~ | ✅ Complete | — |
+| ~~Onboarding Flow~~ | ✅ Complete | — |
+| ~~Family Member Management~~ | ✅ Complete | — |
+| ~~Task Detail (Modal)~~ | ✅ Complete | — |
+| Profiles Feature | 🔨 Pending | High |
+| Calendar View (month/week) | 🔨 Pending | Medium |
+| Personal Dashboard (/me) | 🔨 Pending | Medium |
 
 ### 📋 Future Phases
 

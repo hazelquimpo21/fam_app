@@ -19,12 +19,12 @@
 | Goals Feature | ✅ Complete | 80% |
 | Projects Feature | ✅ Complete | 95% |
 | Inbox Feature | ✅ Complete | 100% |
-| Today Feature | ✅ Complete | 95% |
+| Today Feature | ✅ Complete | 100% |
 | Someday Feature | ✅ Complete | 95% |
 | Family Feature | ✅ Complete | 75% |
 | **Kanban Board** | ✅ **Complete** | 100% |
 | **Profiles Feature** | 📋 Planned | 0% |
-| Settings Feature | ✅ Stub | 20% |
+| Settings Feature | ✅ Stub | 25% |
 | **Calendar Integration** | ✅ **Complete** | 100% |
 | Meals Feature | 🔨 Pending | 0% |
 
@@ -112,6 +112,7 @@ Tables: families, family_members, tasks, subtasks, habits, habit_logs,
 | HabitModal | `components/modals/habit-modal.tsx` | Habit create form with frequency, goal linking |
 | ProjectModal | `components/modals/project-modal.tsx` | Project create/edit form with status, owner, icon |
 | SomedayModal | `components/modals/someday-modal.tsx` | Someday item create/edit form with category, cost |
+| EventModal | `components/modals/event-modal.tsx` | Event create/edit form with date/time, location, assignee |
 | AppShell | `components/layout/app-shell.tsx` | Main wrapper |
 | Sidebar | `components/layout/sidebar.tsx` | Navigation |
 | TopBar | `components/layout/top-bar.tsx` | User menu |
@@ -183,6 +184,18 @@ Tables: families, family_members, tasks, subtasks, habits, habit_logs,
 - ✅ `useCreateFamilyInvite()` - Send invite
 - ✅ `useResendInvite()` - Resend invite
 - ✅ `useCancelInvite()` - Cancel invite
+
+**File:** `lib/hooks/use-family-events.ts` *(NEW)*
+- ✅ `useFamilyEvents(dateRange)` - Events in date range
+- ✅ `useTodayFamilyEvents()` - Today's events
+- ✅ `useFamilyEvent(id)` - Single event detail
+- ✅ `useCreateFamilyEvent()` - Create event with toast
+- ✅ `useUpdateFamilyEvent()` - Update event with cache
+- ✅ `useDeleteFamilyEvent()` - Delete event
+- ✅ `useBirthdays(dateRange)` - Birthdays in date range
+- ✅ `useTodayBirthdays()` - Today's birthdays
+- ✅ `useUpcomingBirthdays(days)` - Birthdays in next N days
+- ✅ `formatEventTime()`, `isMultiDayEvent()`, `getEventDuration()` - Utilities
 
 ### 4.5 Calendar Integration (100% Complete)
 
@@ -262,13 +275,13 @@ KanbanBoard
 | Check Email | `/check-email` | ✅ | Confirmation after magic link |
 | Onboarding | `/onboarding` | ✅ **NEW** | Family creation for new users |
 | Inbox | `/inbox` | ✅ **Connected** | Quick capture, ALL triage actions use modals (Task/Goal/Habit/Project/Someday) |
-| Today | `/today` | ✅ **Connected** | Daily focus, Add Task button, Add Habit button, click-to-edit |
+| Today | `/today` | ✅ **Connected** | Daily focus with events, birthdays banner, Add Task/Event buttons, click-to-edit |
 | Goals | `/goals` | ✅ **Connected** | Goal tracking with progress bars, grouped by owner |
 | Projects | `/projects` | ✅ **Connected** | Project cards with status filtering |
 | Someday | `/someday` | ✅ **Connected** | Wishlist with categories, promote to project |
 | Family | `/family` | ✅ **Connected** | Family member list, pending invites |
 | Settings | `/settings` | ✅ Stub | User and app preferences |
-| Calendar Settings | `/settings/calendar` | ✅ **Complete** | ICS feeds, Google Calendar connection |
+| Calendar Settings | `/settings/calendar` | ✅ **Complete** | ICS feeds (with events/birthdays), Google Calendar connection |
 
 ---
 
