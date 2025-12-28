@@ -791,9 +791,23 @@ export function ImportContactsModal({
       errors: [],
     };
 
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     // Import each selected contact
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // We iterate sequentially to avoid overwhelming the database with
+    // too many concurrent requests. Each contact is created via the
+    // useCreateContact hook which handles family_id injection and RLS.
+    // 
+    // IMPORTANT: We set imported_from: 'csv' to track that this contact
+    // came from a CSV import rather than being manually created.
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     for (const candidate of selected) {
       try {
+        logger.debug('📤 Importing contact...', { 
+          name: candidate.data.name,
+          hasBirthday: !!candidate.data.birthday 
+        });
+        
         await createContact.mutateAsync({
           name: candidate.data.name,
           contact_type: candidate.data.contact_type,
@@ -807,8 +821,12 @@ export function ImportContactsModal({
           state: candidate.data.state || undefined,
           postal_code: candidate.data.postal_code || undefined,
           country: candidate.data.country || undefined,
+          // Mark as CSV import (not manual) for tracking purposes
+          imported_from: 'csv',
         });
         importResults.imported++;
+        
+        logger.debug('✅ Contact imported', { name: candidate.data.name });
       } catch (err) {
         importResults.failed++;
         importResults.errors.push(
