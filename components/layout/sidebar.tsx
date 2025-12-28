@@ -35,6 +35,7 @@ import {
   FolderOpen,
   Sparkles,
   Users,
+  UserPlus,
   Settings,
   LogOut,
   Shield,
@@ -76,6 +77,7 @@ const mainNavItems: NavItem[] = [
  */
 const secondaryNavItems: NavItem[] = [
   { label: 'Family', href: '/family', icon: Users },
+  { label: 'Contacts', href: '/contacts', icon: UserPlus },
   { label: 'Settings', href: '/settings', icon: Settings },
 ];
 

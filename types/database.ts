@@ -342,6 +342,9 @@ export interface Milestone {
 // 👥 PEOPLE & PLACES
 // ============================================================================
 
+/** Import source for contacts */
+export type ContactImportSource = 'manual' | 'google' | 'csv';
+
 /** A person outside the family */
 export interface Contact {
   id: string;
@@ -360,6 +363,12 @@ export interface Contact {
   state: string | null;
   postal_code: string | null;
   country: string | null;
+  // Import tracking fields (for Google import feature)
+  google_contact_id: string | null;
+  google_photo_url: string | null;
+  imported_from: ContactImportSource;
+  imported_at: string | null;
+  // Timestamps
   created_at: string;
   updated_at: string;
   created_by: string | null;
