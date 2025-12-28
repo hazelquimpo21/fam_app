@@ -1,7 +1,7 @@
 # Fam - Implementation Status
 
 > **Last Updated:** December 2024
-> **Status:** MVP Phase 3.2 Complete - Calendar Integration (ICS + Google)
+> **Status:** MVP Phase 3.3 Complete - Family Events & Birthdays
 
 ---
 
@@ -12,18 +12,19 @@
 | Database Schema | ✅ Complete | 100% |
 | Authentication (Magic Link) | ✅ Complete | 100% |
 | Onboarding Flow | ✅ Complete | 100% |
-| Core UI Components | ✅ Complete | ~60% |
+| Core UI Components | ✅ Complete | ~65% |
 | Tasks Feature | ✅ Complete | 100% |
 | Habits Feature | ✅ Complete | 95% |
 | Dashboard | ✅ Complete | 95% |
 | Goals Feature | ✅ Complete | 80% |
 | Projects Feature | ✅ Complete | 95% |
 | Inbox Feature | ✅ Complete | 100% |
-| Today Feature | ✅ Complete | 95% |
+| Today Feature | ✅ Complete | 100% |
 | Someday Feature | ✅ Complete | 95% |
 | Family Feature | ✅ Complete | 75% |
+| **Family Events Feature** | ✅ **Complete** | 100% |
 | **Profiles Feature** | 📋 Planned | 0% |
-| Settings Feature | ✅ Stub | 20% |
+| Settings Feature | ✅ Stub | 25% |
 | **Calendar Integration** | ✅ **Complete** | 100% |
 | Meals Feature | 🔨 Pending | 0% |
 
@@ -111,6 +112,7 @@ Tables: families, family_members, tasks, subtasks, habits, habit_logs,
 | HabitModal | `components/modals/habit-modal.tsx` | Habit create form with frequency, goal linking |
 | ProjectModal | `components/modals/project-modal.tsx` | Project create/edit form with status, owner, icon |
 | SomedayModal | `components/modals/someday-modal.tsx` | Someday item create/edit form with category, cost |
+| EventModal | `components/modals/event-modal.tsx` | Event create/edit form with date/time, location, assignee |
 | AppShell | `components/layout/app-shell.tsx` | Main wrapper |
 | Sidebar | `components/layout/sidebar.tsx` | Navigation |
 | TopBar | `components/layout/top-bar.tsx` | User menu |
@@ -183,6 +185,18 @@ Tables: families, family_members, tasks, subtasks, habits, habit_logs,
 - ✅ `useResendInvite()` - Resend invite
 - ✅ `useCancelInvite()` - Cancel invite
 
+**File:** `lib/hooks/use-family-events.ts` *(NEW)*
+- ✅ `useFamilyEvents(dateRange)` - Events in date range
+- ✅ `useTodayFamilyEvents()` - Today's events
+- ✅ `useFamilyEvent(id)` - Single event detail
+- ✅ `useCreateFamilyEvent()` - Create event with toast
+- ✅ `useUpdateFamilyEvent()` - Update event with cache
+- ✅ `useDeleteFamilyEvent()` - Delete event
+- ✅ `useBirthdays(dateRange)` - Birthdays in date range
+- ✅ `useTodayBirthdays()` - Today's birthdays
+- ✅ `useUpcomingBirthdays(days)` - Birthdays in next N days
+- ✅ `formatEventTime()`, `isMultiDayEvent()`, `getEventDuration()` - Utilities
+
 ### 4.5 Calendar Integration (100% Complete)
 
 **Files:**
@@ -219,6 +233,39 @@ Tables: families, family_members, tasks, subtasks, habits, habit_logs,
 - `google_calendar_subscriptions` - Which calendars to import
 - `external_events` - Cached events from Google
 
+### 4.6 Family Events Feature (100% Complete)
+
+**Files:**
+- `supabase/migrations/004_family_events.sql` - Database schema
+- `types/calendar.ts` - TypeScript types (FamilyEvent, Birthday, CalendarItem)
+- `lib/hooks/use-family-events.ts` - React Query hooks
+- `components/modals/event-modal.tsx` - Event create/edit modal
+- `app/(app)/today/page.tsx` - Today page with events/birthdays
+
+**Family Events (Fam is Source of Truth):**
+- ✅ Native family events (appointments, activities, etc.)
+- ✅ Full CRUD operations with EventModal
+- ✅ All-day and timed events support
+- ✅ Timezone-aware timestamps
+- ✅ Assign events to family members
+- ✅ Location field for addresses/places
+- ✅ Today page shows upcoming events
+
+**Birthday Integration:**
+- ✅ Birthdays from family_members and contacts tables
+- ✅ Birthday banner on Today page for celebrations
+- ✅ `get_birthdays_in_range()` SQL function handles year boundaries
+- ✅ Calculates ages dynamically
+
+**ICS Feed Integration:**
+- ✅ Events and birthdays included in ICS feeds
+- ✅ `include_events` and `include_birthdays` toggles
+- ✅ Calendar Settings page has toggle controls
+
+**Database Tables:**
+- `family_events` - Native family events
+- `calendar_feeds` extended with `include_events`, `include_birthdays` columns
+
 ### 5. Pages (All Core Pages Wired to Database)
 
 | Page | Route | Status | Notes |
@@ -231,13 +278,13 @@ Tables: families, family_members, tasks, subtasks, habits, habit_logs,
 | Check Email | `/check-email` | ✅ | Confirmation after magic link |
 | Onboarding | `/onboarding` | ✅ **NEW** | Family creation for new users |
 | Inbox | `/inbox` | ✅ **Connected** | Quick capture, ALL triage actions use modals (Task/Goal/Habit/Project/Someday) |
-| Today | `/today` | ✅ **Connected** | Daily focus, Add Task button, Add Habit button, click-to-edit |
+| Today | `/today` | ✅ **Connected** | Daily focus with events, birthdays banner, Add Task/Event buttons, click-to-edit |
 | Goals | `/goals` | ✅ **Connected** | Goal tracking with progress bars, grouped by owner |
 | Projects | `/projects` | ✅ **Connected** | Project cards with status filtering |
 | Someday | `/someday` | ✅ **Connected** | Wishlist with categories, promote to project |
 | Family | `/family` | ✅ **Connected** | Family member list, pending invites |
 | Settings | `/settings` | ✅ Stub | User and app preferences |
-| Calendar Settings | `/settings/calendar` | ✅ **Complete** | ICS feeds, Google Calendar connection |
+| Calendar Settings | `/settings/calendar` | ✅ **Complete** | ICS feeds (with events/birthdays), Google Calendar connection |
 
 ---
 
@@ -403,17 +450,22 @@ fam_app/
 ├── components/
 │   ├── ui/                     # 7 components (button, input, card, checkbox, spinner, dialog, select)
 │   ├── shared/                 # 7 components (avatar, badge, empty-state, progress-bar, family-member-picker, project-picker, goal-picker)
-│   ├── modals/                 # 5 components (task-modal, goal-modal, habit-modal, project-modal, someday-modal)
+│   ├── modals/                 # 6 components (task-modal, goal-modal, habit-modal, project-modal, someday-modal, event-modal)
 │   ├── layout/                 # 3 components
 │   └── providers.tsx
 ├── lib/
 │   ├── supabase/               # 4 files (client, server, middleware, admin)
-│   ├── hooks/                  # 7 hooks (auth, tasks, habits, goals, projects, someday, family)
-│   ├── utils/                  # 2 utilities (cn, logger)
+│   ├── hooks/                  # 9 hooks (auth, tasks, habits, goals, projects, someday, family, family-events, calendar)
+│   ├── utils/                  # 3 utilities (cn, logger, ics-generator)
 │   ├── query-client.ts
 │   └── query-keys.ts
-├── types/database.ts
-├── supabase/migrations/001_initial_schema.sql
+├── types/
+│   ├── database.ts             # Core database types
+│   └── calendar.ts             # Calendar, events, birthdays types
+├── supabase/migrations/
+│   ├── 001_initial_schema.sql
+│   ├── 003_calendar_integration.sql
+│   └── 004_family_events.sql   # Family events table
 ├── middleware.ts
 ├── .env.example
 └── README.md
@@ -454,5 +506,6 @@ Keep files under 400 lines. Extract components when they grow.
 | 3.0 | 2024-12-26 | Claude | Dashboard & Inbox UI/UX: Dashboard habits/goals click-to-edit, Add buttons open modals; Inbox triage uses modals for Project/Someday; Today Add Task button |
 | 3.1 | 2024-12-26 | Claude | Added Profiles Feature to roadmap (Phase 3), AI Integration (Phase 5); references 15-profile-architecture.md |
 | 3.2 | 2024-12-26 | Claude | Added Calendar Integration: ICS feeds (export) + Google Calendar import. See 16-google-calendar-integration.md |
+| 3.3 | 2024-12-27 | Claude | Added Family Events feature: native events, birthdays, EventModal, Today page integration. See 17-family-events.md |
 
 *This document is auto-generated. See individual docs for detailed specs.*

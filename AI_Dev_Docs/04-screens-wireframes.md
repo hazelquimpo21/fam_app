@@ -444,7 +444,7 @@ Stack cards vertically:
 
 **URL:** `/today`
 
-**Purpose:** Focused view of today's work
+**Purpose:** Focused view of today's work including events, birthdays, tasks, and habits
 
 ### Layout
 
@@ -453,13 +453,30 @@ Stack cards vertically:
 │ Today                            Monday, December 23     │
 │                                                          │
 ├──────────────────────────────────────────────────────────┤
+│ 🎂 BIRTHDAY BANNER (when applicable)                     │
+│ ┌──────────────────────────────────────────────────────┐ │
+│ │ 🎉 Happy Birthday, Miles! 🎂                         │ │
+│ │    Turning 8 years old today                         │ │
+│ └──────────────────────────────────────────────────────┘ │
+├──────────────────────────────────────────────────────────┤
+│                                                          │
+│ 📅 EVENTS                                    [+ Event]   │
+│ ┌──────────────────────────────────────────────────────┐ │
+│ │  9:00 AM   Dentist appointment           Dr. Smith  │ │
+│ │            → Miles                                   │ │
+│ │ 3:30 PM   Soccer practice                           │ │
+│ │            → Miles                                   │ │
+│ │  All day   School holiday                            │ │
+│ └──────────────────────────────────────────────────────┘ │
+│                                                          │
+├──────────────────────────────────────────────────────────┤
 │ 🍳 Meals                                                 │
 │ ├─ Breakfast: Oatmeal                                   │
 │ ├─ Lunch: Leftovers                                     │
 │ └─ Dinner: Tacos 🌮 (Mike cooking)                      │
 ├──────────────────────────────────────────────────────────┤
 │                                                          │
-│ 🔄 Habits                                                │
+│ 🔄 Habits                                    [+ Habit]   │
 │ ┌──────────────────────────────────────────────────────┐ │
 │ │ [✓] Read       [ ] Exercise    [✓] Journal   [ ] Vit │ │
 │ └──────────────────────────────────────────────────────┘ │
@@ -474,13 +491,10 @@ Stack cards vertically:
 │     → Hazel                                             │
 │                                                          │
 ├──────────────────────────────────────────────────────────┤
-│ 📋 Today                                          5     │
+│ 📋 Today's Tasks                              [+ Task]   │
 │                                                          │
 │ [ ] Review camp options                   Today         │
 │     → Hazel · Summer Camps                              │
-│                                                          │
-│ [ ] Soccer practice pickup                Today 3:30pm  │
-│     → Mike                                              │
 │                                                          │
 │ [ ] Grocery run                           Today         │
 │     → Hazel                                             │
@@ -496,7 +510,13 @@ Stack cards vertically:
 
 ### Behavior
 
-- Meals shown at top for daily planning context
+- **Birthday banner:** Shows at top when someone has a birthday today
+- **Events section:** Native family events with times and assignees
+  - Click event → Opens EventModal for editing
+  - "Add Event" button opens EventModal in create mode
+  - All-day events shown without time
+  - Timed events sorted chronologically
+- Meals shown for daily planning context
 - Habits inline, checkable
 - Overdue section collapsible, red accent
 - Tasks grouped: Overdue, Today
@@ -505,7 +525,7 @@ Stack cards vertically:
 - Completing task: animation, moves to done (hidden unless toggled)
 - **Click task row → Opens TaskModal for editing**
 
-**Implementation Note:** Click-to-edit via TaskModal is fully implemented. Checkbox stops event propagation to prevent opening modal when completing tasks.
+**Implementation Note:** Click-to-edit via TaskModal/EventModal is fully implemented. Checkbox stops event propagation to prevent opening modal when completing tasks. Birthday banner uses `useTodayBirthdays()` hook.
 
 ---
 
@@ -1041,6 +1061,7 @@ Stack cards vertically:
 | HabitModal | `components/modals/habit-modal.tsx` | ✅ Complete | Frequency, owner, goal linking |
 | ProjectModal | `components/modals/project-modal.tsx` | ✅ Complete | Status, owner, target date, icon |
 | SomedayModal | `components/modals/someday-modal.tsx` | ✅ Complete | Category, estimated cost |
+| EventModal | `components/modals/event-modal.tsx` | ✅ Complete | Date/time pickers, location, assignee |
 
 > **Note:** **"Connected"** screens are fully wired to Supabase with React Query hooks. "Stub" screens have UI scaffolding with mock data.
 
@@ -1059,3 +1080,4 @@ Stack cards vertically:
 | 1.6 | 2024-12-26 | Claude | Updated Inbox wireframe with all triage options (Task/Goal/Habit/Project/Someday/Archive/Delete); added Modals Implementation table |
 | 1.7 | 2024-12-26 | Claude | Added "Modal Connections" section to Dashboard documenting click-to-edit patterns for habits, goals, and tasks |
 | 1.8 | 2024-12-26 | Claude | Added Family Profile and Member Profile screens to implementation table (planned); see `15-profile-architecture.md` for wireframes |
+| 1.9 | 2024-12-27 | Claude | Updated Today page wireframe with birthday banner, events section, Add Event button; added EventModal to modals table |

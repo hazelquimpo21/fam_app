@@ -60,6 +60,7 @@ Families juggle tasks, meals, appointments, goals, vendor contacts, and dreams a
 - Milestones (celebratory moments, tied to person + date)
 - Projects (containers for tasks, notes, links)
 - Someday items (categorized wishlists)
+- Family Events (appointments, activities, all-day or timed, with location)
 
 **Profiles** *(See `AI_Dev_Docs/15-profile-architecture.md`)*
 - Family Profile (identity, values, traditions, household info, AI preferences)
@@ -94,7 +95,7 @@ Families juggle tasks, meals, appointments, goals, vendor contacts, and dreams a
 ### Out of Scope for V1 (Architected For)
 
 - Native mobile apps (responsive web first)
-- Google Calendar sync (v1.5)
+- ~~Google Calendar sync~~ *(Now implemented: ICS feeds + Google Calendar import)*
 - Task dependencies
 - Issues list (EOS-style)
 - Family scorecard
@@ -251,12 +252,19 @@ Families juggle tasks, meals, appointments, goals, vendor contacts, and dreams a
 
 | Feature | Status | Notes |
 |---------|--------|-------|
-| **Database Schema** | ✅ Complete | Full SQL with 17 tables, enums, RLS, triggers |
+| **Database Schema** | ✅ Complete | Full SQL with 18+ tables, enums, RLS, triggers |
 | **Authentication** | ✅ Complete | Magic link (passwordless) login/signup via Supabase Auth |
 | **Tasks** | ✅ Complete | CRUD, filtering, status workflow, optimistic updates |
 | **Habits** | ✅ Complete | Tracking, streaks, logging (done/skip) |
+| **Goals** | ✅ Complete | Qualitative/quantitative goals, progress tracking |
+| **Projects** | ✅ Complete | Task containers with status workflow |
+| **Someday** | ✅ Complete | Wishlist items with categories |
+| **Family Events** | ✅ Complete | Native events, birthdays, ICS integration |
 | **Dashboard** | ✅ Complete | Stats cards, today's overview |
-| **UI Components** | ✅ Complete | Button, Input, Card, Checkbox, Spinner, Badge, Avatar |
+| **Today Page** | ✅ Complete | Daily focus with events, birthdays, tasks, habits |
+| **Calendar Integration** | ✅ Complete | ICS feeds + Google Calendar import |
+| **UI Components** | ✅ Complete | Button, Input, Card, Checkbox, Spinner, Badge, Avatar, Dialog, Select |
+| **Modals** | ✅ Complete | Task, Goal, Habit, Project, Someday, Event modals |
 | **Layout** | ✅ Complete | AppShell, Sidebar, TopBar |
 | **TanStack Query** | ✅ Complete | Query key factory, hooks, caching |
 
@@ -264,11 +272,14 @@ Families juggle tasks, meals, appointments, goals, vendor contacts, and dreams a
 
 | Feature | Status | Priority |
 |---------|--------|----------|
-| Goals Page | 🔨 Pending | High |
-| Projects Page | 🔨 Pending | High |
-| Onboarding Flow | 🔨 Pending | High |
-| Family Member Management | 🔨 Pending | High |
-| Task Detail Panel | 🔨 Pending | Medium |
+| ~~Goals Page~~ | ✅ Complete | — |
+| ~~Projects Page~~ | ✅ Complete | — |
+| ~~Onboarding Flow~~ | ✅ Complete | — |
+| ~~Family Member Management~~ | ✅ Complete | — |
+| ~~Task Detail (Modal)~~ | ✅ Complete | — |
+| Profiles Feature | 🔨 Pending | High |
+| Calendar View (month/week) | 🔨 Pending | Medium |
+| Personal Dashboard (/me) | 🔨 Pending | Medium |
 
 ### 📋 Future Phases
 
@@ -276,11 +287,12 @@ Families juggle tasks, meals, appointments, goals, vendor contacts, and dreams a
 |---------|-------|-------|
 | Meals & Recipes | v1.2 | Full meal planning UI |
 | Family Meeting View | v1.2 | Weekly check-in experience |
-| Calendar View | v1.2 | All dated items in calendar |
-| Someday/Maybe | v1.3 | Wishlist management |
+| Calendar View (visual) | v1.2 | All dated items in calendar (month/week views) |
+| ~~Someday/Maybe~~ | ✅ Done | Wishlist management |
 | Places & Vendors | v1.3 | Location/service provider libraries |
 | Contacts Library | v1.3 | Extended family & friends |
-| Google Calendar Sync | v1.5 | External calendar integration |
+| ~~Google Calendar Sync~~ | ✅ Done | External calendar integration + ICS feeds |
+| ~~Family Events~~ | ✅ Done | Native events, birthdays, Today integration |
 | Mobile App | v2.0 | Native apps (currently responsive web) |
 
 ### 📁 Project Structure (Implemented)
@@ -319,3 +331,4 @@ fam_app/
 | 1.1 | 2024-12-23 | Claude | Added implementation status section |
 | 1.2 | 2024-12-23 | Claude | Updated auth to magic link (passwordless) |
 | 1.3 | 2024-12-26 | Claude | Added Profiles to V1 scope; updated AI integration as "architected for" via profiles |
+| 1.4 | 2024-12-27 | Claude | Added Family Events to V1 scope; updated implementation status with all completed features (Goals, Projects, Events, Calendar) |
