@@ -547,7 +547,7 @@ CREATE INDEX idx_milestones_person ON milestones(person_id);
 
 ### contacts
 
-Friends, extended family, non-vendor people.
+Friends, extended family, non-vendor people. Supports importing from external sources like Google Contacts.
 
 ```sql
 CREATE TYPE contact_type_enum AS ENUM (
@@ -559,23 +559,23 @@ CREATE TYPE contact_type_enum AS ENUM (
 CREATE TABLE contacts (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   family_id UUID NOT NULL REFERENCES families(id) ON DELETE CASCADE,
-  
+
   -- Basic info
   name TEXT NOT NULL,
   contact_type contact_type_enum DEFAULT 'other',
-  
+
   -- Contact details
   email TEXT,
   phone TEXT,
-  
+
   -- Important dates
   birthday DATE,
   anniversary DATE,
-  
+
   -- Notes
   notes TEXT,
   relationship TEXT, -- "Mike's college roommate", "Zelda's friend's mom"
-  
+
   -- Address (optional)
   address_line1 TEXT,
   address_line2 TEXT,
@@ -583,7 +583,13 @@ CREATE TABLE contacts (
   state TEXT,
   postal_code TEXT,
   country TEXT,
-  
+
+  -- Import tracking (for Google Contacts import feature)
+  google_contact_id TEXT,           -- Unique ID from Google People API
+  google_photo_url TEXT,            -- Profile photo URL from Google
+  imported_from TEXT DEFAULT 'manual', -- 'manual', 'google', 'csv'
+  imported_at TIMESTAMPTZ,          -- When contact was imported
+
   -- Timestamps
   created_at TIMESTAMPTZ DEFAULT now(),
   updated_at TIMESTAMPTZ DEFAULT now(),
@@ -593,6 +599,16 @@ CREATE TABLE contacts (
 
 CREATE INDEX idx_contacts_family ON contacts(family_id);
 CREATE INDEX idx_contacts_birthday ON contacts(family_id, birthday) WHERE deleted_at IS NULL;
+
+-- Unique index for Google contact ID per family (prevents duplicate imports)
+CREATE UNIQUE INDEX idx_contacts_google_id_per_family
+  ON contacts(family_id, google_contact_id)
+  WHERE google_contact_id IS NOT NULL AND deleted_at IS NULL;
+
+-- Index for filtering by import source
+CREATE INDEX idx_contacts_imported_from
+  ON contacts(family_id, imported_from)
+  WHERE deleted_at IS NULL;
 ```
 
 ### vendors
@@ -1207,6 +1223,7 @@ The complete database schema has been implemented across multiple migration file
 - `supabase/migrations/001_initial_schema.sql` - Core tables
 - `supabase/migrations/003_calendar_integration.sql` - Calendar/Google sync tables
 - `supabase/migrations/004_family_events.sql` - Family events table
+- `supabase/migrations/005_contacts_import.sql` - Contact import tracking columns
 
 ### Tables Implemented
 
@@ -1222,7 +1239,7 @@ The complete database schema has been implemented across multiple migration file
 | `projects` | ✅ | ✅ | With someday promotion |
 | `someday_items` | ✅ | ✅ | Wishlist items |
 | `milestones` | ✅ | ✅ | With week grouping |
-| `contacts` | ✅ | ✅ | Extended family/friends |
+| `contacts` | ✅ | ✅ | Extended family/friends + import tracking |
 | `vendors` | ✅ | ✅ | Service providers |
 | `places` | ✅ | ✅ | Locations |
 | `recipes` | ✅ | ✅ | With ingredients JSONB |
@@ -1275,3 +1292,4 @@ All 14 enums from the spec are implemented:
 | 1.2 | 2024-12-23 | Claude | Auth updated to magic link (no password storage needed) |
 | 1.3 | 2024-12-26 | Claude | Added `profile` JSONB columns to families and family_members; added Profile Extensions to Future Considerations |
 | 1.4 | 2024-12-27 | Claude | Added Calendar tables (calendar_feeds, google_calendar_*, external_events); added family_events table; added get_birthdays_in_range() function |
+| 1.5 | 2024-12-28 | Claude | Added contacts import tracking columns (google_contact_id, google_photo_url, imported_from, imported_at) with indexes for Google Contacts import feature |

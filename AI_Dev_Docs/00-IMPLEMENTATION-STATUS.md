@@ -1,7 +1,7 @@
 # Fam - Implementation Status
 
 > **Last Updated:** December 28, 2024
-> **Status:** MVP Phase 3.4 Complete - UI/UX Cleanup & Code Quality
+> **Status:** MVP Phase 3.5 Complete - Contacts Feature
 
 ---
 
@@ -22,6 +22,7 @@
 | Today Feature | ✅ Complete | 100% |
 | Someday Feature | ✅ Complete | 95% |
 | Family Feature | ✅ Complete | 75% |
+| **Contacts Feature** | ✅ **Complete** | 90% |
 | **Kanban Board** | ✅ **Complete** | 100% |
 | **Profiles Feature** | 📋 Planned | 0% |
 | Settings Feature | ✅ Stub | 25% |
@@ -201,6 +202,17 @@ Tables: families, family_members, tasks, subtasks, habits, habit_logs,
 - ✅ `useUpcomingBirthdays(days)` - Birthdays in next N days
 - ✅ `formatEventTime()`, `isMultiDayEvent()`, `getEventDuration()` - Utilities
 
+**File:** `lib/hooks/use-contacts.ts` *(NEW)*
+- ✅ `useContacts(filters)` - List with filtering (contactType, importedFrom, hasBirthday, search)
+- ✅ `useContact(id)` - Single contact detail with computed metadata
+- ✅ `useUpcomingBirthdays(days)` - Contacts with birthdays in next N days
+- ✅ `useSearchContacts(query)` - Search contacts by name/email
+- ✅ `useCreateContact()` - Create contact with toast
+- ✅ `useUpdateContact()` - Update contact with cache invalidation
+- ✅ `useDeleteContact()` - Soft delete with optimistic update
+- ✅ `useContactStats()` - Contact counts by type
+- ✅ Enhanced contacts with `daysUntilBirthday` and `age` computed properties
+
 ### 4.5 Calendar Integration (100% Complete)
 
 **Files:**
@@ -307,6 +319,7 @@ DragOverlay
 | Projects | `/projects` | ✅ **Connected** | Project cards with status filtering |
 | Someday | `/someday` | ✅ **Connected** | Wishlist with categories, promote to project |
 | Family | `/family` | ✅ **Connected** | Family member list, pending invites |
+| **Contacts** | `/contacts` | ✅ **NEW** | Contact list, search, filter, upcoming birthdays, create/edit modal |
 | Settings | `/settings` | ✅ Stub | User and app preferences |
 | Calendar Settings | `/settings/calendar` | ✅ **Complete** | ICS feeds (with events/birthdays), Google Calendar connection |
 
@@ -464,6 +477,7 @@ fam_app/
 │   │   ├── projects/page.tsx   # Project management (connected to DB)
 │   │   ├── someday/page.tsx    # Wishlist ideas (connected to DB)
 │   │   ├── family/page.tsx     # Family members (connected to DB)
+│   │   ├── contacts/page.tsx   # Contacts management (NEW)
 │   │   └── settings/page.tsx   # User preferences (stub)
 │   ├── (auth)/
 │   │   ├── login/page.tsx      # Magic link login
@@ -476,14 +490,14 @@ fam_app/
 ├── components/
 │   ├── ui/                     # 7 components (button, input, card, checkbox, spinner, dialog, select)
 │   ├── shared/                 # 7 components (avatar, badge, empty-state, progress-bar, family-member-picker, project-picker, goal-picker)
-│   ├── modals/                 # 6 components (task-modal, goal-modal, habit-modal, project-modal, someday-modal, event-modal)
+│   ├── modals/                 # 7 components (task-modal, goal-modal, habit-modal, project-modal, someday-modal, event-modal, contact-modal)
 │   ├── kanban/                 # 7 components (kanban-board, kanban-column, kanban-card-content, kanban-card, kanban-sortable-card, kanban-drag-overlay, kanban-drop-indicator)
 │   ├── layout/                 # 3 components
 │   └── providers.tsx
 ├── lib/
 │   ├── contexts/               # 1 context (auth-context) - AuthProvider for centralized auth state
 │   ├── supabase/               # 4 files (client, server, middleware, admin)
-│   ├── hooks/                  # 10 hooks (auth, tasks, habits, goals, projects, someday, family, calendar, family-events, kanban)
+│   ├── hooks/                  # 11 hooks (auth, tasks, habits, goals, projects, someday, family, calendar, family-events, kanban, contacts)
 │   ├── constants/              # 1 file (kanban-styles) - Shared style constants
 │   ├── utils/                  # 3 utilities (cn, logger, ics-generator)
 │   ├── query-client.ts
@@ -492,7 +506,13 @@ fam_app/
 │   ├── database.ts
 │   ├── calendar.ts
 │   └── kanban.ts
-├── supabase/migrations/001_initial_schema.sql
+├── supabase/migrations/
+│   ├── 001_initial_schema.sql
+│   ├── 002_add_profiles.sql
+│   ├── 002_fix_family_onboarding.sql
+│   ├── 003_calendar_integration.sql
+│   ├── 004_family_events.sql
+│   └── 005_contacts_import.sql    # NEW - Import tracking columns
 ├── middleware.ts
 ├── .env.example
 └── README.md
@@ -536,5 +556,6 @@ Keep files under 400 lines. Extract components when they grow.
 | 3.3 | 2024-12-28 | Claude | Added Unified Kanban Board: tasks + events in configurable columns (time/status/priority), drag-drop, time scope filters |
 | 3.4 | 2024-12-28 | Claude | UI/UX Cleanup: Extracted shared KanbanCardContent (DRY), centralized styles in lib/constants, fixed duplicate logging, added empty state hints |
 | 3.5 | 2024-12-28 | Claude | AuthProvider Refactor: Converted useAuth to context pattern, centralized auth state in lib/contexts/auth-context.tsx, eliminated redundant family_members queries |
+| 3.6 | 2024-12-28 | Claude | Contacts Feature: Added /contacts page, ContactModal, useContacts hooks, contacts query keys, import tracking migration (005_contacts_import.sql). Supports extended family, friends, birthday tracking. |
 
 *This document is auto-generated. See individual docs for detailed specs.*

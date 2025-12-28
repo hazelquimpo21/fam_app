@@ -1092,6 +1092,7 @@ GOOGLE CALENDAR (Read-only)             BIRTHDAY (Read-only)
 | Screen 13: Family Meeting | `/meeting` | 🔨 Pending | Not yet implemented |
 | Someday | `/someday` | ✅ **Connected** | Cards + SomedayModal create/edit |
 | Family | `/family` | ✅ **Connected** | Members list, pending invites |
+| **Contacts** | `/contacts` | ✅ **Complete** | List, search, filters, upcoming birthdays, ContactModal |
 | Settings | `/settings` | ✅ Stub | UI with mock data |
 | **Family Profile** | `/settings/family-profile` | 📋 Planned | See `15-profile-architecture.md` |
 | **Member Profile** | `/settings/profile` | 📋 Planned | See `15-profile-architecture.md` |
@@ -1106,6 +1107,7 @@ GOOGLE CALENDAR (Read-only)             BIRTHDAY (Read-only)
 | ProjectModal | `components/modals/project-modal.tsx` | ✅ Complete | Status, owner, target date, icon |
 | SomedayModal | `components/modals/someday-modal.tsx` | ✅ Complete | Category, estimated cost |
 | EventModal | `components/modals/event-modal.tsx` | ✅ Complete | Date/time pickers, location, assignee |
+| ContactModal | `components/modals/contact-modal.tsx` | ✅ Complete | Type, relationship, birthday, address |
 
 > **Note:** **"Connected"** screens are fully wired to Supabase with React Query hooks. "Stub" screens have UI scaffolding with mock data.
 
@@ -1125,3 +1127,4 @@ GOOGLE CALENDAR (Read-only)             BIRTHDAY (Read-only)
 | 1.7 | 2024-12-26 | Claude | Added "Modal Connections" section to Dashboard documenting click-to-edit patterns for habits, goals, and tasks |
 | 1.8 | 2024-12-26 | Claude | Added Family Profile and Member Profile screens to implementation table (planned); see `15-profile-architecture.md` for wireframes |
 | 1.9 | 2024-12-28 | Claude | Rewrote Screen 6 as "Unified Kanban Board" with full wireframe showing tasks + events, groupBy modes, time scope, item type filters; marked as COMPLETE |
+| 2.0 | 2024-12-28 | Claude | Added Contacts page and ContactModal to implementation tables |

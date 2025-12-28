@@ -51,6 +51,14 @@ export interface SomedayFilters {
   addedById?: string;
 }
 
+/** Filters for contact queries */
+export interface ContactFilters {
+  contactType?: 'family' | 'friend' | 'other';
+  importedFrom?: 'google' | 'manual' | 'csv';
+  hasBirthday?: boolean;
+  search?: string;
+}
+
 /** Date range for queries */
 export interface DateRange {
   start: string;  // YYYY-MM-DD
@@ -170,6 +178,25 @@ export const queryKeys = {
 
     /** Pending invites for the family */
     invites: () => [...queryKeys.family.all, 'invites'] as const,
+  },
+
+  // ━━━━━ Contacts ━━━━━
+  contacts: {
+    /** Base key for all contact queries */
+    all: ['contacts'] as const,
+
+    /** Contact list with filters */
+    list: (filters?: ContactFilters) => [...queryKeys.contacts.all, 'list', filters] as const,
+
+    /** Specific contact detail */
+    detail: (id: string) => [...queryKeys.contacts.all, 'detail', id] as const,
+
+    /** Contacts with upcoming birthdays */
+    upcomingBirthdays: (days: number) =>
+      [...queryKeys.contacts.all, 'upcoming-birthdays', days] as const,
+
+    /** Search contacts by name/email */
+    search: (query: string) => [...queryKeys.contacts.all, 'search', query] as const,
   },
 
   // ━━━━━ Profiles ━━━━━

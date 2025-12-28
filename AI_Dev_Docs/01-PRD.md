@@ -264,7 +264,8 @@ Families juggle tasks, meals, appointments, goals, vendor contacts, and dreams a
 | **Today Page** | ✅ Complete | Daily focus with events, birthdays, tasks, habits |
 | **Calendar Integration** | ✅ Complete | ICS feeds + Google Calendar import |
 | **UI Components** | ✅ Complete | Button, Input, Card, Checkbox, Spinner, Badge, Avatar, Dialog, Select |
-| **Modals** | ✅ Complete | Task, Goal, Habit, Project, Someday, Event modals |
+| **Modals** | ✅ Complete | Task, Goal, Habit, Project, Someday, Event, Contact modals |
+| **Contacts** | ✅ Complete | List, search, filters, birthday tracking, import-ready |
 | **Layout** | ✅ Complete | AppShell, Sidebar, TopBar |
 | **TanStack Query** | ✅ Complete | Query key factory, hooks, caching |
 
@@ -291,8 +292,9 @@ Families juggle tasks, meals, appointments, goals, vendor contacts, and dreams a
 | Someday/Maybe | ✅ v1.0 | Wishlist management |
 | ~~Google Calendar Sync~~ | ✅ v1.0 | External calendar integration - **DONE** |
 | **Kanban Board** | ✅ v1.0 | Unified tasks + events board - **DONE** |
-| Places & Vendors | v1.3 | Location/service provider libraries |
-| Contacts Library | v1.3 | Extended family & friends |
+| **Contacts Library** | ✅ v1.0 | Extended family & friends with birthdays - **DONE** |
+| Google Contacts Import | v1.5 | Import contacts from Google People API |
+| Places & Vendors | v1.5 | Location/service provider libraries |
 | Mobile App | v2.0 | Native apps (currently responsive web) |
 
 ### 📁 Project Structure (Implemented)
@@ -332,3 +334,4 @@ fam_app/
 | 1.2 | 2024-12-23 | Claude | Updated auth to magic link (passwordless) |
 | 1.3 | 2024-12-26 | Claude | Added Profiles to V1 scope; updated AI integration as "architected for" via profiles |
 | 1.4 | 2024-12-28 | Claude | Updated Kanban view to include events; marked Google Calendar sync and Kanban as complete |
+| 1.5 | 2024-12-28 | Claude | Added Contacts feature as complete; updated roadmap with Google Contacts Import for v1.5 |

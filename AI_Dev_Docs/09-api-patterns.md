@@ -897,6 +897,15 @@ export const queryClient = new QueryClient({
 | `useCancelInvite` | ✅ | ✅ | `lib/hooks/use-family.ts` | Cancel invite |
 | **Auth** |
 | `useAuth` | ✅ | ✅ | `lib/hooks/use-auth.ts` | Magic link auth (AuthProvider context) |
+| **Contacts** |
+| `useContacts` | ✅ | ✅ | `lib/hooks/use-contacts.ts` | With filters (type, source, birthday, search) |
+| `useContact` | ✅ | ✅ | `lib/hooks/use-contacts.ts` | Single contact with computed metadata |
+| `useUpcomingBirthdays` | ✅ | ✅ | `lib/hooks/use-contacts.ts` | Contacts with birthdays in next N days |
+| `useSearchContacts` | ✅ | ✅ | `lib/hooks/use-contacts.ts` | Search by name/email |
+| `useCreateContact` | ✅ | ✅ | `lib/hooks/use-contacts.ts` | With toast |
+| `useUpdateContact` | ✅ | ✅ | `lib/hooks/use-contacts.ts` | Cache update |
+| `useDeleteContact` | ✅ | ✅ | `lib/hooks/use-contacts.ts` | Soft delete + optimistic |
+| `useContactStats` | ✅ | ✅ | `lib/hooks/use-contacts.ts` | Count by type |
 | **Other** |
 | `useFamilyDashboard` | ✅ | 🔨 | - | Aggregated data pending |
 | Real-time subscriptions | ✅ | 🔨 | - | Not yet built |
@@ -927,7 +936,8 @@ lib/
 │   ├── use-goals.ts        # ✅ Full CRUD + progress tracking
 │   ├── use-projects.ts     # ✅ Full CRUD + status management
 │   ├── use-someday.ts      # ✅ Full CRUD + category filtering
-│   └── use-family.ts       # ✅ Full CRUD + invites management
+│   ├── use-family.ts       # ✅ Full CRUD + invites management
+│   └── use-contacts.ts     # ✅ Full CRUD + birthday tracking + import support
 └── supabase/
     ├── client.ts           # ✅ Browser client
     ├── server.ts           # ✅ Server component client
@@ -950,7 +960,9 @@ lib/
 3. **Lower Priority:**
    - Meal planning hooks
    - Recipe library hooks
-   - Vendor/contact library hooks
+   - ✅ ~~Contact library hooks~~ (Done!)
+   - Vendor library hooks
+   - Places library hooks
 
 ---
 
@@ -966,3 +978,4 @@ lib/
 | 1.5 | 2024-12-25 | Claude | Dashboard now uses hooks for real-time data (tasks, habits, goals) |
 | 1.6 | 2024-12-26 | Claude | Added useUpdateHabit and useWeeklyHabitLogs hooks for habit editing |
 | 1.7 | 2024-12-28 | Claude | Updated auth hook to use AuthProvider context pattern |
+| 1.8 | 2024-12-28 | Claude | Added useContacts hooks (full CRUD, birthday tracking, import support) |
