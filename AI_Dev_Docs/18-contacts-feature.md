@@ -1,7 +1,7 @@
 # Fam — Contacts Feature
 
 > **Last Updated:** December 28, 2024
-> **Status:** Phase 1.1 Complete (Enhanced UI/UX), Phase 2 Planned (Google Import)
+> **Status:** Phase 1.2 Complete (CSV Import), Phase 2 Planned (Google Import)
 
 ---
 
@@ -70,6 +70,48 @@ The Contacts feature allows families to manage extended family, friends, and oth
 - "Show X more" button appears if more than 4 birthdays
 - Expands to show all with "Show less" toggle
 - Birthday count badge in section header
+
+### US-IMPORT-1: CSV Import ✅ NEW (Phase 1.2)
+
+> **As a** user, **I want** to import contacts from a CSV file, **so that** I can quickly add birthdays from exports (iPhone, Google, Outlook).
+
+**Implementation:**
+- Import button on Contacts page header
+- 4-step wizard modal: Upload → Map Columns → Preview → Results
+- Drag & drop file upload with visual feedback
+- Auto-detects column mappings from common export formats
+- Preview shows all contacts with selection checkboxes
+
+### US-IMPORT-2: Import Preview ✅ NEW (Phase 1.2)
+
+> **As a** user, **I want** to preview contacts before importing, **so that** I can select only the ones I want.
+
+**Implementation:**
+- Preview table shows name, email, birthday for each contact
+- Checkbox to select/deselect individual contacts
+- "Select all" / "Deselect all" batch controls
+- Summary stats: total, selected, with birthdays
+
+### US-IMPORT-3: Duplicate Detection ✅ NEW (Phase 1.2)
+
+> **As a** user, **I want** to be warned about duplicate contacts, **so that** I don't create duplicates.
+
+**Implementation:**
+- Checks existing contacts by email (definite match) and name (potential match)
+- Visual indicators: green "New", red "Email exists", amber "Name exists"
+- Email duplicates are deselected by default
+- Name duplicates are selected (might be different people)
+- Warning banner summarizes duplicate counts
+
+### US-DELETE-1: Delete Confirmation ✅ NEW (Phase 1.2)
+
+> **As a** user, **I want** a confirmation before deleting a contact, **so that** I don't accidentally lose data.
+
+**Implementation:**
+- ConfirmDialog component with destructive styling
+- Shows contact name in confirmation message
+- Cancel and Delete buttons with loading state
+- Reusable hook: `useConfirmDialog<Contact>()`
 
 ---
 
@@ -353,18 +395,24 @@ The only alternative is manual GDPR data export from Facebook, which is cumberso
 ```
 lib/
 ├── constants/
-│   └── contact-styles.ts       # NEW: Shared styling constants (avatar colors, type config)
+│   └── contact-styles.ts       # Shared styling constants (avatar colors, type config)
 ├── hooks/
 │   └── use-contacts.ts         # CRUD hooks with birthday calculations
+├── utils/
+│   ├── csv-parser.ts           # NEW: CSV parsing with column auto-detection
+│   └── contact-import.ts       # NEW: Import logic with duplicate detection
 ├── query-keys.ts               # ContactFilters type, contacts query keys
 
 components/
 ├── modals/
-│   └── contact-modal.tsx       # Create/edit modal with ContactTypeSelector, AddressSection
+│   ├── contact-modal.tsx       # Create/edit modal with ContactTypeSelector, AddressSection
+│   └── import-contacts-modal.tsx # NEW: 4-step CSV import wizard
+├── ui/
+│   └── confirm-dialog.tsx      # NEW: Reusable confirmation dialog component
 
 app/(app)/
 ├── contacts/
-│   └── page.tsx               # Contacts list with ContactCard, UpcomingBirthdaysSection
+│   └── page.tsx               # Contacts list with Import button, delete confirmation
 
 types/
 └── database.ts                # Contact, ContactType, ContactImportSource
@@ -386,7 +434,7 @@ supabase/migrations/
 - [x] Upcoming birthdays section
 - [x] Import tracking columns (prepared for Phase 2)
 
-### Phase 1.1: Enhanced UI/UX ✅ Complete (NEW)
+### Phase 1.1: Enhanced UI/UX ✅ Complete
 
 - [x] Clickable contact cards (direct edit)
 - [x] Unique avatar colors based on name
@@ -395,20 +443,26 @@ supabase/migrations/
 - [x] Shared constants file (contact-styles.ts)
 - [x] Comprehensive AI-dev comments throughout
 
+### Phase 1.2: CSV Import & UX Improvements ✅ Complete (NEW)
+
+- [x] CSV Import modal with 4-step wizard flow
+- [x] Drag & drop file upload with visual feedback
+- [x] Auto-detect column mappings (Google, iPhone, Outlook, generic)
+- [x] Date format normalization (MM/DD/YYYY, YYYY-MM-DD, etc.)
+- [x] Duplicate detection (by email and name)
+- [x] Preview with select/deselect individual contacts
+- [x] Import summary with success/skip/fail counts
+- [x] Delete confirmation dialog (prevents accidental deletions)
+- [x] Reusable ConfirmDialog + useConfirmDialog hook
+- [x] Well-commented code for AI developers
+
 ### Phase 2: Google Import (Planned)
 
 - [ ] Add `contacts.readonly` scope to OAuth
 - [ ] Create Google People API integration
-- [ ] Build import preview/selection UI
-- [ ] Implement de-duplication logic
-- [ ] Add "Import from Google" button on Contacts page
-
-### Phase 3: CSV Import (Planned)
-
-- [ ] CSV file upload
-- [ ] Column mapping UI
-- [ ] Preview and confirm flow
-- [ ] Support exports from Facebook, iPhone, Outlook, etc.
+- [ ] Reuse preview/selection UI from CSV import
+- [ ] Implement de-duplication using google_contact_id
+- [ ] Add "Import from Google" option in Import modal
 
 ---
 
@@ -418,3 +472,4 @@ supabase/migrations/
 |---------|------|--------|---------|
 | 1.0 | 2024-12-28 | Claude | Initial documentation for Contacts feature Phase 1 |
 | 1.1 | 2024-12-28 | Claude | Phase 1.1: Enhanced UI/UX - clickable cards, unique avatars, mailto/tel links, expandable birthdays, shared constants |
+| 1.2 | 2024-12-28 | Claude | Phase 1.2: CSV Import with 4-step wizard, duplicate detection, delete confirmation dialog, reusable ConfirmDialog component |

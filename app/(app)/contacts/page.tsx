@@ -55,12 +55,13 @@ import {
   X,
   ChevronDown,
   ChevronUp,
-  ExternalLink,
+  Upload,
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { EmptyState } from '@/components/shared/empty-state';
+import { ConfirmDialog, useConfirmDialog } from '@/components/ui/confirm-dialog';
 import { cn } from '@/lib/utils/cn';
 import { logger } from '@/lib/utils/logger';
 import {
@@ -71,7 +72,6 @@ import {
   type ContactWithMeta,
 } from '@/lib/hooks/use-contacts';
 import {
-  CONTACT_TYPE_CONFIG,
   getContactTypeConfig,
   getAvatarColor,
   formatBirthdayCountdown,
@@ -80,6 +80,7 @@ import {
   getPhoneLink,
 } from '@/lib/constants/contact-styles';
 import { ContactModal } from '@/components/modals/contact-modal';
+import { ImportContactsModal } from '@/components/modals/import-contacts-modal';
 import type { Contact, ContactType } from '@/types/database';
 
 // ============================================================================
@@ -136,7 +137,8 @@ const UPCOMING_BIRTHDAYS_DAYS = 30;
 interface ContactCardProps {
   contact: ContactWithMeta;
   onEdit: (contact: Contact) => void;
-  onDelete: (id: string) => void;
+  /** Callback when delete is requested. Confirmation handled by parent. */
+  onDelete: () => void;
   isDeleting: boolean;
 }
 
@@ -350,7 +352,7 @@ function ContactCard({
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
-                    onDelete(contact.id);
+                    onDelete();
                     setShowMenu(false);
                   }}
                   disabled={isDeleting}
@@ -613,7 +615,11 @@ export default function ContactsPage() {
   const [search, setSearch] = React.useState('');
   const [typeFilter, setTypeFilter] = React.useState<FilterType>('all');
   const [isModalOpen, setIsModalOpen] = React.useState(false);
+  const [isImportModalOpen, setIsImportModalOpen] = React.useState(false);
   const [editingContact, setEditingContact] = React.useState<Contact | null>(null);
+
+  // Delete confirmation dialog state
+  const deleteConfirm = useConfirmDialog<Contact>();
 
   // ━━━━━ DATA HOOKS ━━━━━
   const {
@@ -663,11 +669,40 @@ export default function ContactsPage() {
   };
 
   /**
-   * Delete a contact (with confirmation in future)
+   * Request delete confirmation for a contact.
+   * Shows the confirmation dialog with contact details.
    */
-  const handleDelete = (contactId: string) => {
-    logger.info('🗑️ Deleting contact', { contactId });
-    deleteContact.mutate(contactId);
+  const handleDeleteRequest = (contact: Contact) => {
+    logger.info('🗑️ Requesting delete confirmation', {
+      contactId: contact.id,
+      name: contact.name,
+    });
+    deleteConfirm.open(contact);
+  };
+
+  /**
+   * Execute the delete after confirmation.
+   * Called from the ConfirmDialog onConfirm.
+   */
+  const handleDeleteConfirm = () => {
+    if (!deleteConfirm.data) return;
+    logger.info('🗑️ Deleting contact', { contactId: deleteConfirm.data.id });
+    deleteContact.mutate(deleteConfirm.data.id);
+  };
+
+  /**
+   * Open the import modal.
+   */
+  const handleOpenImport = () => {
+    logger.info('📥 Opening import modal');
+    setIsImportModalOpen(true);
+  };
+
+  /**
+   * Handle successful import.
+   */
+  const handleImportSuccess = (count: number) => {
+    logger.success('✅ Import completed', { count });
   };
 
   /**
@@ -728,9 +763,18 @@ export default function ContactsPage() {
             )}
           </div>
         </div>
-        <Button leftIcon={<Plus className="h-4 w-4" />} onClick={handleCreate}>
-          Add Contact
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            leftIcon={<Upload className="h-4 w-4" />}
+            onClick={handleOpenImport}
+          >
+            Import
+          </Button>
+          <Button leftIcon={<Plus className="h-4 w-4" />} onClick={handleCreate}>
+            Add Contact
+          </Button>
+        </div>
       </div>
 
       {/* Upcoming birthdays section */}
@@ -820,7 +864,7 @@ export default function ContactsPage() {
                   key={contact.id}
                   contact={contact}
                   onEdit={handleEdit}
-                  onDelete={handleDelete}
+                  onDelete={() => handleDeleteRequest(contact)}
                   isDeleting={deleteContact.isPending}
                 />
               ))}
@@ -829,11 +873,36 @@ export default function ContactsPage() {
         </>
       )}
 
+      {/* ━━━━━ MODALS ━━━━━ */}
+
       {/* Contact Modal for create/edit */}
       <ContactModal
         open={isModalOpen}
         onOpenChange={handleModalClose}
         contact={editingContact}
+      />
+
+      {/* Import Contacts Modal */}
+      <ImportContactsModal
+        open={isImportModalOpen}
+        onOpenChange={setIsImportModalOpen}
+        onSuccess={handleImportSuccess}
+      />
+
+      {/* Delete Confirmation Dialog */}
+      <ConfirmDialog
+        open={deleteConfirm.isOpen}
+        onOpenChange={deleteConfirm.setOpen}
+        title="Delete Contact"
+        description={
+          deleteConfirm.data
+            ? `Are you sure you want to delete "${deleteConfirm.data.name}"? This action cannot be undone.`
+            : 'Are you sure you want to delete this contact?'
+        }
+        confirmLabel="Delete"
+        variant="destructive"
+        onConfirm={handleDeleteConfirm}
+        isLoading={deleteContact.isPending}
       />
     </div>
   );
