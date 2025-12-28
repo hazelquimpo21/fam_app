@@ -7,21 +7,39 @@
  *
  * React Query hooks for managing contacts (extended family, friends, etc.)
  *
- * Features:
- * - Full CRUD operations for contacts
+ * WHAT ARE CONTACTS?
+ * Contacts are people outside the immediate family household. Unlike
+ * family_members (who are part of the Fam app), contacts are external people
+ * whose birthdays and contact info you want to track.
+ *
+ * USE CASES:
+ * - Track extended family birthdays (grandparents, cousins, aunts/uncles)
+ * - Remember friends' contact info and birthdays
+ * - Store relationship context ("Dad's brother", "Emma's friend's mom")
+ * - Future: Import from Google Contacts (Phase 2)
+ *
+ * FEATURES:
+ * - Full CRUD operations with optimistic updates
  * - Filtering by contact type, import source
- * - Search functionality
- * - Upcoming birthday queries
- * - Optimistic updates for better UX
+ * - Full-text search by name or email
+ * - Upcoming birthday queries with computed countdown
+ * - Contact stats (counts by type)
  *
- * User Stories Addressed:
- * - US-10.2: Manage Contacts - view, create, edit contacts
- *
- * Data Flow:
+ * DATA FLOW:
  * 1. Components call hooks (useContacts, useContact, etc.)
- * 2. Hooks use TanStack Query for caching and state
- * 3. Data is fetched from/written to Supabase
- * 4. Cache is invalidated on mutations
+ * 2. Hooks use TanStack Query for caching and state management
+ * 3. Data is fetched from/written to Supabase "contacts" table
+ * 4. Cache is invalidated on mutations for consistency
+ *
+ * USER STORIES ADDRESSED:
+ * - US-10.2: Manage Contacts - view, create, edit, delete contacts
+ *
+ * RELATED FILES:
+ * - app/(app)/contacts/page.tsx - Main contacts page
+ * - components/modals/contact-modal.tsx - Create/edit modal
+ * - lib/constants/contact-styles.ts - Shared styling constants
+ * - lib/query-keys.ts - Query key definitions (ContactFilters type)
+ * - types/database.ts - Contact, ContactType types
  *
  * ============================================================================
  */
@@ -38,7 +56,17 @@ import type { Contact, ContactType } from '@/types/database';
 // ============================================================================
 
 /**
- * Input type for creating a new contact
+ * Input type for creating a new contact.
+ *
+ * WHY SEPARATE FROM Contact:
+ * - Contact has auto-generated fields (id, family_id, created_at, etc.)
+ * - CreateContactInput only includes user-provided fields
+ * - All fields except name and contact_type are optional
+ *
+ * VALIDATION NOTES:
+ * - Name is required (validated in ContactModal)
+ * - Email format is validated by browser (type="email")
+ * - Birthday/anniversary accept YYYY-MM-DD format
  */
 export interface CreateContactInput {
   name: string;
@@ -58,19 +86,33 @@ export interface CreateContactInput {
 }
 
 /**
- * Input type for updating an existing contact
+ * Input type for updating an existing contact.
+ * Extends CreateContactInput but makes all fields optional except id.
+ *
+ * WHY PARTIAL:
+ * Allows updating just one field without sending entire contact.
+ * e.g., updateContact.mutate({ id: 'abc', phone: '555-1234' })
  */
 export interface UpdateContactInput extends Partial<CreateContactInput> {
   id: string;
 }
 
 /**
- * Extended contact with computed properties
+ * Extended contact with computed properties for UI display.
+ *
+ * COMPUTED FIELDS:
+ * - daysUntilBirthday: Days until next birthday (0 = today, null = no birthday)
+ * - age: Current age in years (null = no birthday)
+ *
+ * WHY COMPUTED IN CLIENT:
+ * - These values change daily
+ * - Computing in DB would require timezone awareness
+ * - Client computation is fast and timezone-correct
  */
 export interface ContactWithMeta extends Contact {
   /** Days until next birthday (null if no birthday set) */
   daysUntilBirthday?: number | null;
-  /** Age in years (null if no birthday set) */
+  /** Current age in years (null if no birthday set) */
   age?: number | null;
 }
 
@@ -79,13 +121,26 @@ export interface ContactWithMeta extends Contact {
 // ============================================================================
 
 /**
- * Calculate days until next birthday
+ * Calculate days until next birthday.
+ *
+ * ALGORITHM:
+ * 1. Get this year's birthday date
+ * 2. If already passed, use next year's birthday
+ * 3. Return difference in days
+ *
+ * EDGE CASES:
+ * - Leap year birthdays (Feb 29) are handled by JavaScript Date
+ * - Today's birthday returns 0
+ * - Tomorrow's birthday returns 1
+ *
+ * @param birthdayStr - Birthday in YYYY-MM-DD format
+ * @returns Days until next birthday, or null if no birthday
  */
 function getDaysUntilBirthday(birthdayStr: string | null): number | null {
   if (!birthdayStr) return null;
 
   const today = new Date();
-  today.setHours(0, 0, 0, 0);
+  today.setHours(0, 0, 0, 0); // Normalize to midnight
 
   const birthday = new Date(birthdayStr);
   const thisYearBirthday = new Date(
@@ -94,7 +149,7 @@ function getDaysUntilBirthday(birthdayStr: string | null): number | null {
     birthday.getDate()
   );
 
-  // If birthday already passed this year, look at next year
+  // If birthday already passed this year, calculate for next year
   if (thisYearBirthday < today) {
     thisYearBirthday.setFullYear(today.getFullYear() + 1);
   }
@@ -106,7 +161,14 @@ function getDaysUntilBirthday(birthdayStr: string | null): number | null {
 }
 
 /**
- * Calculate age from birthday
+ * Calculate current age from birthday.
+ *
+ * ALGORITHM:
+ * 1. Get year difference
+ * 2. Subtract 1 if birthday hasn't occurred this year yet
+ *
+ * @param birthdayStr - Birthday in YYYY-MM-DD format
+ * @returns Age in years, or null if no birthday
  */
 function getAge(birthdayStr: string | null): number | null {
   if (!birthdayStr) return null;
@@ -116,6 +178,7 @@ function getAge(birthdayStr: string | null): number | null {
   let age = today.getFullYear() - birthday.getFullYear();
   const monthDiff = today.getMonth() - birthday.getMonth();
 
+  // Subtract 1 if birthday hasn't happened yet this year
   if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthday.getDate())) {
     age--;
   }
@@ -124,7 +187,14 @@ function getAge(birthdayStr: string | null): number | null {
 }
 
 /**
- * Enhance contact with computed metadata
+ * Enhance a contact with computed metadata (daysUntilBirthday, age).
+ *
+ * WHEN CALLED:
+ * - After fetching contacts from Supabase
+ * - Before returning data to components
+ *
+ * @param contact - Raw contact from database
+ * @returns Contact with computed properties added
  */
 function enhanceContact(contact: Contact): ContactWithMeta {
   return {
@@ -139,20 +209,33 @@ function enhanceContact(contact: Contact): ContactWithMeta {
 // ============================================================================
 
 /**
- * Fetch all contacts with optional filters
+ * Fetch all contacts with optional filters.
  *
- * @param filters - Optional filters for contact type, import source, etc.
+ * FILTERING OPTIONS:
+ * - contactType: Filter by 'family', 'friend', or 'other'
+ * - importedFrom: Filter by import source ('manual', 'google', 'csv')
+ * - hasBirthday: true = only with birthdays, false = only without
+ * - search: Case-insensitive search in name and email
+ *
+ * CACHING:
+ * - staleTime: 5 minutes (contacts don't change frequently)
+ * - Refetches on window focus
+ * - Invalidated on create/update/delete mutations
+ *
+ * @param filters - Optional filters for the query
  * @returns Query result with contacts array
  *
  * @example
  * // Get all contacts
  * const { data: contacts } = useContacts()
  *
+ * @example
  * // Get only family contacts
  * const { data: familyContacts } = useContacts({ contactType: 'family' })
  *
- * // Get contacts with birthdays
- * const { data: withBirthdays } = useContacts({ hasBirthday: true })
+ * @example
+ * // Search contacts
+ * const { data: results } = useContacts({ search: 'smith' })
  */
 export function useContacts(filters?: ContactFilters) {
   const supabase = createClient();
@@ -165,10 +248,10 @@ export function useContacts(filters?: ContactFilters) {
       let query = supabase
         .from('contacts')
         .select('*')
-        .is('deleted_at', null)
-        .order('name', { ascending: true });
+        .is('deleted_at', null) // Only non-deleted contacts
+        .order('name', { ascending: true }); // Alphabetical order
 
-      // Apply filters
+      // Apply filters dynamically
       if (filters?.contactType) {
         query = query.eq('contact_type', filters.contactType);
       }
@@ -184,7 +267,7 @@ export function useContacts(filters?: ContactFilters) {
       }
 
       if (filters?.search) {
-        // Search by name or email (case-insensitive)
+        // Search by name OR email (case-insensitive)
         query = query.or(
           `name.ilike.%${filters.search}%,email.ilike.%${filters.search}%`
         );
@@ -197,7 +280,7 @@ export function useContacts(filters?: ContactFilters) {
         throw error;
       }
 
-      // Enhance contacts with computed properties
+      // Enhance all contacts with computed properties
       const enhancedContacts = (data ?? []).map(enhanceContact);
 
       logger.success(`✅ Fetched ${enhancedContacts.length} contacts`);
@@ -208,10 +291,15 @@ export function useContacts(filters?: ContactFilters) {
 }
 
 /**
- * Fetch a single contact by ID
+ * Fetch a single contact by ID with computed metadata.
+ *
+ * USE CASES:
+ * - Contact detail view
+ * - Pre-populating edit form
+ * - Checking contact existence
  *
  * @param id - Contact UUID
- * @returns Query result with contact object
+ * @returns Query result with single contact object
  *
  * @example
  * const { data: contact, isLoading } = useContact(contactId)
@@ -239,16 +327,26 @@ export function useContact(id: string) {
       logger.success('✅ Contact loaded', { name: data?.name });
       return enhanceContact(data as Contact);
     },
-    enabled: !!id,
+    enabled: !!id, // Only fetch if ID is provided
     staleTime: 1000 * 60, // 1 minute
   });
 }
 
 /**
- * Fetch contacts with upcoming birthdays
+ * Fetch contacts with upcoming birthdays in the next N days.
+ *
+ * ALGORITHM:
+ * 1. Fetch all contacts with birthdays
+ * 2. Filter to those within the date range
+ * 3. Sort by days until birthday (soonest first)
+ *
+ * WHY CLIENT-SIDE FILTERING:
+ * - Birthday month/day comparison is tricky in SQL with year wrapping
+ * - Contact count is typically small (<1000)
+ * - Client filtering is fast and accurate
  *
  * @param days - Number of days to look ahead (default: 30)
- * @returns Query result with contacts that have birthdays in the next N days
+ * @returns Query result with contacts sorted by upcoming birthday
  *
  * @example
  * // Get contacts with birthdays in the next 14 days
@@ -262,7 +360,7 @@ export function useUpcomingBirthdays(days: number = 30) {
     queryFn: async (): Promise<ContactWithMeta[]> => {
       logger.info('🎂 Fetching contacts with upcoming birthdays...', { days });
 
-      // Fetch all contacts with birthdays
+      // Fetch all contacts with birthdays set
       const { data, error } = await supabase
         .from('contacts')
         .select('*')
@@ -275,7 +373,7 @@ export function useUpcomingBirthdays(days: number = 30) {
         throw error;
       }
 
-      // Filter to those with birthdays in the next N days
+      // Filter and sort by days until birthday
       const enhancedContacts = (data ?? [])
         .map(enhanceContact)
         .filter((contact) => {
@@ -292,13 +390,15 @@ export function useUpcomingBirthdays(days: number = 30) {
 }
 
 /**
- * Search contacts by name or email
+ * Search contacts by name or email.
+ * Convenience wrapper around useContacts with search filter.
  *
- * @param query - Search string
+ * @param query - Search string (case-insensitive)
  * @returns Query result with matching contacts
  *
  * @example
- * const { data: results } = useSearchContacts(searchQuery)
+ * const [search, setSearch] = useState('')
+ * const { data: results } = useSearchContacts(search)
  */
 export function useSearchContacts(searchQuery: string) {
   return useContacts({ search: searchQuery });
@@ -309,12 +409,25 @@ export function useSearchContacts(searchQuery: string) {
 // ============================================================================
 
 /**
- * Create a new contact
+ * Create a new contact.
+ *
+ * FLOW:
+ * 1. Insert new row in contacts table
+ * 2. Set imported_from to 'manual' (user-created)
+ * 3. On success: invalidate all contact queries, show toast
+ * 4. On error: show error toast
+ *
+ * AUTO-SET FIELDS:
+ * - id: Generated by Supabase (UUID)
+ * - family_id: Set by RLS policy
+ * - imported_from: 'manual'
+ * - created_at, updated_at: Set by database
  *
  * @example
  * const createContact = useCreateContact()
+ *
  * createContact.mutate({
- *   name: 'Grandma',
+ *   name: 'Grandma Rose',
  *   contact_type: 'family',
  *   birthday: '1945-03-15',
  *   relationship: "Dad's mom"
@@ -332,7 +445,7 @@ export function useCreateContact() {
         .from('contacts')
         .insert({
           ...input,
-          // Default imported_from to 'manual' for user-created contacts
+          // Mark as manually created (vs imported from Google, CSV)
           imported_from: 'manual',
         })
         .select()
@@ -363,14 +476,32 @@ export function useCreateContact() {
 }
 
 /**
- * Update an existing contact
+ * Update an existing contact.
+ *
+ * FLOW:
+ * 1. Update row with provided fields
+ * 2. Auto-update updated_at timestamp
+ * 3. On success: update cache directly, invalidate lists
+ * 4. On error: show error toast
+ *
+ * PARTIAL UPDATES:
+ * Only fields included in the input will be updated.
+ * Other fields remain unchanged.
  *
  * @example
  * const updateContact = useUpdateContact()
+ *
+ * // Update just the phone number
  * updateContact.mutate({
  *   id: contactId,
  *   phone: '555-1234',
- *   notes: 'Prefers text messages'
+ * })
+ *
+ * // Update multiple fields
+ * updateContact.mutate({
+ *   id: contactId,
+ *   phone: '555-1234',
+ *   notes: 'Prefers text messages',
  * })
  */
 export function useUpdateContact() {
@@ -401,14 +532,14 @@ export function useUpdateContact() {
     },
 
     onSuccess: (data) => {
-      // Update the specific contact in cache
+      // Update the specific contact in cache (optimistic-ish)
       queryClient.setQueryData(
         queryKeys.contacts.detail(data.id),
         enhanceContact(data)
       );
-      // Invalidate contact lists
+      // Invalidate contact lists to refresh with new data
       queryClient.invalidateQueries({ queryKey: queryKeys.contacts.list() });
-      // Also invalidate birthday queries since birthday might have changed
+      // Invalidate birthday queries since birthday might have changed
       queryClient.invalidateQueries({ queryKey: queryKeys.birthdays.all });
       toast.success('Contact updated!');
     },
@@ -420,7 +551,16 @@ export function useUpdateContact() {
 }
 
 /**
- * Delete a contact (soft delete)
+ * Delete a contact (soft delete).
+ *
+ * SOFT DELETE PATTERN:
+ * - Sets deleted_at timestamp instead of removing row
+ * - Allows recovery if needed
+ * - Maintains referential integrity
+ *
+ * OPTIMISTIC UPDATE:
+ * Contact is removed from UI immediately.
+ * If delete fails, contact is restored.
  *
  * @example
  * const deleteContact = useDeleteContact()
@@ -434,7 +574,7 @@ export function useDeleteContact() {
     mutationFn: async (contactId: string) => {
       logger.info('🗑️ Deleting contact...', { contactId });
 
-      // Soft delete by setting deleted_at
+      // Soft delete by setting deleted_at timestamp
       const { error } = await supabase
         .from('contacts')
         .update({ deleted_at: new Date().toISOString() })
@@ -449,29 +589,31 @@ export function useDeleteContact() {
       return contactId;
     },
 
-    // Optimistic update - remove from lists immediately
+    // ━━━ OPTIMISTIC UPDATE ━━━
+    // Remove from UI immediately for snappy feel
     onMutate: async (contactId) => {
-      // Cancel any outgoing refetches
+      // Cancel any in-flight queries to prevent race conditions
       await queryClient.cancelQueries({ queryKey: queryKeys.contacts.all });
 
-      // Snapshot the previous value
+      // Snapshot current contacts for rollback
       const previousContacts = queryClient.getQueryData<ContactWithMeta[]>(
         queryKeys.contacts.list()
       );
 
-      // Optimistically remove from all contact lists
+      // Optimistically remove from all contact list caches
       queryClient.setQueriesData(
         { queryKey: queryKeys.contacts.all },
         (old: ContactWithMeta[] | undefined) =>
           old?.filter((c) => c.id !== contactId)
       );
 
-      // Return context for rollback
+      // Return context for potential rollback
       return { previousContacts };
     },
 
+    // ━━━ ERROR ROLLBACK ━━━
     onError: (err, contactId, context) => {
-      // Rollback on error
+      // Restore previous contacts if delete failed
       if (context?.previousContacts) {
         queryClient.setQueryData(
           queryKeys.contacts.list(),
@@ -485,8 +627,9 @@ export function useDeleteContact() {
       toast('Contact deleted');
     },
 
+    // ━━━ CLEANUP ━━━
+    // Always refetch to ensure consistency
     onSettled: () => {
-      // Always refetch after error or success
       queryClient.invalidateQueries({ queryKey: queryKeys.contacts.all });
       queryClient.invalidateQueries({ queryKey: queryKeys.birthdays.all });
     },
@@ -498,12 +641,21 @@ export function useDeleteContact() {
 // ============================================================================
 
 /**
- * Get contact statistics
+ * Get contact statistics (counts by type).
  *
- * @returns Object with contact counts by type
+ * COMPUTED FROM:
+ * Uses the cached contacts from useContacts() - no additional fetch.
+ *
+ * RETURNS:
+ * - total: Total contact count
+ * - family: Contacts of type 'family'
+ * - friends: Contacts of type 'friend'
+ * - other: Contacts of type 'other'
+ * - withBirthdays: Contacts that have birthday set
  *
  * @example
- * const { total, family, friends, other } = useContactStats()
+ * const stats = useContactStats()
+ * // stats = { total: 42, family: 15, friends: 20, other: 7, withBirthdays: 35 }
  */
 export function useContactStats() {
   const { data: contacts = [] } = useContacts();

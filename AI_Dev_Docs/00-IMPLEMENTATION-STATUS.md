@@ -22,7 +22,7 @@
 | Today Feature | ✅ Complete | 100% |
 | Someday Feature | ✅ Complete | 95% |
 | Family Feature | ✅ Complete | 75% |
-| **Contacts Feature** | ✅ **Complete** | 90% |
+| **Contacts Feature** | ✅ **Complete** | 95% |
 | **Kanban Board** | ✅ **Complete** | 100% |
 | **Profiles Feature** | 📋 Planned | 0% |
 | Settings Feature | ✅ Stub | 25% |
@@ -498,7 +498,7 @@ fam_app/
 │   ├── contexts/               # 1 context (auth-context) - AuthProvider for centralized auth state
 │   ├── supabase/               # 4 files (client, server, middleware, admin)
 │   ├── hooks/                  # 11 hooks (auth, tasks, habits, goals, projects, someday, family, calendar, family-events, kanban, contacts)
-│   ├── constants/              # 1 file (kanban-styles) - Shared style constants
+│   ├── constants/              # 2 files (kanban-styles, contact-styles) - Shared style constants
 │   ├── utils/                  # 3 utilities (cn, logger, ics-generator)
 │   ├── query-client.ts
 │   └── query-keys.ts
@@ -557,5 +557,6 @@ Keep files under 400 lines. Extract components when they grow.
 | 3.4 | 2024-12-28 | Claude | UI/UX Cleanup: Extracted shared KanbanCardContent (DRY), centralized styles in lib/constants, fixed duplicate logging, added empty state hints |
 | 3.5 | 2024-12-28 | Claude | AuthProvider Refactor: Converted useAuth to context pattern, centralized auth state in lib/contexts/auth-context.tsx, eliminated redundant family_members queries |
 | 3.6 | 2024-12-28 | Claude | Contacts Feature: Added /contacts page, ContactModal, useContacts hooks, contacts query keys, import tracking migration (005_contacts_import.sql). Supports extended family, friends, birthday tracking. |
+| 3.7 | 2024-12-28 | Claude | Contacts UI/UX Enhancement: Clickable contact cards, unique avatar colors (name hash), mailto/tel links, expandable upcoming birthdays, shared constants file (contact-styles.ts), comprehensive AI-dev comments. |
 
 *This document is auto-generated. See individual docs for detailed specs.*
