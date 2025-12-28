@@ -2,17 +2,24 @@
 
 /**
  * ============================================================================
- * 🎁 App Providers
+ * APP PROVIDERS
  * ============================================================================
  *
- * Wraps the app with all necessary providers:
+ * WHAT THIS FILE DOES:
+ * Wraps the app with all necessary React context providers:
  * - TanStack Query (data fetching & caching)
  * - Toast notifications (sonner)
  * - Theme/context providers (future)
  *
+ * FUTURE AI DEVELOPERS:
+ * - Add new providers here to make them available app-wide
+ * - Order matters: outer providers wrap inner ones
+ * - The startup log runs once on mount (not on every render)
+ *
  * ============================================================================
  */
 
+import { useEffect, useRef } from 'react';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from 'sonner';
 import { useCreateQueryClient } from '@/lib/query-client';
@@ -37,10 +44,16 @@ export function Providers({ children }: ProvidersProps) {
   // Create a stable QueryClient instance
   const queryClient = useCreateQueryClient();
 
-  // Log startup in development
-  if (typeof window !== 'undefined') {
-    logger.startup('Fam - Family Command Center', '1.0.0');
-  }
+  // Track if startup has been logged (prevents duplicate logs in React Strict Mode)
+  const hasLoggedStartup = useRef(false);
+
+  // Log startup ONCE on mount (useEffect prevents double-logging in Strict Mode)
+  useEffect(() => {
+    if (!hasLoggedStartup.current) {
+      logger.startup('Fam - Family Command Center', '1.0.0');
+      hasLoggedStartup.current = true;
+    }
+  }, []);
 
   return (
     <QueryClientProvider client={queryClient}>

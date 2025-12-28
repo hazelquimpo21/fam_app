@@ -1,7 +1,7 @@
 # Fam - Implementation Status
 
-> **Last Updated:** December 2024
-> **Status:** MVP Phase 3.3 Complete - Unified Kanban Board
+> **Last Updated:** December 28, 2024
+> **Status:** MVP Phase 3.4 Complete - UI/UX Cleanup & Code Quality
 
 ---
 
@@ -235,13 +235,22 @@ Tables: families, family_members, tasks, subtasks, habits, habit_logs,
 
 ### 4.6 Unified Kanban Board (100% Complete)
 
-**Files:**
+**Core Files:**
 - `types/kanban.ts` - TypeScript types (KanbanItem, KanbanColumn, configs)
 - `lib/hooks/use-kanban.ts` - React Query hook for data fetching/transformation
-- `components/kanban/kanban-card.tsx` - Unified card for tasks, events, birthdays
-- `components/kanban/kanban-column.tsx` - Column with header and drop zone
+- `lib/hooks/use-kanban-dnd.ts` - Drag-and-drop mechanics with @dnd-kit
 - `components/kanban/kanban-board.tsx` - Main board with controls
 - `app/(app)/kanban/page.tsx` - Kanban page with modal integration
+
+**Card Components (Refactored - DRY Architecture):**
+- `components/kanban/kanban-card-content.tsx` - **SHARED** rendering logic (single source of truth)
+- `components/kanban/kanban-card.tsx` - Static wrapper for non-draggable cards
+- `components/kanban/kanban-sortable-card.tsx` - Draggable wrapper with @dnd-kit
+- `components/kanban/kanban-drag-overlay.tsx` - Ghost card during drag
+- `components/kanban/kanban-column.tsx` - Column with header and drop zone
+
+**Shared Constants (Refactored - Eliminates Duplication):**
+- `lib/constants/kanban-styles.ts` - TYPE_STYLES, PRIORITY_COLORS, COLUMN_COLORS, EMPTY_STATE_MESSAGES
 
 **Unified Kanban Features:**
 - ✅ **GroupBy Modes**: Time (Overdue/Today/Tomorrow/This Week/Later), Status (Inbox/Active/Waiting/Done), Priority (High/Medium/Low/None)
@@ -251,16 +260,30 @@ Tables: families, family_members, tasks, subtasks, habits, habit_logs,
 - ✅ **Visual Distinction**: Each item type has unique colors and badges
 - ✅ **Edit Integration**: Click cards to open TaskModal or EventModal
 - ✅ **Unified Data**: Uses CalendarItem transformation for consistent display
+- ✅ **Empty State Hints**: Action-oriented messages guide users on what to do
 
 **Architecture:**
 ```
 KanbanBoard
 ├── KanbanControls (groupBy, timeScope, filters)
 └── Columns container (horizontal scroll)
-    ├── KanbanColumn (Overdue) → KanbanCard[]
-    ├── KanbanColumn (Today) → KanbanCard[]
+    ├── KanbanColumn (Overdue) → KanbanSortableCard[]
+    │     └── KanbanCardContent (shared rendering)
+    ├── KanbanColumn (Today) → KanbanSortableCard[]
+    │     └── KanbanCardContent (shared rendering)
     └── ... more columns based on groupBy mode
+
+DragOverlay
+└── KanbanDragOverlay
+      └── KanbanCardContent (shared rendering, isOverlay=true)
 ```
+
+**Code Quality (Phase 3.4 Cleanup):**
+- ✅ Extracted shared `KanbanCardContent` component (eliminates 3-file duplication)
+- ✅ Centralized style constants in `lib/constants/kanban-styles.ts`
+- ✅ Added comprehensive AI-dev documentation comments
+- ✅ Fixed duplicate startup logging (React Strict Mode issue)
+- ✅ Added action hints to empty state messages
 
 ### 5. Pages (All Core Pages Wired to Database)
 
@@ -449,12 +472,13 @@ fam_app/
 │   ├── ui/                     # 7 components (button, input, card, checkbox, spinner, dialog, select)
 │   ├── shared/                 # 7 components (avatar, badge, empty-state, progress-bar, family-member-picker, project-picker, goal-picker)
 │   ├── modals/                 # 6 components (task-modal, goal-modal, habit-modal, project-modal, someday-modal, event-modal)
-│   ├── kanban/                 # 3 components (kanban-board, kanban-column, kanban-card)
+│   ├── kanban/                 # 7 components (kanban-board, kanban-column, kanban-card-content, kanban-card, kanban-sortable-card, kanban-drag-overlay, kanban-drop-indicator)
 │   ├── layout/                 # 3 components
 │   └── providers.tsx
 ├── lib/
 │   ├── supabase/               # 4 files (client, server, middleware, admin)
 │   ├── hooks/                  # 10 hooks (auth, tasks, habits, goals, projects, someday, family, calendar, family-events, kanban)
+│   ├── constants/              # 1 file (kanban-styles) - Shared style constants
 │   ├── utils/                  # 3 utilities (cn, logger, ics-generator)
 │   ├── query-client.ts
 │   └── query-keys.ts
@@ -504,5 +528,6 @@ Keep files under 400 lines. Extract components when they grow.
 | 3.1 | 2024-12-26 | Claude | Added Profiles Feature to roadmap (Phase 3), AI Integration (Phase 5); references 15-profile-architecture.md |
 | 3.2 | 2024-12-26 | Claude | Added Calendar Integration: ICS feeds (export) + Google Calendar import. See 16-google-calendar-integration.md |
 | 3.3 | 2024-12-28 | Claude | Added Unified Kanban Board: tasks + events in configurable columns (time/status/priority), drag-drop, time scope filters |
+| 3.4 | 2024-12-28 | Claude | UI/UX Cleanup: Extracted shared KanbanCardContent (DRY), centralized styles in lib/constants, fixed duplicate logging, added empty state hints |
 
 *This document is auto-generated. See individual docs for detailed specs.*

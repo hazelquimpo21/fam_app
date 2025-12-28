@@ -59,6 +59,10 @@ export type { KanbanDragOverlayProps } from './kanban-drag-overlay';
 export { KanbanDropIndicator, KanbanDropZone } from './kanban-drop-indicator';
 export type { KanbanDropIndicatorProps } from './kanban-drop-indicator';
 
-// Legacy card component (deprecated, use KanbanSortableCard)
+// Shared card content (used by KanbanCard, KanbanSortableCard, KanbanDragOverlay)
+export { KanbanCardContent, KanbanCardContentSkeleton } from './kanban-card-content';
+export type { KanbanCardContentProps } from './kanban-card-content';
+
+// Static card component (for read-only contexts)
 export { KanbanCard, KanbanCardSkeleton } from './kanban-card';
 export type { KanbanCardProps } from './kanban-card';
