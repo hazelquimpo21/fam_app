@@ -215,7 +215,13 @@ function enhanceContact(contact: Contact): ContactWithMeta {
  * - contactType: Filter by 'family', 'friend', or 'other'
  * - importedFrom: Filter by import source ('manual', 'google', 'csv')
  * - hasBirthday: true = only with birthdays, false = only without
- * - search: Case-insensitive search in name and email
+ * - search: Case-insensitive search in name, email, relationship, and phone
+ *
+ * SEARCH EXAMPLES:
+ * - "grandma" - finds by name
+ * - "john@email.com" - finds by email
+ * - "cousin" or "neighbor" - finds by relationship description
+ * - "555" or "1234" - finds by phone number
  *
  * CACHING:
  * - staleTime: 5 minutes (contacts don't change frequently)
@@ -234,8 +240,8 @@ function enhanceContact(contact: Contact): ContactWithMeta {
  * const { data: familyContacts } = useContacts({ contactType: 'family' })
  *
  * @example
- * // Search contacts
- * const { data: results } = useContacts({ search: 'smith' })
+ * // Search contacts by relationship
+ * const { data: results } = useContacts({ search: 'cousin' })
  */
 export function useContacts(filters?: ContactFilters) {
   const supabase = createClient();
@@ -267,9 +273,14 @@ export function useContacts(filters?: ContactFilters) {
       }
 
       if (filters?.search) {
-        // Search by name OR email (case-insensitive)
+        // Search by name, email, relationship, OR phone (case-insensitive)
+        // This allows users to find contacts by:
+        // - Name: "John", "Grandma"
+        // - Email: "john@example.com"
+        // - Relationship: "cousin", "neighbor", "mom's friend"
+        // - Phone: "555", "1234"
         query = query.or(
-          `name.ilike.%${filters.search}%,email.ilike.%${filters.search}%`
+          `name.ilike.%${filters.search}%,email.ilike.%${filters.search}%,relationship.ilike.%${filters.search}%,phone.ilike.%${filters.search}%`
         );
       }
 
