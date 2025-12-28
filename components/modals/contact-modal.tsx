@@ -5,46 +5,43 @@
  * 👤 ContactModal Component
  * ============================================================================
  *
- * A comprehensive modal for creating and editing contacts.
- * Contacts are people outside the immediate family - extended family,
- * friends, kids' friends' parents, etc.
+ * A comprehensive modal for creating and editing contacts. Contacts represent
+ * people outside the immediate family - extended family, friends, neighbors,
+ * kids' friends' parents, etc.
  *
- * Features:
- * - Create new contacts with full details
- * - Edit existing contacts
- * - Contact type selection (family, friend, other)
- * - Birthday and anniversary tracking
- * - Relationship description (e.g., "Dad's brother", "Emma's friend's mom")
- * - Address and contact info
- * - Keyboard shortcuts (Cmd+Enter to save)
+ * PRIMARY USE CASES:
+ * 1. Track birthdays for people you care about
+ * 2. Remember relationship context ("Dad's brother", "Emma's friend's mom")
+ * 3. Store contact info for people you interact with regularly
  *
- * Usage:
- * ```tsx
- * // Create mode
- * <ContactModal
- *   open={isOpen}
- *   onOpenChange={setIsOpen}
- * />
+ * MODAL BEHAVIOR:
+ * - Opens in "create" mode when no contact is passed
+ * - Opens in "edit" mode when an existing contact is passed
+ * - Form state resets when modal opens/closes
+ * - Keyboard shortcut: Cmd/Ctrl+Enter to save
+ * - ESC key closes modal (handled by Dialog component)
  *
- * // Edit mode
- * <ContactModal
- *   open={isOpen}
- *   onOpenChange={setIsOpen}
- *   contact={existingContact}
- * />
- * ```
+ * DATA FLOW:
+ * 1. Props determine create vs edit mode
+ * 2. Form state managed locally with useState
+ * 3. On submit, calls useCreateContact or useUpdateContact
+ * 4. On success, closes modal and invalidates contact queries
+ * 5. Parent component handles modal visibility
  *
- * User Stories Addressed:
+ * USER STORIES ADDRESSED:
  * - US-10.2: Manage Contacts - create and edit contacts with all details
+ *
+ * RELATED FILES:
+ * - lib/hooks/use-contacts.ts - CRUD operations
+ * - lib/constants/contact-styles.ts - Shared styling constants
+ * - app/(app)/contacts/page.tsx - Parent page that opens this modal
  *
  * ============================================================================
  */
 
 import * as React from 'react';
 import {
-  Users,
   User,
-  Heart,
   Mail,
   Phone,
   Cake,
@@ -53,6 +50,7 @@ import {
   MapPin,
   ChevronDown,
   ChevronUp,
+  Heart,
 } from 'lucide-react';
 import {
   Dialog,
@@ -69,27 +67,45 @@ import {
   useUpdateContact,
   type CreateContactInput,
 } from '@/lib/hooks/use-contacts';
+import {
+  CONTACT_TYPE_CONFIG,
+  getContactTypeConfig,
+  getAvatarColor,
+} from '@/lib/constants/contact-styles';
 import { logger } from '@/lib/utils/logger';
 import { cn } from '@/lib/utils/cn';
 import type { Contact, ContactType } from '@/types/database';
 
 // ============================================================================
-// Types
+// 📦 TYPES
 // ============================================================================
 
+/**
+ * Props for the ContactModal component.
+ *
+ * IMPORTANT FOR AI DEVS:
+ * - If `contact` is provided, modal opens in EDIT mode
+ * - If `contact` is null/undefined, modal opens in CREATE mode
+ * - `onSuccess` is optional - use it for additional actions after save
+ */
 interface ContactModalProps {
   /** Whether the modal is open */
   open: boolean;
-  /** Callback when open state changes */
+  /** Callback when open state changes (e.g., user closes modal) */
   onOpenChange: (open: boolean) => void;
   /** Existing contact to edit (if provided, modal is in edit mode) */
   contact?: Contact | null;
-  /** Initial name (for quick create) */
+  /** Initial name for quick create (e.g., from a "Add contact named X" flow) */
   initialName?: string;
   /** Callback when contact is saved successfully */
   onSuccess?: (contact: Contact) => void;
 }
 
+/**
+ * Internal form state shape.
+ * All fields are strings for controlled inputs.
+ * Null/undefined handling happens on submit.
+ */
 interface ContactFormData {
   name: string;
   contact_type: ContactType;
@@ -99,6 +115,7 @@ interface ContactFormData {
   anniversary: string;
   relationship: string;
   notes: string;
+  // Address fields (collapsible section)
   address_line1: string;
   address_line2: string;
   city: string;
@@ -108,58 +125,26 @@ interface ContactFormData {
 }
 
 // ============================================================================
-// Constants
+// 🔧 HELPERS
 // ============================================================================
 
 /**
- * Contact type configuration with icons and colors
+ * Get initial form data from an existing contact or defaults.
  *
- * Types help organize contacts:
- * - family: Extended family members (grandparents, cousins, aunts/uncles)
- * - friend: Friends of the family or individual family members
- * - other: Everyone else (neighbors, acquaintances, etc.)
- */
-const CONTACT_TYPE_CONFIG: Record<
-  ContactType,
-  {
-    label: string;
-    icon: React.ElementType;
-    color: string;
-    description: string;
-  }
-> = {
-  family: {
-    label: 'Family',
-    icon: Users,
-    color: 'text-rose-600 border-rose-200 bg-rose-50',
-    description: 'Extended family',
-  },
-  friend: {
-    label: 'Friend',
-    icon: Heart,
-    color: 'text-blue-600 border-blue-200 bg-blue-50',
-    description: 'Friends',
-  },
-  other: {
-    label: 'Other',
-    icon: User,
-    color: 'text-neutral-600 border-neutral-200 bg-neutral-50',
-    description: 'Others',
-  },
-};
-
-// ============================================================================
-// Helpers
-// ============================================================================
-
-/**
- * Get initial form data from contact or defaults
+ * WHY THIS EXISTS:
+ * When switching between create/edit mode or when the contact prop changes,
+ * we need to reset the form to the appropriate values.
+ *
+ * @param contact - Existing contact for edit mode (null for create mode)
+ * @param initialName - Pre-filled name for quick create flows
+ * @returns Form data object with all fields populated
  */
 function getInitialFormData(
   contact?: Contact | null,
   initialName?: string
 ): ContactFormData {
   if (contact) {
+    // Edit mode: populate from existing contact
     return {
       name: contact.name,
       contact_type: contact.contact_type || 'other',
@@ -178,9 +163,10 @@ function getInitialFormData(
     };
   }
 
+  // Create mode: start with defaults
   return {
     name: initialName || '',
-    contact_type: 'family',
+    contact_type: 'family', // Default to family (most common use case)
     email: '',
     phone: '',
     birthday: '',
@@ -196,15 +182,205 @@ function getInitialFormData(
   };
 }
 
+/**
+ * Check if any address fields are populated.
+ * Used to auto-expand the address section in edit mode.
+ *
+ * @param contact - The contact to check
+ * @returns True if any address field has a value
+ */
+function hasAddressData(contact: Contact | null | undefined): boolean {
+  if (!contact) return false;
+  return !!(
+    contact.address_line1 ||
+    contact.city ||
+    contact.state ||
+    contact.postal_code
+  );
+}
+
 // ============================================================================
-// Component
+// 🧩 SUB-COMPONENTS
 // ============================================================================
 
 /**
- * ContactModal - Create or edit a contact
+ * ContactTypeSelector
  *
- * Contacts are people outside the immediate family that you want to
- * remember birthdays for, keep track of relationships, etc.
+ * Visual button group for selecting contact type.
+ * Shows icon, label, and uses color coding from shared constants.
+ *
+ * ACCESSIBILITY:
+ * - Uses role="radiogroup" pattern
+ * - Keyboard navigable with Tab
+ * - Visual focus states
+ */
+interface ContactTypeSelectorProps {
+  value: ContactType;
+  onChange: (type: ContactType) => void;
+}
+
+function ContactTypeSelector({ value, onChange }: ContactTypeSelectorProps) {
+  return (
+    <div className="grid grid-cols-3 gap-2" role="radiogroup" aria-label="Contact type">
+      {(Object.keys(CONTACT_TYPE_CONFIG) as ContactType[]).map((type) => {
+        const config = CONTACT_TYPE_CONFIG[type];
+        const Icon = config.icon;
+        const isSelected = value === type;
+
+        return (
+          <button
+            key={type}
+            type="button"
+            role="radio"
+            aria-checked={isSelected}
+            onClick={() => onChange(type)}
+            className={cn(
+              'flex flex-col items-center py-2.5 px-2 rounded-lg text-xs font-medium transition-all',
+              'border focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2',
+              isSelected
+                ? config.buttonClassName
+                : 'border-neutral-200 hover:bg-neutral-50 text-neutral-600'
+            )}
+          >
+            <Icon className="h-5 w-5 mb-1" />
+            {config.label}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+/**
+ * AddressSection
+ *
+ * Collapsible section for address fields.
+ * Keeps the main form clean while allowing full address capture.
+ *
+ * BEHAVIOR:
+ * - Collapsed by default for new contacts
+ * - Auto-expanded if contact has address data
+ * - Toggle button shows chevron indicating expand/collapse
+ */
+interface AddressSectionProps {
+  isExpanded: boolean;
+  onToggle: () => void;
+  formData: ContactFormData;
+  onFieldChange: (field: keyof ContactFormData, value: string) => void;
+}
+
+function AddressSection({
+  isExpanded,
+  onToggle,
+  formData,
+  onFieldChange,
+}: AddressSectionProps) {
+  return (
+    <div>
+      {/* Section toggle header */}
+      <button
+        type="button"
+        onClick={onToggle}
+        className="flex items-center gap-2 text-sm text-neutral-600 hover:text-neutral-900 transition-colors"
+        aria-expanded={isExpanded}
+      >
+        <MapPin className="h-4 w-4" />
+        Address
+        {isExpanded ? (
+          <ChevronUp className="h-4 w-4" />
+        ) : (
+          <ChevronDown className="h-4 w-4" />
+        )}
+        {!isExpanded && formData.city && (
+          <span className="text-xs text-neutral-400 ml-1">
+            ({formData.city})
+          </span>
+        )}
+      </button>
+
+      {/* Collapsible address fields */}
+      {isExpanded && (
+        <div className="mt-3 space-y-3 pl-6 border-l-2 border-neutral-100">
+          <Input
+            value={formData.address_line1}
+            onChange={(e) => onFieldChange('address_line1', e.target.value)}
+            placeholder="Street address"
+            aria-label="Street address"
+          />
+          <Input
+            value={formData.address_line2}
+            onChange={(e) => onFieldChange('address_line2', e.target.value)}
+            placeholder="Apt, suite, etc. (optional)"
+            aria-label="Apartment or suite"
+          />
+          <div className="grid grid-cols-2 gap-2">
+            <Input
+              value={formData.city}
+              onChange={(e) => onFieldChange('city', e.target.value)}
+              placeholder="City"
+              aria-label="City"
+            />
+            <Input
+              value={formData.state}
+              onChange={(e) => onFieldChange('state', e.target.value)}
+              placeholder="State"
+              aria-label="State"
+            />
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <Input
+              value={formData.postal_code}
+              onChange={(e) => onFieldChange('postal_code', e.target.value)}
+              placeholder="Postal code"
+              aria-label="Postal code"
+            />
+            <Input
+              value={formData.country}
+              onChange={(e) => onFieldChange('country', e.target.value)}
+              placeholder="Country"
+              aria-label="Country"
+            />
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ============================================================================
+// 📄 MAIN COMPONENT
+// ============================================================================
+
+/**
+ * ContactModal
+ *
+ * Modal dialog for creating or editing a contact.
+ *
+ * FORM FIELDS:
+ * - Name (required): Contact's full name
+ * - Type: Family, Friend, or Other (visual selector)
+ * - Relationship: How they're connected ("Dad's brother", "Emma's friend")
+ * - Email: Contact email (validates format)
+ * - Phone: Contact phone number
+ * - Birthday: Date picker for birthday tracking
+ * - Anniversary: Optional anniversary date
+ * - Notes: Free-form text for additional info
+ * - Address: Collapsible section with full address fields
+ *
+ * @example
+ * // Create mode
+ * <ContactModal
+ *   open={isOpen}
+ *   onOpenChange={setIsOpen}
+ * />
+ *
+ * @example
+ * // Edit mode
+ * <ContactModal
+ *   open={isOpen}
+ *   onOpenChange={setIsOpen}
+ *   contact={existingContact}
+ * />
  */
 export function ContactModal({
   open,
@@ -213,59 +389,49 @@ export function ContactModal({
   initialName,
   onSuccess,
 }: ContactModalProps) {
+  // Determine mode from props
   const isEditMode = !!contact;
 
-  // Form state
+  // ━━━━━ FORM STATE ━━━━━
   const [formData, setFormData] = React.useState<ContactFormData>(() =>
     getInitialFormData(contact, initialName)
   );
 
-  // UI state
-  const [showAddress, setShowAddress] = React.useState(() => {
-    // Show address section if any address field is populated
-    if (contact) {
-      return !!(
-        contact.address_line1 ||
-        contact.city ||
-        contact.state ||
-        contact.postal_code
-      );
-    }
-    return false;
-  });
+  // ━━━━━ UI STATE ━━━━━
+  // Auto-expand address section if contact has address data
+  const [showAddress, setShowAddress] = React.useState(() =>
+    hasAddressData(contact)
+  );
 
-  // Mutations
+  // ━━━━━ MUTATIONS ━━━━━
   const createContact = useCreateContact();
   const updateContact = useUpdateContact();
-
   const isPending = createContact.isPending || updateContact.isPending;
 
-  // Reset form when contact changes or modal opens
+  // ━━━━━ EFFECTS ━━━━━
+  /**
+   * Reset form when modal opens or contact changes.
+   *
+   * WHY: Ensures form state matches the current mode (create vs edit)
+   * and prevents stale data from previous interactions.
+   */
   React.useEffect(() => {
     if (open) {
       logger.info('👤 ContactModal opened', {
-        isEditMode,
+        mode: isEditMode ? 'edit' : 'create',
         contactId: contact?.id,
+        contactName: contact?.name,
       });
       setFormData(getInitialFormData(contact, initialName));
-      // Show address section if editing and has address data
-      if (contact) {
-        setShowAddress(
-          !!(
-            contact.address_line1 ||
-            contact.city ||
-            contact.state ||
-            contact.postal_code
-          )
-        );
-      } else {
-        setShowAddress(false);
-      }
+      setShowAddress(hasAddressData(contact));
     }
   }, [open, contact, initialName, isEditMode]);
 
+  // ━━━━━ EVENT HANDLERS ━━━━━
+
   /**
-   * Update a single form field
+   * Update a single form field.
+   * Uses generic type for type safety.
    */
   const updateField = <K extends keyof ContactFormData>(
     field: K,
@@ -275,7 +441,14 @@ export function ContactModal({
   };
 
   /**
-   * Handle form submission
+   * Handle form submission.
+   *
+   * FLOW:
+   * 1. Validate required fields (name)
+   * 2. Prepare data (trim strings, convert empty to null)
+   * 3. Call appropriate mutation (create or update)
+   * 4. On success: close modal, trigger onSuccess callback
+   * 5. On error: show toast (handled by mutation hook)
    */
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -287,17 +460,18 @@ export function ContactModal({
     }
 
     logger.info('💾 Saving contact...', {
-      isEditMode,
+      mode: isEditMode ? 'edit' : 'create',
       name: formData.name,
     });
 
     try {
       if (isEditMode && contact) {
-        // Update existing contact
+        // ━━━ UPDATE EXISTING CONTACT ━━━
         const result = await updateContact.mutateAsync({
           id: contact.id,
           name: formData.name.trim(),
           contact_type: formData.contact_type,
+          // Convert empty strings to null for optional fields
           email: formData.email.trim() || null,
           phone: formData.phone.trim() || null,
           birthday: formData.birthday || null,
@@ -311,13 +485,14 @@ export function ContactModal({
           postal_code: formData.postal_code.trim() || null,
           country: formData.country.trim() || null,
         });
-        logger.success('✅ Contact updated!', { id: result.id });
+        logger.success('✅ Contact updated!', { id: result.id, name: result.name });
         onSuccess?.(result);
       } else {
-        // Create new contact
+        // ━━━ CREATE NEW CONTACT ━━━
         const input: CreateContactInput = {
           name: formData.name.trim(),
           contact_type: formData.contact_type,
+          // Convert empty strings to undefined for optional fields
           email: formData.email.trim() || undefined,
           phone: formData.phone.trim() || undefined,
           birthday: formData.birthday || undefined,
@@ -332,7 +507,7 @@ export function ContactModal({
           country: formData.country.trim() || undefined,
         };
         const result = await createContact.mutateAsync(input);
-        logger.success('✅ Contact created!', { id: result.id });
+        logger.success('✅ Contact created!', { id: result.id, name: result.name });
         onSuccess?.(result);
       }
 
@@ -340,29 +515,33 @@ export function ContactModal({
       onOpenChange(false);
     } catch (error) {
       logger.error('❌ Failed to save contact', { error });
-      // Error is handled by the mutation hook (toast shown)
+      // Error toast is handled by the mutation hook
     }
   };
 
   /**
-   * Handle keyboard shortcuts
+   * Handle keyboard shortcuts.
+   * Cmd/Ctrl + Enter = Submit form
    */
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    // Cmd/Ctrl + Enter to save
     if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
       e.preventDefault();
       handleSubmit(e as unknown as React.FormEvent);
     }
   };
 
-  const TypeIcon = CONTACT_TYPE_CONFIG[formData.contact_type].icon;
+  // Get current type config for header styling
+  const typeConfig = getContactTypeConfig(formData.contact_type);
+  const TypeIcon = typeConfig.icon;
 
+  // ━━━━━ RENDER ━━━━━
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         size="lg"
         className="max-h-[90vh] overflow-hidden flex flex-col"
       >
+        {/* Modal header */}
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <User className="h-5 w-5 text-indigo-500" />
@@ -370,13 +549,14 @@ export function ContactModal({
           </DialogTitle>
         </DialogHeader>
 
+        {/* Form */}
         <form
           onSubmit={handleSubmit}
           onKeyDown={handleKeyDown}
           className="flex flex-col flex-1 overflow-hidden"
         >
           <DialogBody className="space-y-4 overflow-y-auto flex-1">
-            {/* Name input */}
+            {/* ━━━ NAME INPUT ━━━ */}
             <div>
               <label htmlFor="contact-name" className="sr-only">
                 Contact name
@@ -391,40 +571,19 @@ export function ContactModal({
               />
             </div>
 
-            {/* Contact type selection */}
+            {/* ━━━ CONTACT TYPE SELECTOR ━━━ */}
             <div>
               <label className="flex items-center gap-1.5 text-sm text-neutral-600 mb-2">
                 <TypeIcon className="h-4 w-4" />
                 Type
               </label>
-              <div className="grid grid-cols-3 gap-2">
-                {(Object.keys(CONTACT_TYPE_CONFIG) as ContactType[]).map(
-                  (type) => {
-                    const config = CONTACT_TYPE_CONFIG[type];
-                    const Icon = config.icon;
-                    return (
-                      <button
-                        key={type}
-                        type="button"
-                        onClick={() => updateField('contact_type', type)}
-                        className={cn(
-                          'flex flex-col items-center py-2.5 px-2 rounded-lg text-xs font-medium transition-colors',
-                          'border',
-                          formData.contact_type === type
-                            ? config.color
-                            : 'border-neutral-200 hover:bg-neutral-50 text-neutral-600'
-                        )}
-                      >
-                        <Icon className="h-5 w-5 mb-1" />
-                        {config.label}
-                      </button>
-                    );
-                  }
-                )}
-              </div>
+              <ContactTypeSelector
+                value={formData.contact_type}
+                onChange={(type) => updateField('contact_type', type)}
+              />
             </div>
 
-            {/* Relationship */}
+            {/* ━━━ RELATIONSHIP ━━━ */}
             <div>
               <label
                 htmlFor="relationship"
@@ -444,7 +603,7 @@ export function ContactModal({
               </p>
             </div>
 
-            {/* Contact info row */}
+            {/* ━━━ CONTACT INFO ROW ━━━ */}
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label
@@ -480,7 +639,7 @@ export function ContactModal({
               </div>
             </div>
 
-            {/* Important dates row */}
+            {/* ━━━ IMPORTANT DATES ROW ━━━ */}
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label
@@ -514,7 +673,7 @@ export function ContactModal({
               </div>
             </div>
 
-            {/* Notes */}
+            {/* ━━━ NOTES ━━━ */}
             <div>
               <label
                 htmlFor="notes"
@@ -537,69 +696,16 @@ export function ContactModal({
               />
             </div>
 
-            {/* Address section (collapsible) */}
-            <div>
-              <button
-                type="button"
-                onClick={() => setShowAddress(!showAddress)}
-                className="flex items-center gap-2 text-sm text-neutral-600 hover:text-neutral-900 transition-colors"
-              >
-                <MapPin className="h-4 w-4" />
-                Address
-                {showAddress ? (
-                  <ChevronUp className="h-4 w-4" />
-                ) : (
-                  <ChevronDown className="h-4 w-4" />
-                )}
-              </button>
-
-              {showAddress && (
-                <div className="mt-3 space-y-3 pl-6 border-l-2 border-neutral-100">
-                  <Input
-                    value={formData.address_line1}
-                    onChange={(e) =>
-                      updateField('address_line1', e.target.value)
-                    }
-                    placeholder="Street address"
-                  />
-                  <Input
-                    value={formData.address_line2}
-                    onChange={(e) =>
-                      updateField('address_line2', e.target.value)
-                    }
-                    placeholder="Apt, suite, etc. (optional)"
-                  />
-                  <div className="grid grid-cols-2 gap-2">
-                    <Input
-                      value={formData.city}
-                      onChange={(e) => updateField('city', e.target.value)}
-                      placeholder="City"
-                    />
-                    <Input
-                      value={formData.state}
-                      onChange={(e) => updateField('state', e.target.value)}
-                      placeholder="State"
-                    />
-                  </div>
-                  <div className="grid grid-cols-2 gap-2">
-                    <Input
-                      value={formData.postal_code}
-                      onChange={(e) =>
-                        updateField('postal_code', e.target.value)
-                      }
-                      placeholder="Postal code"
-                    />
-                    <Input
-                      value={formData.country}
-                      onChange={(e) => updateField('country', e.target.value)}
-                      placeholder="Country"
-                    />
-                  </div>
-                </div>
-              )}
-            </div>
+            {/* ━━━ ADDRESS SECTION (COLLAPSIBLE) ━━━ */}
+            <AddressSection
+              isExpanded={showAddress}
+              onToggle={() => setShowAddress(!showAddress)}
+              formData={formData}
+              onFieldChange={updateField}
+            />
           </DialogBody>
 
+          {/* Footer with action buttons */}
           <DialogFooter>
             <Button
               type="button"
@@ -624,7 +730,7 @@ export function ContactModal({
 }
 
 // ============================================================================
-// Exports
+// 📤 EXPORTS
 // ============================================================================
 
 export type { ContactModalProps };
