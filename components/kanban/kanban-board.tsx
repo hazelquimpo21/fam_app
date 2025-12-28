@@ -120,6 +120,12 @@ interface KanbanBoardProps {
 /**
  * GroupBy mode options with icons and labels.
  * Each mode creates different column groupings.
+ *
+ * NOTE (for future AI developers):
+ * Time-based grouping has TWO past columns:
+ * - "Past" = Events/birthdays that already happened (neutral)
+ * - "Overdue" = Tasks with past due dates (urgent)
+ * This distinction matters for UX - past events aren't failures.
  */
 const GROUP_BY_OPTIONS: {
   value: KanbanGroupBy;
@@ -131,7 +137,7 @@ const GROUP_BY_OPTIONS: {
     value: 'time',
     label: 'By Time',
     icon: <CalendarDays className="w-4 h-4" />,
-    description: 'Overdue, Today, This Week, Later',
+    description: 'Past, Overdue, Today, This Week, Later',
   },
   {
     value: 'status',

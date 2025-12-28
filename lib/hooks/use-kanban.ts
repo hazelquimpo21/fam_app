@@ -130,16 +130,37 @@ export function getTimeScopeRange(scope: KanbanTimeScope): { start: Date; end: D
 }
 
 /**
- * Get the time column ID for a given date.
+ * Get the time column ID for a given date and item type.
  * Used for grouping items into time-based columns.
  *
+ * IMPORTANT SEMANTIC DISTINCTION (for future AI developers):
+ * This function implements different logic for tasks vs events:
+ *
+ * - TASKS (isTask=true): Past incomplete tasks → 'overdue' (red, urgent)
+ *   These are things you were supposed to DO but didn't. They need action.
+ *
+ * - EVENTS/BIRTHDAYS (isTask=false): Past items → 'past' (neutral, informational)
+ *   These are things that already HAPPENED. They're just history, not failures.
+ *
+ * Example:
+ *   - "Call dentist" task from yesterday → OVERDUE (you need to do it!)
+ *   - "Dentist appointment" event from yesterday → PAST (you attended it)
+ *
  * @param date - The item's date
- * @param isCompleted - Whether the item is completed
- * @returns Column ID ('overdue', 'today', 'tomorrow', 'this-week', 'later', 'done')
+ * @param isCompleted - Whether the item is completed (tasks only)
+ * @param isTask - Whether this is a task (vs event/birthday). Default true for backwards compat.
+ * @returns Column ID ('past', 'overdue', 'today', 'tomorrow', 'this-week', 'later', 'done')
  */
-export function getTimeColumnId(date: Date | null, isCompleted: boolean): string {
+export function getTimeColumnId(
+  date: Date | null,
+  isCompleted: boolean,
+  isTask: boolean = true
+): string {
+  // Completed tasks go to 'done' regardless of date
   if (isCompleted) return 'done';
-  if (!date) return 'later'; // No date = Later
+
+  // No date = Later (for tasks without due dates)
+  if (!date) return 'later';
 
   const now = new Date();
   const today = startOfDay(now);
@@ -148,7 +169,14 @@ export function getTimeColumnId(date: Date | null, isCompleted: boolean): string
   const endOfThisWeek = endOfWeek(now, { weekStartsOn: 0 });
   const itemDate = startOfDay(date);
 
-  if (isBefore(itemDate, today)) return 'overdue';
+  // Past date handling - different logic for tasks vs events
+  if (isBefore(itemDate, today)) {
+    // Tasks in the past are OVERDUE (you need to complete them)
+    // Events/birthdays in the past are just PAST (they already happened)
+    return isTask ? 'overdue' : 'past';
+  }
+
+  // Future date handling - same for all item types
   if (isSameDay(itemDate, today)) return 'today';
   if (isSameDay(itemDate, tomorrow)) return 'tomorrow';
   if (isWithinInterval(itemDate, { start: dayAfterTomorrow, end: endOfThisWeek })) return 'this-week';
@@ -159,14 +187,19 @@ export function getTimeColumnId(date: Date | null, isCompleted: boolean): string
  * Get the date for a time column.
  * Used when dropping items into a column to set their new date.
  *
+ * NOTE: The 'past' column returns null because you cannot schedule items in the past.
+ * Items can only end up in 'past' if they're events that already happened.
+ *
  * @param columnId - The column ID
- * @returns The date to set for items dropped in this column
+ * @returns The date to set for items dropped in this column, or null if not droppable
  */
 export function getDateForTimeColumn(columnId: string): Date | null {
   const now = new Date();
   const today = startOfDay(now);
 
   switch (columnId) {
+    case 'past':
+      return null; // Cannot schedule items in the past - 'past' column is view-only
     case 'overdue':
       return addDays(today, -1); // Yesterday (will appear overdue)
     case 'today':
@@ -190,6 +223,11 @@ export function getDateForTimeColumn(columnId: string): Date | null {
 
 /**
  * Transform a Task into a KanbanItem.
+ *
+ * SEMANTIC NOTE (for future AI developers):
+ * Tasks use `isOverdue` (not `isPast`) because tasks are actionable.
+ * A task with a past due date that isn't completed is OVERDUE (needs action).
+ * isPast is always false for tasks - they go to "Overdue" column, not "Past".
  *
  * @param task - The task to transform
  * @returns KanbanItem representation of the task
@@ -219,6 +257,7 @@ export function transformTask(task: Task): KanbanItem {
     priority: priorityMap[task.priority ?? 0] || 'none',
     isCompleted,
     isOverdue: isOverdue || false,
+    isPast: false, // Tasks are never "past" - they're either done or overdue
     isEditable: true,
     isCompletable: true,
     color: (task as any).project?.color || undefined,
@@ -248,6 +287,11 @@ export function transformTask(task: Task): KanbanItem {
 /**
  * Transform a FamilyEvent into a KanbanItem.
  *
+ * SEMANTIC NOTE (for future AI developers):
+ * Events use `isPast` (not `isOverdue`) because events are temporal, not actionable.
+ * A past event isn't "overdue" - it already happened. You attended it (hopefully).
+ * Events go to the neutral "Past" column, not the alarming "Overdue" column.
+ *
  * @param event - The family event to transform
  * @param assignee - Optional assignee info (from joined query)
  * @returns KanbanItem representation of the event
@@ -257,6 +301,8 @@ export function transformFamilyEvent(
   assignee?: { id: string; name: string; color: string | null }
 ): KanbanItem {
   const startDate = new Date(event.start_time);
+  const now = new Date();
+  const isPast = isBefore(startOfDay(startDate), startOfDay(now));
 
   return {
     id: `event-${event.id}`,
@@ -270,7 +316,8 @@ export function transformFamilyEvent(
     isAllDay: event.is_all_day,
     priority: 'none', // Events don't have priority
     isCompleted: false, // Events can't be completed
-    isOverdue: false, // Events aren't overdue
+    isOverdue: false, // Events are never overdue - they just happen
+    isPast, // Events in the past go to "Past" column
     isEditable: true,
     isCompletable: false,
     color: event.color || assignee?.color || undefined,
@@ -284,6 +331,11 @@ export function transformFamilyEvent(
 /**
  * Transform an ExternalEvent (Google Calendar) into a KanbanItem.
  *
+ * SEMANTIC NOTE (for future AI developers):
+ * External events (Google Calendar) use `isPast` just like family events.
+ * They're temporal occurrences, not actionable items.
+ * Past Google Calendar events go to "Past" column, not "Overdue".
+ *
  * @param event - The external event to transform
  * @param calendarName - Name of the source calendar
  * @returns KanbanItem representation of the external event
@@ -293,6 +345,8 @@ export function transformExternalEvent(
   calendarName?: string
 ): KanbanItem {
   const startDate = new Date(event.start_time);
+  const now = new Date();
+  const isPast = isBefore(startOfDay(startDate), startOfDay(now));
 
   return {
     id: `external-${event.id}`,
@@ -306,7 +360,8 @@ export function transformExternalEvent(
     isAllDay: event.is_all_day,
     priority: 'none',
     isCompleted: false,
-    isOverdue: false,
+    isOverdue: false, // External events are never overdue - they just happen
+    isPast, // External events in the past go to "Past" column
     isEditable: false, // External events are read-only
     isCompletable: false,
     color: event.color || undefined,
@@ -321,11 +376,18 @@ export function transformExternalEvent(
 /**
  * Transform a Birthday into a KanbanItem.
  *
+ * SEMANTIC NOTE (for future AI developers):
+ * Birthdays use `isPast` because they're temporal occurrences.
+ * A birthday that already happened isn't "overdue" - it was (hopefully) celebrated.
+ * Past birthdays go to "Past" column, not "Overdue".
+ *
  * @param birthday - The birthday to transform
  * @returns KanbanItem representation of the birthday
  */
 export function transformBirthday(birthday: Birthday): KanbanItem {
   const displayDate = new Date(birthday.display_date);
+  const now = new Date();
+  const isPast = isBefore(startOfDay(displayDate), startOfDay(now));
 
   return {
     id: `birthday-${birthday.source_type}-${birthday.source_id}`,
@@ -336,7 +398,8 @@ export function transformBirthday(birthday: Birthday): KanbanItem {
     isAllDay: true,
     priority: 'none',
     isCompleted: false,
-    isOverdue: false,
+    isOverdue: false, // Birthdays are never overdue - they just happen
+    isPast, // Birthdays in the past go to "Past" column
     isEditable: false, // Birthdays are read-only
     isCompletable: false,
     icon: '🎂',
@@ -354,6 +417,11 @@ export function transformBirthday(birthday: Birthday): KanbanItem {
 /**
  * Get the column ID for an item based on the groupBy mode.
  *
+ * IMPORTANT (for future AI developers):
+ * For time-based grouping, we pass `isTask` to getTimeColumnId() so that:
+ * - Tasks go to 'overdue' column if past (they need action)
+ * - Events/birthdays go to 'past' column if past (they already happened)
+ *
  * @param item - The kanban item
  * @param groupBy - How columns are organized
  * @returns The column ID this item belongs to (or array of IDs for tag mode)
@@ -361,7 +429,10 @@ export function transformBirthday(birthday: Birthday): KanbanItem {
 export function getColumnIdForItem(item: KanbanItem, groupBy: KanbanGroupBy): string {
   switch (groupBy) {
     case 'time':
-      return getTimeColumnId(item.date, item.isCompleted);
+      // Pass isTask=true only for tasks, false for events/birthdays
+      // This ensures events go to 'past' column, tasks go to 'overdue' column
+      const isTask = item.type === 'task';
+      return getTimeColumnId(item.date, item.isCompleted, isTask);
 
     case 'status':
       // Events and birthdays go in 'active' for status view

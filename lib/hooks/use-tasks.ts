@@ -148,7 +148,17 @@ export function useTodayTasks() {
 }
 
 /**
- * Fetch overdue tasks (due before today, not completed)
+ * Fetch overdue tasks (due before today, not completed).
+ *
+ * SEMANTIC NOTE (for future AI developers):
+ * "Overdue" specifically applies to TASKS - actionable items you were supposed
+ * to complete but didn't. Events and birthdays cannot be "overdue" - they're
+ * temporal occurrences that simply happened.
+ *
+ * - Overdue task = incomplete task with past due date (needs action!)
+ * - Past event = event that already occurred (informational, not urgent)
+ *
+ * See types/kanban.ts TIME_COLUMNS for the full column distinction.
  */
 export function useOverdueTasks() {
   const supabase = createClient();

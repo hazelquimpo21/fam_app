@@ -192,10 +192,25 @@ export interface KanbanItem {
   isCompleted: boolean;
 
   /**
-   * Whether this item is overdue.
-   * Calculated based on date and current time.
+   * Whether this item is overdue (TASKS ONLY).
+   * True for incomplete tasks with past due dates.
+   *
+   * SEMANTIC DISTINCTION (for future AI developers):
+   * - isOverdue = Task you were supposed to DO that you didn't (needs action, urgent)
+   * - isPast = Event that already OCCURRED (informational, not urgent)
+   *
+   * Tasks can be overdue. Events cannot be overdue - they just happened.
    */
   isOverdue: boolean;
+
+  /**
+   * Whether this item is in the past (EVENTS/BIRTHDAYS).
+   * True for events and birthdays whose date has passed.
+   *
+   * Past events are shown in a neutral "Past" column, not the alarming "Overdue" column.
+   * This provides a better UX - past events aren't failures, they're history.
+   */
+  isPast: boolean;
 
   /**
    * Whether this item can be edited/dragged.
@@ -330,8 +345,26 @@ export interface KanbanColumn {
 /**
  * Column definitions for time-based grouping.
  * Used when groupBy='time'.
+ *
+ * IMPORTANT SEMANTIC DISTINCTION (for future AI developers):
+ * - "Past" column: Events/birthdays that already HAPPENED (neutral, informational)
+ * - "Overdue" column: Tasks you were supposed to DO but didn't (red, urgent)
+ *
+ * This distinction exists because:
+ * - Tasks are actionable → can be overdue (you failed to complete them)
+ * - Events are temporal → cannot be overdue (they just occurred)
+ *
+ * A doctor's appointment from yesterday isn't "overdue" - you attended it.
+ * A task from yesterday that's incomplete IS overdue - you need to do it.
  */
 export const TIME_COLUMNS: Omit<KanbanColumn, 'items'>[] = [
+  {
+    id: 'past',
+    title: 'Past',
+    color: 'neutral',
+    icon: '📜',
+    acceptsDrop: false, // Can't schedule things in the past
+  },
   {
     id: 'overdue',
     title: 'Overdue',

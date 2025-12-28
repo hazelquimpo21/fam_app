@@ -288,7 +288,10 @@ export function KanbanCardContent({
           isDragging && 'opacity-50 shadow-lg ring-2 ring-blue-400 z-50',
           isOver && 'ring-2 ring-blue-300',
           isOverlay && 'shadow-lg rotate-[2deg] scale-105 opacity-95 cursor-grabbing border-2',
+          // Overdue tasks get urgent red styling (incomplete tasks with past due dates)
           item.isOverdue && 'border-red-300 bg-red-50',
+          // Past events/birthdays get neutral styling (already happened, not urgent)
+          item.isPast && !item.isOverdue && 'border-neutral-300 bg-neutral-50 opacity-75',
           className
         )}
         style={isOverlay ? { width: 280 } : undefined}
@@ -348,7 +351,10 @@ export function KanbanCardContent({
         isDragging && 'opacity-50 shadow-lg ring-2 ring-blue-400 z-50',
         isOver && 'ring-2 ring-blue-300',
         isOverlay && 'shadow-2xl rotate-[3deg] scale-105 opacity-95 cursor-grabbing border-2',
+        // Overdue tasks get urgent red styling (incomplete tasks with past due dates)
         item.isOverdue && 'border-red-300 bg-red-50',
+        // Past events/birthdays get neutral styling (already happened, not urgent)
+        item.isPast && !item.isOverdue && 'border-neutral-300 bg-neutral-50 opacity-75',
         className
       )}
       style={isOverlay ? { width: 300 } : undefined}
