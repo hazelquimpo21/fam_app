@@ -831,7 +831,7 @@ export function ImportContactsModal({
       onSuccess?.(importResults.imported);
     }
 
-    logger.success('✅ Import complete', importResults);
+    logger.success('✅ Import complete', { ...importResults });
   };
 
   /**

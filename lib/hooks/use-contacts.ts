@@ -378,7 +378,7 @@ export function useUpcomingBirthdays(days: number = 30) {
         .map(enhanceContact)
         .filter((contact) => {
           const daysUntil = contact.daysUntilBirthday;
-          return daysUntil !== null && daysUntil >= 0 && daysUntil <= days;
+          return daysUntil != null && daysUntil >= 0 && daysUntil <= days;
         })
         .sort((a, b) => (a.daysUntilBirthday ?? 999) - (b.daysUntilBirthday ?? 999));
 

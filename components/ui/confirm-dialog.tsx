@@ -302,4 +302,4 @@ export function useConfirmDialog<T = void>(): UseConfirmDialogState<T> {
 // 📤 EXPORTS
 // ============================================================================
 
-export type { ConfirmDialogVariant, ConfirmDialogProps };
+// Note: ConfirmDialogVariant and ConfirmDialogProps are exported at their definitions above
