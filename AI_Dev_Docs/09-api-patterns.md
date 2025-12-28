@@ -896,7 +896,7 @@ export const queryClient = new QueryClient({
 | `useResendInvite` | ✅ | ✅ | `lib/hooks/use-family.ts` | Resend invite |
 | `useCancelInvite` | ✅ | ✅ | `lib/hooks/use-family.ts` | Cancel invite |
 | **Auth** |
-| `useAuth` | ✅ | ✅ | `lib/hooks/use-auth.ts` | Magic link auth |
+| `useAuth` | ✅ | ✅ | `lib/hooks/use-auth.ts` | Magic link auth (AuthProvider context) |
 | **Other** |
 | `useFamilyDashboard` | ✅ | 🔨 | - | Aggregated data pending |
 | Real-time subscriptions | ✅ | 🔨 | - | Not yet built |
@@ -916,10 +916,12 @@ export const queryClient = new QueryClient({
 
 ```
 lib/
+├── contexts/
+│   └── auth-context.tsx    # ✅ AuthProvider (centralized auth state)
 ├── query-client.ts         # ✅ TanStack Query configuration
 ├── query-keys.ts           # ✅ Query key factory (with someday, family keys)
 ├── hooks/
-│   ├── use-auth.ts         # ✅ Auth state & methods (magic link)
+│   ├── use-auth.ts         # ✅ Auth hook (re-exports from AuthProvider)
 │   ├── use-tasks.ts        # ✅ Full CRUD + inbox/today/overdue queries
 │   ├── use-habits.ts       # ✅ Full CRUD + streak tracking
 │   ├── use-goals.ts        # ✅ Full CRUD + progress tracking
@@ -963,3 +965,4 @@ lib/
 | 1.4 | 2024-12-25 | Claude | Added useSomeday and useFamily hooks (ALL hooks complete!) |
 | 1.5 | 2024-12-25 | Claude | Dashboard now uses hooks for real-time data (tasks, habits, goals) |
 | 1.6 | 2024-12-26 | Claude | Added useUpdateHabit and useWeeklyHabitLogs hooks for habit editing |
+| 1.7 | 2024-12-28 | Claude | Updated auth hook to use AuthProvider context pattern |

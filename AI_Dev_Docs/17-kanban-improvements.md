@@ -275,6 +275,59 @@ The drag-drop system is configured in `use-kanban-dnd.ts`:
 
 ---
 
+## AuthProvider Refactor (December 2024)
+
+### Problem
+
+Previously, `useAuth` was a standalone hook that managed its own state. This caused issues:
+- Multiple components calling `useAuth()` created independent state instances
+- Each instance fetched family member data separately from Supabase
+- Auth state wasn't shared across the component tree
+- `use-kanban.ts` had a workaround `familyContextQuery` to cache the family_id
+
+### Solution
+
+Converted `useAuth` to an `AuthProvider` context pattern:
+
+1. **`lib/contexts/auth-context.tsx`** - New centralized AuthProvider
+   - Manages auth state in one place
+   - Fetches family member data once on login
+   - Provides `familyId` for quick access (common need across hooks)
+   - Provides `refetchFamilyMember()` for manual refresh
+
+2. **`lib/hooks/use-auth.ts`** - Now re-exports from context
+   - Backwards compatible - all existing imports still work
+   - New features: `familyId`, `refetchFamilyMember`
+
+3. **`components/providers.tsx`** - Wraps app with AuthProvider
+   - Inside QueryClientProvider, outside app content
+
+4. **`lib/hooks/use-kanban.ts`** - Uses shared auth context
+   - Removed redundant `familyContextQuery`
+   - Now uses `familyId` from `useAuth()` directly
+   - Birthday query enabled when `authState === 'authenticated'`
+
+### Benefits
+
+- **No redundant queries** - Family member fetched once, shared everywhere
+- **Consistent auth state** - All components see the same auth state
+- **Better performance** - Fewer database roundtrips
+- **Cleaner code** - Hooks can just use `familyId` directly
+
+### Future Optimization Opportunities
+
+The following hooks still query `family_members` individually and could be updated to use `useAuth()`:
+
+- `use-tasks.ts` - Mutations need `family_id`
+- `use-habits.ts` - Mutations need `family_id`
+- `use-family-events.ts` - Mutations need `family_id`
+- `use-calendar-items.ts` - Queries need `family_id`
+- `use-profiles.ts` - Multiple queries need `family_id`
+
+These would benefit from the centralized AuthProvider pattern.
+
+---
+
 ## Testing Checklist
 
 - [ ] Drag card between columns (mouse)
@@ -287,3 +340,5 @@ The drag-drop system is configured in `use-kanban-dnd.ts`:
 - [ ] Tag grouping shows dynamic columns
 - [ ] Multi-tag items appear in all columns
 - [ ] Untagged items go to Untagged column
+- [ ] Auth state is shared across all components
+- [ ] Kanban loads without redundant family_members queries

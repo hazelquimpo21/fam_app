@@ -31,20 +31,50 @@ type AuthState =
   | 'needs_family'      // Has session, needs to create/join family
 ```
 
-### Session Management
+### Session Management (AuthProvider Pattern)
+
+Auth state is managed centrally via the `AuthProvider` context:
 
 ```typescript
-// lib/hooks/use-auth.ts
+// lib/contexts/auth-context.tsx - Centralized provider
+// lib/hooks/use-auth.ts - Re-exports from context (backwards compatible)
 
-interface AuthContext {
-  user: User | null               // Supabase auth user
-  familyMember: FamilyMember | null  // App-level user with family
-  family: Family | null           // Current family
-  authState: AuthState
-  signIn: (email: string, password: string) => Promise<void>
-  signUp: (email: string, password: string, name: string) => Promise<void>
+interface AuthContextValue {
+  authState: AuthState              // 'loading' | 'unauthenticated' | 'authenticated' | 'needs_family'
+  user: User | null                 // Supabase auth user
+  session: Session | null           // Current session
+  familyMember: FamilyMember | null // App-level user with family
+  family: Family | null             // Current family
+  familyId: string | null           // Quick access to family_id (commonly needed)
+  sendMagicLink: (email: string, options?: { name?: string }) => Promise<{ error?: string }>
   signOut: () => Promise<void>
-  resetPassword: (email: string) => Promise<void>
+  resetPassword: (email: string) => Promise<{ error?: string }>
+  refetchFamilyMember: () => Promise<void>  // Manual refresh after profile updates
+}
+```
+
+**Why AuthProvider Context?**
+
+Previously, `useAuth` was a standalone hook that created independent state in each component.
+This caused multiple redundant `family_members` queries. The AuthProvider pattern:
+
+- Manages auth state in one place (providers.tsx wraps the app)
+- Fetches family member data once on login
+- All components share the same auth state via `useAuth()`
+- Provides `familyId` for quick access (hooks like `useKanban` use this directly)
+
+```tsx
+// Usage in components
+import { useAuth } from '@/lib/hooks/use-auth'
+
+function MyComponent() {
+  const { user, familyMember, familyId, authState, signOut } = useAuth()
+
+  if (authState === 'loading') return <Spinner />
+  if (!familyId) return null // Will redirect to onboarding via middleware
+
+  // familyId is now available without an extra query
+  return <div>Family: {familyId}</div>
 }
 ```
 
@@ -745,3 +775,4 @@ export function useCreateInvite() {
 | 1.0 | 2024-12-23 | Hazel + Claude | Initial auth spec |
 | 1.1 | 2024-12-23 | Claude | Updated to magic link (passwordless) authentication |
 | 1.2 | 2024-12-26 | Claude | Added onboarding flow, fixed maybeSingle() usage |
+| 1.3 | 2024-12-28 | Claude | Added AuthProvider context pattern documentation |

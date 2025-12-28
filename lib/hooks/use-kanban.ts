@@ -36,6 +36,7 @@ import { toast } from 'sonner';
 import { createClient } from '@/lib/supabase/client';
 import { queryKeys } from '@/lib/query-keys';
 import { logger } from '@/lib/utils/logger';
+import { useAuth } from '@/lib/hooks/use-auth';
 import {
   startOfDay,
   endOfDay,
@@ -645,6 +646,10 @@ export function useKanban(config: KanbanConfig) {
   const supabase = createClient();
   const queryClient = useQueryClient();
 
+  // Get family context from centralized AuthProvider
+  // This eliminates the redundant family_members lookup that was causing issues
+  const { familyId, authState } = useAuth();
+
   const { groupBy, timeScope, filters = {} } = config;
 
   // Get date range for fetching
@@ -656,34 +661,6 @@ export function useKanban(config: KanbanConfig) {
   // For events (not tasks), we only need yesterday for "Past" column
   // Past events beyond yesterday are not useful - they already happened
   const eventPastStart = addDays(new Date(), -1); // Yesterday
-
-  // ============================================================================
-  // SHARED FAMILY CONTEXT QUERY
-  // ============================================================================
-
-  /**
-   * Cached query for current user's family_id.
-   * This prevents redundant family_members lookups across queries.
-   * The family_id is stable during a session, so we cache it aggressively.
-   */
-  const familyContextQuery = useQuery({
-    queryKey: ['kanban', 'family-context'],
-    queryFn: async (): Promise<{ familyId: string } | null> => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return null;
-
-      const { data: member, error } = await supabase
-        .from('family_members')
-        .select('family_id')
-        .eq('auth_user_id', user.id)
-        .single();
-
-      if (error || !member) return null;
-      return { familyId: member.family_id };
-    },
-    staleTime: 1000 * 60 * 60, // 1 hour - family_id doesn't change during session
-    gcTime: 1000 * 60 * 60 * 24, // 24 hours
-  });
 
   // ============================================================================
   // QUERIES
@@ -814,13 +791,12 @@ export function useKanban(config: KanbanConfig) {
    * Fetch birthdays within the time scope.
    * NOTE: Requires the get_birthdays_in_range function to be deployed in Supabase.
    * If the function doesn't exist, this gracefully returns empty array.
-   * Uses cached family_id from familyContextQuery to prevent redundant lookups.
+   * Uses familyId from centralized AuthProvider (no redundant lookups needed).
    */
   const birthdaysQuery = useQuery({
-    queryKey: ['kanban', 'birthdays', timeScope, familyContextQuery.data?.familyId],
+    queryKey: ['kanban', 'birthdays', timeScope, familyId],
     queryFn: async (): Promise<Birthday[]> => {
-      // Use cached family_id from familyContextQuery
-      const familyId = familyContextQuery.data?.familyId;
+      // Use familyId from AuthProvider (already available, no extra query needed)
       if (!familyId) {
         logger.debug('🎂 Kanban: No family context available, skipping birthdays');
         return [];
@@ -848,8 +824,8 @@ export function useKanban(config: KanbanConfig) {
       logger.success(`✅ Kanban: Fetched ${data?.length || 0} birthdays`);
       return data as Birthday[];
     },
-    // Only run when family context is loaded
-    enabled: !!familyContextQuery.data?.familyId,
+    // Only run when we have a familyId from AuthProvider
+    enabled: !!familyId && authState === 'authenticated',
     staleTime: 1000 * 60 * 30, // 30 minutes - birthdays change infrequently
     // Don't retry if function doesn't exist - it won't suddenly appear
     retry: (failureCount, error) => {
@@ -1118,7 +1094,7 @@ export function useKanban(config: KanbanConfig) {
 
     /** Loading state for any query */
     isLoading:
-      familyContextQuery.isLoading ||
+      authState === 'loading' ||
       tasksQuery.isLoading ||
       eventsQuery.isLoading ||
       externalEventsQuery.isLoading ||

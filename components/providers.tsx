@@ -8,8 +8,14 @@
  * WHAT THIS FILE DOES:
  * Wraps the app with all necessary React context providers:
  * - TanStack Query (data fetching & caching)
+ * - AuthProvider (centralized auth state management)
  * - Toast notifications (sonner)
  * - Theme/context providers (future)
+ *
+ * PROVIDER ORDER (outer → inner):
+ * 1. QueryClientProvider - Data fetching foundation
+ * 2. AuthProvider - Authentication state (needs Query for potential queries)
+ * 3. App content - All components
  *
  * FUTURE AI DEVELOPERS:
  * - Add new providers here to make them available app-wide
@@ -23,6 +29,7 @@ import { useEffect, useRef } from 'react';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from 'sonner';
 import { useCreateQueryClient } from '@/lib/query-client';
+import { AuthProvider } from '@/lib/contexts/auth-context';
 import { logger } from '@/lib/utils/logger';
 
 interface ProvidersProps {
@@ -57,8 +64,11 @@ export function Providers({ children }: ProvidersProps) {
 
   return (
     <QueryClientProvider client={queryClient}>
-      {/* Main app content */}
-      {children}
+      {/* Auth state management - provides useAuth hook context */}
+      <AuthProvider>
+        {/* Main app content */}
+        {children}
+      </AuthProvider>
 
       {/* Toast notifications */}
       <Toaster

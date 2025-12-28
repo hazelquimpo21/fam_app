@@ -52,11 +52,13 @@ Tables: families, family_members, tasks, subtasks, habits, habit_logs,
 ### 2. Authentication - Magic Link (100% Complete)
 
 **Files:**
+- `lib/contexts/auth-context.tsx` - **Centralized AuthProvider** (manages all auth state)
+- `lib/hooks/use-auth.ts` - Auth hook (re-exports from AuthProvider, backwards compatible)
 - `lib/supabase/client.ts` - Browser client
 - `lib/supabase/server.ts` - Server component client
 - `lib/supabase/middleware.ts` - Auth middleware helper
 - `lib/supabase/admin.ts` - Admin client for privileged operations
-- `lib/hooks/use-auth.ts` - Auth state hook with magic link support
+- `components/providers.tsx` - Wraps app with AuthProvider
 - `app/(auth)/login/page.tsx` - Magic link login page
 - `app/(auth)/signup/page.tsx` - Magic link signup page
 - `app/(auth)/check-email/page.tsx` - Email confirmation page
@@ -71,6 +73,8 @@ Tables: families, family_members, tasks, subtasks, habits, habit_logs,
 - ✅ Protected routes
 - ✅ Auth state hook with `sendMagicLink` method
 - ✅ Onboarding flow for new users
+- ✅ **AuthProvider context pattern** - Centralized auth state management
+- ✅ **Shared familyId** - Available via `useAuth()` without redundant queries
 
 ### 2.5 Onboarding Flow (100% Complete)
 
@@ -439,6 +443,7 @@ npm run dev
 8. **JSDoc Comments** - Clear documentation for all hooks and components
 9. **Loading Skeletons** - Per-page loading states
 10. **Error Boundaries** - Graceful error handling with retry options
+11. **AuthProvider Context** - Centralized auth state management (no redundant queries)
 
 ---
 
@@ -476,6 +481,7 @@ fam_app/
 │   ├── layout/                 # 3 components
 │   └── providers.tsx
 ├── lib/
+│   ├── contexts/               # 1 context (auth-context) - AuthProvider for centralized auth state
 │   ├── supabase/               # 4 files (client, server, middleware, admin)
 │   ├── hooks/                  # 10 hooks (auth, tasks, habits, goals, projects, someday, family, calendar, family-events, kanban)
 │   ├── constants/              # 1 file (kanban-styles) - Shared style constants
@@ -529,5 +535,6 @@ Keep files under 400 lines. Extract components when they grow.
 | 3.2 | 2024-12-26 | Claude | Added Calendar Integration: ICS feeds (export) + Google Calendar import. See 16-google-calendar-integration.md |
 | 3.3 | 2024-12-28 | Claude | Added Unified Kanban Board: tasks + events in configurable columns (time/status/priority), drag-drop, time scope filters |
 | 3.4 | 2024-12-28 | Claude | UI/UX Cleanup: Extracted shared KanbanCardContent (DRY), centralized styles in lib/constants, fixed duplicate logging, added empty state hints |
+| 3.5 | 2024-12-28 | Claude | AuthProvider Refactor: Converted useAuth to context pattern, centralized auth state in lib/contexts/auth-context.tsx, eliminated redundant family_members queries |
 
 *This document is auto-generated. See individual docs for detailed specs.*
