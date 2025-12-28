@@ -145,6 +145,9 @@ export interface CreateProjectInput {
 /**
  * Create a new project
  *
+ * This hook fetches the user's family_id before creating the project.
+ * The family_id is required for RLS policies to work correctly.
+ *
  * @example
  * const createProject = useCreateProject()
  * createProject.mutate({
@@ -161,21 +164,51 @@ export function useCreateProject() {
     mutationFn: async (input: CreateProjectInput) => {
       logger.info('➕ Creating project...', { title: input.title });
 
+      // Step 1: Get the current user's family_id and member_id
+      // This is required for RLS policies to allow the insert
+      const { data: { user } } = await supabase.auth.getUser();
+
+      if (!user) {
+        logger.error('❌ No authenticated user when creating project');
+        throw new Error('You must be logged in to create projects');
+      }
+
+      const { data: member, error: memberError } = await supabase
+        .from('family_members')
+        .select('id, family_id')
+        .eq('auth_user_id', user.id)
+        .maybeSingle();
+
+      if (memberError) {
+        logger.error('❌ Failed to get family info for project creation', { error: memberError.message });
+        throw new Error('Failed to get your family information');
+      }
+
+      if (!member) {
+        logger.error('❌ User has no family membership - cannot create project');
+        throw new Error('Please complete onboarding to create projects');
+      }
+
+      logger.debug('👤 Got family context for project', { familyId: member.family_id, memberId: member.id });
+
+      // Step 2: Create the project with family_id and created_by
       const { data, error } = await supabase
         .from('projects')
         .insert({
           ...input,
+          family_id: member.family_id,
+          created_by: member.id,
           status: input.status || 'planning',
         })
         .select()
         .single();
 
       if (error) {
-        logger.error('❌ Failed to create project', { error: error.message });
+        logger.error('❌ Failed to create project', { error: error.message, code: error.code, details: error.details });
         throw error;
       }
 
-      logger.success('✅ Project created!', { title: data?.title });
+      logger.success('✅ Project created!', { title: data?.title, projectId: data?.id });
       return data as Project;
     },
 
@@ -186,7 +219,8 @@ export function useCreateProject() {
     },
 
     onError: (error) => {
-      toast.error('Failed to create project. Please try again.');
+      const message = error instanceof Error ? error.message : 'Failed to create project';
+      toast.error(message);
       logger.error('Create project error', { error });
     },
   });
@@ -349,6 +383,9 @@ export function useDeleteProject() {
 /**
  * Promote a someday item to a project
  *
+ * This hook fetches the user's family_id before creating the project.
+ * The family_id is required for RLS policies to work correctly.
+ *
  * @example
  * const promote = usePromoteSomedayToProject()
  * promote.mutate({ somedayId: '...', title: 'New Project Title' })
@@ -361,11 +398,39 @@ export function usePromoteSomedayToProject() {
     mutationFn: async ({ somedayId, ...projectData }: CreateProjectInput & { somedayId: string }) => {
       logger.info('⬆️ Promoting someday item to project...', { somedayId });
 
-      // Create the project
+      // Step 1: Get the current user's family_id and member_id
+      const { data: { user } } = await supabase.auth.getUser();
+
+      if (!user) {
+        logger.error('❌ No authenticated user when promoting someday');
+        throw new Error('You must be logged in to promote to project');
+      }
+
+      const { data: member, error: memberError } = await supabase
+        .from('family_members')
+        .select('id, family_id')
+        .eq('auth_user_id', user.id)
+        .maybeSingle();
+
+      if (memberError) {
+        logger.error('❌ Failed to get family info for promotion', { error: memberError.message });
+        throw new Error('Failed to get your family information');
+      }
+
+      if (!member) {
+        logger.error('❌ User has no family membership - cannot promote');
+        throw new Error('Please complete onboarding first');
+      }
+
+      logger.debug('👤 Got family context for promotion', { familyId: member.family_id, memberId: member.id });
+
+      // Step 2: Create the project with family_id and created_by
       const { data: project, error: projectError } = await supabase
         .from('projects')
         .insert({
           ...projectData,
+          family_id: member.family_id,
+          created_by: member.id,
           status: 'planning',
           promoted_from_id: somedayId,
         })
@@ -373,7 +438,7 @@ export function usePromoteSomedayToProject() {
         .single();
 
       if (projectError) {
-        logger.error('❌ Failed to create project from someday', { error: projectError.message });
+        logger.error('❌ Failed to create project from someday', { error: projectError.message, code: projectError.code });
         throw projectError;
       }
 
@@ -391,7 +456,7 @@ export function usePromoteSomedayToProject() {
         logger.warn('⚠️ Project created but failed to update someday item', { error: somedayError.message });
       }
 
-      logger.success('✅ Someday item promoted to project!');
+      logger.success('✅ Someday item promoted to project!', { projectId: project.id });
       return project as Project;
     },
 
@@ -402,7 +467,8 @@ export function usePromoteSomedayToProject() {
     },
 
     onError: (error) => {
-      toast.error('Failed to promote to project');
+      const message = error instanceof Error ? error.message : 'Failed to promote to project';
+      toast.error(message);
       logger.error('Promote to project error', { error });
     },
   });
