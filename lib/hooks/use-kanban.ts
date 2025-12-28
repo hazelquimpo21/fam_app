@@ -650,8 +650,40 @@ export function useKanban(config: KanbanConfig) {
   // Get date range for fetching
   const { start: rangeStart, end: rangeEnd } = getTimeScopeRange(timeScope);
 
-  // Also fetch overdue items (before range start)
-  const overdueStart = addDays(rangeStart, -30); // Look back 30 days for overdue
+  // Also fetch overdue items (before range start) - but limit to recent past
+  const overdueStart = addDays(rangeStart, -30); // Look back 30 days for overdue tasks
+
+  // For events (not tasks), we only need yesterday for "Past" column
+  // Past events beyond yesterday are not useful - they already happened
+  const eventPastStart = addDays(new Date(), -1); // Yesterday
+
+  // ============================================================================
+  // SHARED FAMILY CONTEXT QUERY
+  // ============================================================================
+
+  /**
+   * Cached query for current user's family_id.
+   * This prevents redundant family_members lookups across queries.
+   * The family_id is stable during a session, so we cache it aggressively.
+   */
+  const familyContextQuery = useQuery({
+    queryKey: ['kanban', 'family-context'],
+    queryFn: async (): Promise<{ familyId: string } | null> => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return null;
+
+      const { data: member, error } = await supabase
+        .from('family_members')
+        .select('family_id')
+        .eq('auth_user_id', user.id)
+        .single();
+
+      if (error || !member) return null;
+      return { familyId: member.family_id };
+    },
+    staleTime: 1000 * 60 * 60, // 1 hour - family_id doesn't change during session
+    gcTime: 1000 * 60 * 60 * 24, // 24 hours
+  });
 
   // ============================================================================
   // QUERIES
@@ -710,11 +742,17 @@ export function useKanban(config: KanbanConfig) {
 
   /**
    * Fetch family events within the time scope.
+   * OPTIMIZATION: Only fetches from yesterday onwards (not full range start)
+   * because past events beyond yesterday aren't actionable.
    */
   const eventsQuery = useQuery({
     queryKey: ['kanban', 'events', timeScope],
     queryFn: async () => {
       logger.info('📅 Kanban: Fetching family events...', { timeScope });
+
+      // Use eventPastStart (yesterday) instead of rangeStart for past events
+      // This prevents loading old past events that aren't useful
+      const effectiveStart = eventPastStart > rangeStart ? rangeStart : eventPastStart;
 
       const { data, error } = await supabase
         .from('family_events')
@@ -722,7 +760,7 @@ export function useKanban(config: KanbanConfig) {
           *,
           assignee:family_members!assigned_to(id, name, color)
         `)
-        .gte('start_time', rangeStart.toISOString())
+        .gte('start_time', effectiveStart.toISOString())
         .lte('start_time', rangeEnd.toISOString())
         .order('start_time', { ascending: true });
 
@@ -739,11 +777,17 @@ export function useKanban(config: KanbanConfig) {
 
   /**
    * Fetch external events (Google Calendar) within the time scope.
+   * OPTIMIZATION: Only fetches from yesterday onwards.
+   * External events are read-only, so past ones beyond yesterday are just noise.
    */
   const externalEventsQuery = useQuery({
     queryKey: ['kanban', 'external-events', timeScope],
     queryFn: async () => {
       logger.info('🔗 Kanban: Fetching external events...', { timeScope });
+
+      // Only load external events from yesterday onwards
+      // Past external events are not actionable - they already happened
+      const effectiveStart = eventPastStart > rangeStart ? rangeStart : eventPastStart;
 
       const { data, error } = await supabase
         .from('external_events')
@@ -751,7 +795,7 @@ export function useKanban(config: KanbanConfig) {
           *,
           subscription:google_calendar_subscriptions(calendar_name, calendar_color)
         `)
-        .gte('start_time', rangeStart.toISOString())
+        .gte('start_time', effectiveStart.toISOString())
         .lte('start_time', rangeEnd.toISOString())
         .order('start_time', { ascending: true });
 
@@ -768,18 +812,35 @@ export function useKanban(config: KanbanConfig) {
 
   /**
    * Fetch birthdays within the time scope.
+   * NOTE: Requires the get_birthdays_in_range function to be deployed in Supabase.
+   * If the function doesn't exist, this gracefully returns empty array.
+   * Uses cached family_id from familyContextQuery to prevent redundant lookups.
    */
   const birthdaysQuery = useQuery({
-    queryKey: ['kanban', 'birthdays', timeScope],
-    queryFn: async () => {
-      logger.info('🎂 Kanban: Fetching birthdays...', { timeScope });
+    queryKey: ['kanban', 'birthdays', timeScope, familyContextQuery.data?.familyId],
+    queryFn: async (): Promise<Birthday[]> => {
+      // Use cached family_id from familyContextQuery
+      const familyId = familyContextQuery.data?.familyId;
+      if (!familyId) {
+        logger.debug('🎂 Kanban: No family context available, skipping birthdays');
+        return [];
+      }
 
+      logger.info('🎂 Kanban: Fetching birthdays...', { timeScope, familyId });
+
+      // Call the birthday RPC with correct parameter names
       const { data, error } = await supabase.rpc('get_birthdays_in_range', {
-        start_date: rangeStart.toISOString().split('T')[0],
-        end_date: rangeEnd.toISOString().split('T')[0],
+        p_family_id: familyId,
+        p_start_date: rangeStart.toISOString().split('T')[0],
+        p_end_date: rangeEnd.toISOString().split('T')[0],
       });
 
       if (error) {
+        // If the function doesn't exist (migration not applied), gracefully skip
+        if (error.message.includes('Could not find the function')) {
+          logger.debug('🎂 Kanban: Birthday function not deployed, skipping');
+          return [];
+        }
         logger.error('❌ Kanban: Failed to fetch birthdays', { error: error.message });
         throw error;
       }
@@ -787,7 +848,16 @@ export function useKanban(config: KanbanConfig) {
       logger.success(`✅ Kanban: Fetched ${data?.length || 0} birthdays`);
       return data as Birthday[];
     },
+    // Only run when family context is loaded
+    enabled: !!familyContextQuery.data?.familyId,
     staleTime: 1000 * 60 * 30, // 30 minutes - birthdays change infrequently
+    // Don't retry if function doesn't exist - it won't suddenly appear
+    retry: (failureCount, error) => {
+      if (error instanceof Error && error.message.includes('Could not find the function')) {
+        return false;
+      }
+      return failureCount < 3;
+    },
   });
 
   // ============================================================================
@@ -1048,6 +1118,7 @@ export function useKanban(config: KanbanConfig) {
 
     /** Loading state for any query */
     isLoading:
+      familyContextQuery.isLoading ||
       tasksQuery.isLoading ||
       eventsQuery.isLoading ||
       externalEventsQuery.isLoading ||
