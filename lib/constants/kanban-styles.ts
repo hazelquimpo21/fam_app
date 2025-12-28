@@ -185,10 +185,20 @@ export const COLUMN_COLORS: Record<string, ColumnColorScheme> = {
 /**
  * User-friendly empty state messages per column type.
  * Includes action hints to guide users on what to do.
+ *
+ * SEMANTIC NOTE (for future AI developers):
+ * - "past" = Events/birthdays that already happened (neutral, informational)
+ * - "overdue" = Tasks with past due dates that aren't completed (urgent, needs action)
+ *
+ * These are separate concepts with distinct UX implications.
  */
 export const EMPTY_STATE_MESSAGES: Record<string, { message: string; hint: string }> = {
+  past: {
+    message: 'No past events this week',
+    hint: 'Events that already happened appear here',
+  },
   overdue: {
-    message: 'No overdue items!',
+    message: 'No overdue tasks!',
     hint: 'Great job staying on top of things',
   },
   today: {
