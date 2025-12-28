@@ -552,59 +552,103 @@ Stack cards vertically:
 
 ---
 
-## Screen 6: Tasks Kanban
+## Screen 6: Unified Kanban Board ✅ IMPLEMENTED
 
-**URL:** `/tasks?view=kanban`
+**URL:** `/kanban`
 
-### Layout
-
-```
-┌────────────────────────────────────────────────────────────────────────┐
-│ Tasks                                                       [+ Task]   │
-│ View: [List]  [Kanban ▼]  [Calendar]                                   │
-│ Filter: [Summer Camps ▼]                                               │
-├────────────┬────────────┬────────────┬────────────┬────────────────────┤
-│  Backlog   │  Up Next   │ In Progress│ Waiting For│       Done         │
-│     3      │     2      │     1      │     1      │        4           │
-├────────────┼────────────┼────────────┼────────────┼────────────────────┤
-│┌──────────┐│┌──────────┐│┌──────────┐│┌──────────┐│ ┌──────────┐       │
-││Research  │││Compare   │││Register  │││Waiting   ││ │ ✓ Email  │       │
-││options   │││costs     │││for Camp A│││for Camp B││ │   camps  │       │
-││          │││          │││          │││response  ││ └──────────┘       │
-││Dec 28    │││Dec 30    │││Dec 31    │││          ││                    │
-││👤 Hazel  │││👤 Hazel  │││👤 Hazel  │││👤 Mike   ││                    │
-│└──────────┘│└──────────┘│└──────────┘│└──────────┘│                    │
-│┌──────────┐│┌──────────┐│            │            │                    │
-││Get refs  │││Schedule  ││            │            │                    │
-││from      │││tours     ││            │            │                    │
-││parents   │││          ││            │            │                    │
-│└──────────┘│└──────────┘│            │            │                    │
-│┌──────────┐│            │            │            │                    │
-││Budget    ││            │            │            │                    │
-││planning  ││            │            │            │                    │
-│└──────────┘│            │            │            │                    │
-└────────────┴────────────┴────────────┴────────────┴────────────────────┘
-```
-
-### Card Design
+### Layout (Implemented)
 
 ```
-┌────────────────────┐
-│ Research options   │  ← Title (truncate if long)
-│                    │
-│ Dec 28             │  ← Due date (red if overdue)
-│ 👤 Hazel           │  ← Assignee avatar + name
-│ ● Summer Camps     │  ← Project badge (color dot)
-└────────────────────┘
+┌────────────────────────────────────────────────────────────────────────────┐
+│ Kanban Board                                      [+ Add Task] [+ Add Event]│
+│ Drag tasks to reorganize. Click to edit.                                    │
+├────────────────────────────────────────────────────────────────────────────┤
+│  Scope: [Week ▼]    Group By: [Time ▼] [Status] [Priority]                 │
+│  Filter: [✅ Tasks] [📅 Events] [🔗 Google] [🎂 Birthdays]                 │
+│  [Show Done]  [⟳ Refresh]                                                   │
+├────────────────────────────────────────────────────────────────────────────┤
+│  Showing: Dec 22 – Dec 28, 2024                                             │
+├────────────┬────────────┬────────────┬────────────┬────────────┬───────────┤
+│  ⚠️ Overdue │  ☀️ Today  │ 📅 Tomorrow│ 📆 This Wk │  🔮 Later  │   ✅ Done │
+│     2      │     4      │     1      │     2      │     3      │     5     │
+├────────────┼────────────┼────────────┼────────────┼────────────┼───────────┤
+│┌──────────┐│┌──────────┐│┌──────────┐│┌──────────┐│┌──────────┐│┌─────────┐│
+││📋 Pay    │││📅 Dentist│││📋 Review │││📋 Book   │││📋 Japan  │││✓ Email  ││
+││bill      │││ 2pm      │││camps     │││flights   │││planning  │││ camps   ││
+││Dec 21 🔴 │││👤 Hazel  │││          │││          │││          ││└─────────┘│
+││👤 Hazel  │││[Event]   │││          │││          │││          ││           │
+│└──────────┘│└──────────┘│└──────────┘│└──────────┘│└──────────┘││           │
+│┌──────────┐│┌──────────┐│            │            │            ││           │
+││📋 Dentist│││🔗 Team   ││            │            │            ││           │
+││appt      │││meeting   ││            │            │            ││           │
+││Dec 20 🔴 │││[Google]  ││            │            │            ││           │
+│└──────────┘││Read-only ││            │            │            ││           │
+│            │└──────────┘│            │            │            ││           │
+│            │┌──────────┐│            │            │            ││           │
+│            ││🎂 Grandma││            │            │            ││           │
+│            ││ 75 today!││            │            │            ││           │
+│            │└──────────┘│            │            │            ││           │
+└────────────┴────────────┴────────────┴────────────┴────────────┴───────────┘
 ```
 
-### Behavior
+### Card Types (Visual Distinction)
 
-- Drag cards between columns (updates status)
-- Drag within column to reorder (manual sort)
-- Click card opens detail panel
-- Column counts update dynamically
-- Done column shows limited recent items
+```
+TASK (Editable, Draggable)              EVENT (Editable, Draggable)
+┌────────────────────┐                  ┌────────────────────┐
+│ [✓] Research camp  │ ← Checkbox       │ 📅 Dentist visit  │ ← Icon
+│     options        │                  │                    │
+│ Dec 28             │ ← Due date       │ 2:00 PM – 3:00 PM │ ← Time
+│ 👤 Hazel           │ ← Assignee       │ 👤 Miles          │ ← Assignee
+│ ● Camps [blue]     │ ← Project        │ [Event] [indigo]  │ ← Badge
+└────────────────────┘                  └────────────────────┘
+
+GOOGLE CALENDAR (Read-only)             BIRTHDAY (Read-only)
+┌────────────────────┐                  ┌────────────────────┐
+│ 🔗 Team standup    │ ← Google icon    │ 🎂 Grandma Smith  │ ← Cake
+│                    │                  │                    │
+│ 9:00 AM            │                  │ Turning 75!       │ ← Age
+│ Work Calendar      │ ← Source         │ [Birthday] [pink] │ ← Badge
+│ [Google] [red]     │ ← Badge          │                    │
+│ Read-only          │ ← Indicator      │                    │
+└────────────────────┘                  └────────────────────┘
+```
+
+### GroupBy Modes
+
+**By Time** (default):
+- Overdue, Today, Tomorrow, This Week, Later, Done
+- Events appear in their date's column
+- Drag task → updates due_date
+
+**By Status**:
+- Inbox, Active, Waiting For, Someday, Done
+- Events appear in "Active" column
+- Drag task → updates status
+
+**By Priority**:
+- High, Medium, Low, None
+- Events appear in "None" column
+- Drag task → updates priority
+
+### Time Scope Options
+
+- **Week**: Current week (Sun-Sat)
+- **Month**: Current month
+- **Quarter**: Current quarter
+- **Year**: Current year
+
+### Behavior (Implemented)
+
+- ✅ Drag tasks between columns (updates date/status/priority based on mode)
+- ✅ Drag Family Events between time columns (reschedules)
+- ✅ Click task card → Opens TaskModal for editing
+- ✅ Click event card → Opens EventModal for editing
+- ✅ Google Calendar events are read-only (no drag, no click-to-edit)
+- ✅ Birthdays are read-only celebration cards
+- ✅ Column counts update dynamically
+- ✅ Toggle item types with filter buttons
+- ✅ Show/hide completed items toggle
 
 ---
 
@@ -1018,7 +1062,7 @@ Stack cards vertically:
 | Screen 3: Inbox | `/inbox` | ✅ **Connected** | Full triage with all 5 modals |
 | Screen 4: Today | `/today` | ✅ **Connected** | Daily focus, click task → TaskModal |
 | Screen 5: Tasks List | `/tasks` | ✅ Complete | Full functionality + TaskModal |
-| Screen 6: Tasks Kanban | `/tasks?view=kanban` | 🔨 Pending | View toggle pending |
+| **Screen 6: Unified Kanban** | `/kanban` | ✅ **Complete** | Tasks + events, groupBy modes, drag-drop |
 | Screen 7: Task Detail | TaskModal | ✅ **Complete** | Modal form (not side panel) |
 | Screen 8: Calendar | `/calendar` | 🔨 Pending | Not yet implemented |
 | Screen 9: Habits | `/habits` | ✅ **Connected** | Full functionality + HabitModal |
@@ -1059,3 +1103,4 @@ Stack cards vertically:
 | 1.6 | 2024-12-26 | Claude | Updated Inbox wireframe with all triage options (Task/Goal/Habit/Project/Someday/Archive/Delete); added Modals Implementation table |
 | 1.7 | 2024-12-26 | Claude | Added "Modal Connections" section to Dashboard documenting click-to-edit patterns for habits, goals, and tasks |
 | 1.8 | 2024-12-26 | Claude | Added Family Profile and Member Profile screens to implementation table (planned); see `15-profile-architecture.md` for wireframes |
+| 1.9 | 2024-12-28 | Claude | Rewrote Screen 6 as "Unified Kanban Board" with full wireframe showing tasks + events, groupBy modes, time scope, item type filters; marked as COMPLETE |

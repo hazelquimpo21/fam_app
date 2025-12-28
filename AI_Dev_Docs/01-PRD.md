@@ -82,7 +82,7 @@ Families juggle tasks, meals, appointments, goals, vendor contacts, and dreams a
 - Family dashboard (today at a glance)
 - Personal dashboard (my stuff)
 - Calendar view (all dated items)
-- Kanban view (tasks by status)
+- Kanban view (tasks AND events by time/status/priority) ✅
 - Family meeting view (structured weekly check-in)
 - Library views (people, vendors, places, recipes)
 
@@ -94,7 +94,7 @@ Families juggle tasks, meals, appointments, goals, vendor contacts, and dreams a
 ### Out of Scope for V1 (Architected For)
 
 - Native mobile apps (responsive web first)
-- Google Calendar sync (v1.5)
+- ~~Google Calendar sync (v1.5)~~ ✅ Implemented
 - Task dependencies
 - Issues list (EOS-style)
 - Family scorecard
@@ -277,10 +277,11 @@ Families juggle tasks, meals, appointments, goals, vendor contacts, and dreams a
 | Meals & Recipes | v1.2 | Full meal planning UI |
 | Family Meeting View | v1.2 | Weekly check-in experience |
 | Calendar View | v1.2 | All dated items in calendar |
-| Someday/Maybe | v1.3 | Wishlist management |
+| Someday/Maybe | ✅ v1.0 | Wishlist management |
+| ~~Google Calendar Sync~~ | ✅ v1.0 | External calendar integration - **DONE** |
+| **Kanban Board** | ✅ v1.0 | Unified tasks + events board - **DONE** |
 | Places & Vendors | v1.3 | Location/service provider libraries |
 | Contacts Library | v1.3 | Extended family & friends |
-| Google Calendar Sync | v1.5 | External calendar integration |
 | Mobile App | v2.0 | Native apps (currently responsive web) |
 
 ### 📁 Project Structure (Implemented)
@@ -319,3 +320,4 @@ fam_app/
 | 1.1 | 2024-12-23 | Claude | Added implementation status section |
 | 1.2 | 2024-12-23 | Claude | Updated auth to magic link (passwordless) |
 | 1.3 | 2024-12-26 | Claude | Added Profiles to V1 scope; updated AI integration as "architected for" via profiles |
+| 1.4 | 2024-12-28 | Claude | Updated Kanban view to include events; marked Google Calendar sync and Kanban as complete |

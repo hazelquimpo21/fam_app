@@ -164,17 +164,20 @@ Priority uses MoSCoW: **M**ust have, **S**hould have, **C**ould have, **W**on't 
 - [ ] Completed tasks hidden by default, toggle to show
 - [ ] Click task to open detail panel
 
-### US-3.3: View Tasks Kanban
+### US-3.3: View Tasks Kanban ✅ COMPLETE
 **Priority:** Should
 
 > **As a** visual thinker, **I want** to see tasks on a kanban board, **so that** I can understand status at a glance.
 
 **Acceptance Criteria:**
-- [ ] Columns: Backlog, Up Next, In Progress, Waiting For, Done
-- [ ] Cards show: title, due date, assignee avatar
-- [ ] Drag cards between columns (updates status)
-- [ ] Can filter by project or assignee
-- [ ] Cards are color-coded by priority or project
+- [x] Columns: Configurable by groupBy mode (time: Overdue/Today/Tomorrow/This Week/Later/Done; status: Inbox/Active/Waiting/Someday/Done; priority: High/Medium/Low/None)
+- [x] Cards show: title, due date, assignee avatar, project badge, type indicator
+- [x] Drag cards between columns (updates status or date based on groupBy mode)
+- [x] Can filter by time scope (week/month/quarter/year)
+- [x] Can filter by item type (tasks, events, Google Calendar, birthdays)
+- [x] Cards are color-coded by type and priority
+- [x] Click card to open edit modal (TaskModal or EventModal)
+- [x] Events from Google Calendar shown as read-only cards
 
 ### US-3.4: Complete Task
 **Priority:** Must
@@ -859,3 +862,4 @@ Priority uses MoSCoW: **M**ust have, **S**hould have, **C**ould have, **W**on't 
 | 1.0 | 2024-12-23 | Hazel + Claude | Initial user stories |
 | 1.1 | 2024-12-23 | Claude | Updated auth stories for magic link (passwordless) |
 | 1.2 | 2024-12-26 | Claude | Added Epic 15: Family & Member Profiles (US-15.1 through US-15.5) |
+| 1.3 | 2024-12-28 | Claude | Marked US-3.3 (View Tasks Kanban) as COMPLETE with expanded acceptance criteria for unified board |
