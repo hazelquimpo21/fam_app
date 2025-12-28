@@ -149,6 +149,9 @@ export interface CreateGoalInput {
 /**
  * Create a new goal
  *
+ * This hook fetches the user's family_id before creating the goal.
+ * The family_id is required for RLS policies to work correctly.
+ *
  * @example
  * const createGoal = useCreateGoal()
  * createGoal.mutate({
@@ -166,10 +169,40 @@ export function useCreateGoal() {
     mutationFn: async (input: CreateGoalInput) => {
       logger.info('➕ Creating goal...', { title: input.title });
 
+      // Step 1: Get the current user's family_id and member_id
+      // This is required for RLS policies to allow the insert
+      const { data: { user } } = await supabase.auth.getUser();
+
+      if (!user) {
+        logger.error('❌ No authenticated user when creating goal');
+        throw new Error('You must be logged in to create goals');
+      }
+
+      const { data: member, error: memberError } = await supabase
+        .from('family_members')
+        .select('id, family_id')
+        .eq('auth_user_id', user.id)
+        .maybeSingle();
+
+      if (memberError) {
+        logger.error('❌ Failed to get family info for goal creation', { error: memberError.message });
+        throw new Error('Failed to get your family information');
+      }
+
+      if (!member) {
+        logger.error('❌ User has no family membership - cannot create goal');
+        throw new Error('Please complete onboarding to create goals');
+      }
+
+      logger.debug('👤 Got family context for goal', { familyId: member.family_id, memberId: member.id });
+
+      // Step 2: Create the goal with family_id and created_by
       const { data, error } = await supabase
         .from('goals')
         .insert({
           ...input,
+          family_id: member.family_id,
+          created_by: member.id,
           status: 'active',
           current_value: 0,
         })
@@ -177,11 +210,11 @@ export function useCreateGoal() {
         .single();
 
       if (error) {
-        logger.error('❌ Failed to create goal', { error: error.message });
+        logger.error('❌ Failed to create goal', { error: error.message, code: error.code, details: error.details });
         throw error;
       }
 
-      logger.success('✅ Goal created!', { title: data?.title });
+      logger.success('✅ Goal created!', { title: data?.title, goalId: data?.id });
       return data as Goal;
     },
 
@@ -192,7 +225,8 @@ export function useCreateGoal() {
     },
 
     onError: (error) => {
-      toast.error('Failed to create goal. Please try again.');
+      const message = error instanceof Error ? error.message : 'Failed to create goal';
+      toast.error(message);
       logger.error('Create goal error', { error });
     },
   });
