@@ -1,7 +1,7 @@
 # Fam — Contacts Feature
 
 > **Last Updated:** December 28, 2024
-> **Status:** Phase 1 Complete (Manual Management), Phase 2 Planned (Google Import)
+> **Status:** Phase 1.1 Complete (Enhanced UI/UX), Phase 2 Planned (Google Import)
 
 ---
 
@@ -27,11 +27,49 @@ The Contacts feature allows families to manage extended family, friends, and oth
 - [x] Can add email, phone, anniversary, full address
 - [x] List view with search by name or email
 - [x] Filter by contact type (All, Family, Friends, Other)
-- [x] Upcoming birthdays section (next 14 days) with countdown
+- [x] Upcoming birthdays section (next 30 days) with countdown
 - [x] Contact cards show days until birthday, age calculation
 - [x] Click to view/edit via ContactModal
 - [x] Delete contacts with optimistic update
 - [x] Import tracking fields ready for Google Contacts import (Phase 2)
+
+### US-CONTACTS-1: Click Card to Edit ✅ NEW
+
+> **As a** user, **I want** to click on a contact card to view/edit it directly, **so that** I don't have to navigate through menus.
+
+**Implementation:**
+- Contact cards are clickable (cursor pointer, hover effects)
+- Clicking anywhere on the card opens the edit modal
+- Email/phone links and dropdown menu have click handlers that prevent card click
+
+### US-CONTACTS-2: Unique Avatar Colors ✅ NEW
+
+> **As a** user, **I want** each contact to have a unique avatar color based on their name, **so that** I can visually distinguish between contacts.
+
+**Implementation:**
+- 10-color palette with WCAG-compliant contrast
+- Deterministic hash function: same name → same color every time
+- Color generated from `getAvatarColor(name)` helper
+
+### US-CONTACTS-3: Quick Contact Actions ✅ NEW
+
+> **As a** user, **I want** to tap on email/phone to initiate contact (opens mail client/phone app), **so that** I can reach out quickly.
+
+**Implementation:**
+- Email addresses are `mailto:` links
+- Phone numbers are `tel:` links (strips non-numeric for link, displays formatted)
+- Hover effects indicate clickability
+- Click stops propagation to prevent card edit opening
+
+### US-CONTACTS-4: Expandable Upcoming Birthdays ✅ NEW
+
+> **As a** user, **I want** to see all upcoming birthdays with a "show more" option, **so that** I don't miss any.
+
+**Implementation:**
+- Initially shows 4 birthdays (clean 2x2 or 1x4 grid)
+- "Show X more" button appears if more than 4 birthdays
+- Expands to show all with "Show less" toggle
+- Birthday count badge in section header
 
 ---
 
@@ -157,6 +195,25 @@ contacts: {
 
 ---
 
+### Shared Constants
+
+**File:** `lib/constants/contact-styles.ts`
+
+Centralized styling constants used by both the Contacts page and ContactModal:
+
+| Export | Purpose |
+|--------|---------|
+| `AVATAR_COLORS` | 10-color palette for contact avatars |
+| `getAvatarColor(name)` | Generate deterministic color from name hash |
+| `CONTACT_TYPE_CONFIG` | Icons, labels, colors for family/friend/other |
+| `getContactTypeConfig(type)` | Safe accessor with fallback to 'other' |
+| `formatBirthdayCountdown(days)` | "Today!", "Tomorrow", "in X days" |
+| `isBirthdaySoon(days)` | Check if birthday is within 7 days |
+| `getEmailLink(email)` | Generate `mailto:` URL |
+| `getPhoneLink(phone)` | Generate `tel:` URL (strips formatting) |
+
+---
+
 ### React Hooks
 
 **File:** `lib/hooks/use-contacts.ts`
@@ -165,14 +222,14 @@ contacts: {
 |------|---------|---------|
 | `useContacts(filters?)` | List contacts with optional filters | `useContacts({ contactType: 'family' })` |
 | `useContact(id)` | Get single contact with computed metadata | `useContact(contactId)` |
-| `useUpcomingBirthdays(days)` | Contacts with birthdays in next N days | `useUpcomingBirthdays(14)` |
+| `useUpcomingBirthdays(days)` | Contacts with birthdays in next N days | `useUpcomingBirthdays(30)` |
 | `useSearchContacts(query)` | Search by name or email | `useSearchContacts('smith')` |
 | `useCreateContact()` | Create new contact | `createContact.mutate({ name: 'Grandma', ... })` |
 | `useUpdateContact()` | Update existing contact | `updateContact.mutate({ id, phone: '555-1234' })` |
 | `useDeleteContact()` | Soft delete with optimistic update | `deleteContact.mutate(contactId)` |
 | `useContactStats()` | Get counts by type | `const { total, family, friends } = useContactStats()` |
 
-**Computed Properties:**
+**Computed Properties (ContactWithMeta):**
 
 Contacts are enhanced with computed metadata:
 - `daysUntilBirthday` - Days until next birthday (null if no birthday set)
@@ -188,38 +245,60 @@ Contacts are enhanced with computed metadata:
 **File:** `app/(app)/contacts/page.tsx`
 
 **Features:**
-- Header with contact count and stats
-- Upcoming birthdays section (next 14 days)
+- Header with contact count and "X with birthdays" stat
+- Upcoming birthdays section (next 30 days, expandable)
 - Search input (searches name and email)
-- Filter pills (All, Family, Friends, Other)
-- Contact cards in responsive grid
+- Filter pills (All, Family, Friends, Other) with counts
+- **Clickable contact cards** in responsive 2-column grid
+- **Unique avatar colors** based on contact name
+- **Clickable email/phone** with mailto:/tel: links
 - Empty state with helpful guidance
 - Add Contact button → opens ContactModal
+- Loading skeleton during data fetch
+
+**Sub-components (inline):**
+- `ContactCard` - Individual contact with avatar, badges, actions
+- `UpcomingBirthdayCard` - Compact birthday card with countdown
+- `UpcomingBirthdaysSection` - Expandable section with "show more"
+- `FilterPills` - Type filter buttons with counts
+- `ContactsSkeleton` - Loading placeholder
 
 ### ContactModal
 
 **File:** `components/modals/contact-modal.tsx`
 
 **Features:**
-- Create and edit modes
-- Contact type selection (visual buttons)
+- Create and edit modes (determined by `contact` prop)
+- Visual contact type selector using shared constants
 - Relationship field with helper text
 - Email and phone inputs
 - Birthday and anniversary date pickers
 - Notes textarea
-- Collapsible address section
+- Collapsible address section (auto-expands if has data)
 - Keyboard shortcut (Cmd+Enter to save)
+- Form validation (name required)
+
+**Sub-components (inline):**
+- `ContactTypeSelector` - Visual button group with accessibility
+- `AddressSection` - Collapsible address fields
 
 ### Contact Cards
 
 Each card displays:
-- Avatar with initial
-- Name and contact type badge
-- Relationship (if set)
+- **Unique colored avatar** with initial (based on name hash)
+- Name and contact type badge (color-coded)
+- Relationship description (if set)
 - Birthday with countdown ("in 5 days", "Tomorrow", "Today!")
-- Email and phone (if set)
-- Notes preview (if set)
-- Actions menu (Edit, Delete)
+- **Clickable email link** (mailto:)
+- **Clickable phone link** (tel:)
+- Notes preview (2 lines max, if set)
+- Actions dropdown menu (Edit, Delete) - visible on hover
+
+**Interaction:**
+- Click card → opens edit modal
+- Click email → opens mail client
+- Click phone → opens phone app
+- Click menu → shows Edit/Delete options
 
 ---
 
@@ -273,17 +352,19 @@ The only alternative is manual GDPR data export from Facebook, which is cumberso
 
 ```
 lib/
+├── constants/
+│   └── contact-styles.ts       # NEW: Shared styling constants (avatar colors, type config)
 ├── hooks/
 │   └── use-contacts.ts         # CRUD hooks with birthday calculations
 ├── query-keys.ts               # ContactFilters type, contacts query keys
 
 components/
 ├── modals/
-│   └── contact-modal.tsx       # Create/edit modal
+│   └── contact-modal.tsx       # Create/edit modal with ContactTypeSelector, AddressSection
 
 app/(app)/
 ├── contacts/
-│   └── page.tsx               # Contacts list page
+│   └── page.tsx               # Contacts list with ContactCard, UpcomingBirthdaysSection
 
 types/
 └── database.ts                # Contact, ContactType, ContactImportSource
@@ -304,6 +385,15 @@ supabase/migrations/
 - [x] Birthday countdown display
 - [x] Upcoming birthdays section
 - [x] Import tracking columns (prepared for Phase 2)
+
+### Phase 1.1: Enhanced UI/UX ✅ Complete (NEW)
+
+- [x] Clickable contact cards (direct edit)
+- [x] Unique avatar colors based on name
+- [x] Clickable email/phone (mailto:/tel: links)
+- [x] Expandable upcoming birthdays ("show more")
+- [x] Shared constants file (contact-styles.ts)
+- [x] Comprehensive AI-dev comments throughout
 
 ### Phase 2: Google Import (Planned)
 
@@ -327,3 +417,4 @@ supabase/migrations/
 | Version | Date | Author | Changes |
 |---------|------|--------|---------|
 | 1.0 | 2024-12-28 | Claude | Initial documentation for Contacts feature Phase 1 |
+| 1.1 | 2024-12-28 | Claude | Phase 1.1: Enhanced UI/UX - clickable cards, unique avatars, mailto/tel links, expandable birthdays, shared constants |
