@@ -458,6 +458,7 @@ export default function ContactsPage() {
   const [typeFilter, setTypeFilter] = React.useState<FilterType>('all');
   const [sortOption, setSortOption] = React.useState<SortOption>('name_asc');
   const [isModalOpen, setIsModalOpen] = React.useState(false);
+  const [isImportModalOpen, setIsImportModalOpen] = React.useState(false);
   const [editingContact, setEditingContact] = React.useState<Contact | null>(null);
 
   // Delete confirmation state
@@ -645,9 +646,18 @@ export default function ContactsPage() {
             )}
           </div>
         </div>
-        <Button leftIcon={<Plus className="h-4 w-4" />} onClick={handleCreate}>
-          Add Contact
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            leftIcon={<Upload className="h-4 w-4" />}
+            onClick={handleOpenImport}
+          >
+            Import
+          </Button>
+          <Button leftIcon={<Plus className="h-4 w-4" />} onClick={handleCreate}>
+            Add Contact
+          </Button>
+        </div>
       </div>
 
       {/* Upcoming birthdays section */}
@@ -748,6 +758,8 @@ export default function ContactsPage() {
           )}
         </>
       )}
+
+      {/* ━━━━━ MODALS ━━━━━ */}
 
       {/* Contact Modal for create/edit */}
       <ContactModal
